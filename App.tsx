@@ -166,6 +166,7 @@ function AppContent() {
     setLoading(true);
 
     // --- ADMIN LOGIN LOGIC (Specific Credentials) ---
+    // Note: Password fixed to match what was requested
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { 
             setLoginError("Firebase not initialized."); 
@@ -178,7 +179,7 @@ function AppContent() {
             const cred = await signInWithEmailAndPassword(auth, email, password);
             setAuthUser(cred.user);
             
-            // 2. Force Admin Privileges in Firestore (In case it's a new login or rights were lost)
+            // 2. Force Admin Privileges in Firestore
             await setDoc(doc(db, "users", cred.user.uid), {
                 email: email,
                 name: 'System Admin',
@@ -199,10 +200,11 @@ function AppContent() {
             setCurrentView(AppView.ADMIN);
 
         } catch (err: any) {
-            // 4. If user not found, CREATE IT (First time setup)
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+            // CRITICAL FIX: Only try to create if user DOES NOT EXIST.
+            // If password is wrong, show error instead of trying to create (which causes email-already-in-use)
+            if (err.code === 'auth/user-not-found') {
                 try {
-                    // Try creating the account if login failed
+                    // Try creating the account if login failed because user doesn't exist
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
                     
@@ -226,6 +228,8 @@ function AppContent() {
                 } catch (createErr: any) {
                     setLoginError('Admin Setup Failed: ' + createErr.message);
                 }
+            } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+                setLoginError('كلمة المرور غير صحيحة للحساب الموجود.');
             } else {
                 setLoginError('Admin Login Error: ' + err.message);
             }
