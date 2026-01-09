@@ -8,13 +8,17 @@ export interface UserProfile {
   durationMonths: number;
   setupComplete: boolean;
   
-  // New Fields for Enhanced Logic
+  // Existing Fields
   planType?: 'algorithm' | 'manual';
   isBanned?: boolean;
   isAdmin?: boolean;
   lastActive?: string; // ISO Date String
   progress?: number;   // 0-100
   streak?: number;     // Consecutive days logged
+  
+  // New: Doctor's Eye Features
+  doctorNotes?: string; 
+  isFlagged?: boolean; 
 }
 
 export interface Inventory {
@@ -78,11 +82,60 @@ export interface AdminMessage {
   read: boolean;
 }
 
+// --- NEW FEATURES TYPES ---
+
+// 1. CMS (Tips & Articles)
+export interface Article {
+  id?: string;
+  title: string;
+  content: string;
+  category: 'tip' | 'medical' | 'motivation';
+  isPublished: boolean;
+  createdAt: number;
+  authorName: string;
+}
+
+// 2. Support Tickets
+export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed';
+
+export interface Ticket {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  subject: string;
+  status: TicketStatus;
+  createdAt: number;
+  lastUpdate: number;
+  messages?: TicketMessage[];
+}
+
+export interface TicketMessage {
+  senderId: string; // Admin ID or User ID
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isAdmin: boolean;
+}
+
+// 3. Audit Logs (Security)
+export interface AuditLog {
+  id?: string;
+  adminId: string;
+  adminName: string;
+  action: string; // e.g., "BAN_USER", "RESOLVE_TICKET"
+  targetId?: string; // User ID or Item ID affected
+  details: string;
+  timestamp: number;
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   CALENDAR = 'CALENDAR',
   STATS = 'STATS',
   SETTINGS = 'SETTINGS',
   COMMUNITY = 'COMMUNITY',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  // New Views
+  SUPPORT = 'SUPPORT',
+  ARTICLES = 'ARTICLES'
 }

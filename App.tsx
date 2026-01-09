@@ -18,6 +18,9 @@ import { CalendarView } from './views/CalendarView';
 import { StatsView } from './views/StatsView';
 import { AdminView } from './views/AdminView';
 import { CommunityView } from './views/CommunityView';
+// New Views
+import { SupportView } from './views/SupportView';
+import { ArticlesView } from './views/ArticlesView';
 
 function AppContent() {
   // -- State --
@@ -128,7 +131,9 @@ function AppContent() {
                     progress: progressPercentage,
                     uid: authUser.uid,
                     isAdmin: userProfile.isAdmin || false,
-                    isBanned: userProfile.isBanned || false
+                    isBanned: userProfile.isBanned || false,
+                    isFlagged: userProfile.isFlagged || false, // New Field sync
+                    doctorNotes: userProfile.doctorNotes || "" // New Field sync
                 }, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
@@ -165,8 +170,7 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // --- ADMIN LOGIN LOGIC (Specific Credentials) ---
-    // Note: Password fixed to match what was requested
+    // --- ADMIN LOGIN LOGIC ---
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { 
             setLoginError("Firebase not initialized."); 
@@ -179,7 +183,7 @@ function AppContent() {
             const cred = await signInWithEmailAndPassword(auth, email, password);
             setAuthUser(cred.user);
             
-            // 2. Force Admin Privileges in Firestore
+            // 2. Force Admin Privileges
             await setDoc(doc(db, "users", cred.user.uid), {
                 email: email,
                 name: 'System Admin',
@@ -187,7 +191,6 @@ function AppContent() {
                 setupComplete: true
             }, { merge: true });
 
-            // 3. Set Local Profile
             const adminProfile: UserProfile = {
                 email: email,
                 name: 'System Admin',
@@ -200,11 +203,8 @@ function AppContent() {
             setCurrentView(AppView.ADMIN);
 
         } catch (err: any) {
-            // CRITICAL FIX: Only try to create if user DOES NOT EXIST.
-            // If password is wrong, show error instead of trying to create (which causes email-already-in-use)
             if (err.code === 'auth/user-not-found') {
                 try {
-                    // Try creating the account if login failed because user doesn't exist
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
                     
@@ -229,7 +229,7 @@ function AppContent() {
                     setLoginError('Admin Setup Failed: ' + createErr.message);
                 }
             } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-                setLoginError('كلمة المرور غير صحيحة للحساب الموجود.');
+                setLoginError('كلمة المرور غير صحيحة.');
             } else {
                 setLoginError('Admin Login Error: ' + err.message);
             }
@@ -237,7 +237,6 @@ function AppContent() {
         setLoading(false);
         return;
     }
-    // ---------------------------------
 
     // Demo Mode
     if (email === 'islamaz@bomba.com' && password === 'bombaAZ360') {
@@ -360,7 +359,6 @@ function AppContent() {
       if (!todayPlanItem) return;
 
       const freezeDose = todayPlanItem.plannedDose;
-      
       const history = plan.filter(p => p.date <= today);
       const future = plan.filter(p => p.date > today);
       
@@ -377,7 +375,6 @@ function AppContent() {
           });
       }
       
-      // Shift future plan
       future.forEach(day => {
           currentDateObj.setDate(currentDateObj.getDate() + 1);
           newPlanDays.push({
@@ -492,7 +489,6 @@ function AppContent() {
           <button 
              onClick={goBack}
              className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden"
-             aria-label="Back"
           >
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
           </button>
@@ -502,7 +498,6 @@ function AppContent() {
           <button 
              onClick={goBack}
              className="hidden md:flex fixed top-8 left-8 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors"
-             aria-label="Back"
           >
               {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
           </button>
@@ -551,6 +546,16 @@ function AppContent() {
 
         {currentView === AppView.COMMUNITY && userProfile && (
             <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
+        )}
+
+        {/* --- NEW VIEWS INTEGRATION --- */}
+        {currentView === 'SUPPORT' && userProfile && (
+            // Cast to AppView if strict typing complains, or ensure types.ts is updated
+            <SupportView user={{...userProfile, uid: authUser?.uid}} />
+        )}
+
+        {currentView === 'ARTICLES' && (
+            <ArticlesView />
         )}
 
         {currentView === AppView.ADMIN && userProfile?.isAdmin && (

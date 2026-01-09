@@ -1,5 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, LogOut, Users, ShieldAlert, User as UserIcon } from 'lucide-react';
+import { 
+  LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, LogOut, 
+  Users, ShieldAlert, User as UserIcon, LifeBuoy, BookOpen 
+} from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './UI';
@@ -19,6 +22,10 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
     { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
     { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+    // New Items
+    { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+    { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+    
     { id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') },
   ];
 
@@ -45,7 +52,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
       </div>
       
       {/* Menu */}
-      <nav className="flex-1 p-6 space-y-3 overflow-y-auto">
+      <nav className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
         {menuItems.map((item) => (
           <button 
             key={item.id}

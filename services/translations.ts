@@ -21,9 +21,11 @@ export const translations = {
     nav_settings: "الإعدادات",
     nav_community: "المجتمع",
     nav_admin: "الإدارة",
+    nav_support: "مركز الدعم",     // NEW
+    nav_articles: "المعرفة",       // NEW
     logout: "خروج",
     
-    // Admin (New & Improved)
+    // Admin
     admin_title: "لوحة التحكم",
     admin_overview: "نظرة عامة",
     admin_users: "المستخدمين",
@@ -43,9 +45,9 @@ export const translations = {
     status: "الحالة",
     msg_sent: "تم الإرسال",
     admin_note_placeholder: "اكتب رسالة للمستخدم...",
-    broadcast_placeholder: "اكتب نص التنبيه هنا (مثال: صيانة للنظام، تحديث جديد)...",
+    broadcast_placeholder: "اكتب نص التنبيه هنا...",
     send_broadcast: "إرسال للجميع",
-    broadcast_simulated: "تمت محاكاة الإرسال (تتطلب تفعيل Backend).",
+    broadcast_simulated: "تمت محاكاة الإرسال.",
 
     // Community
     comm_title: "مجتمع التعافي",
@@ -66,7 +68,7 @@ export const translations = {
     status_stable: "مستقر",
     safety_active: "نظام الحماية",
     safety_desc: "تم رصد تذبذب في المؤشرات الحيوية. يوصى بتثبيت الجرعة اليوم.",
-    freeze_plan_btn: "تجميد الخطة (3 أيام)", // NEW
+    freeze_plan_btn: "تجميد الخطة (3 أيام)",
     target_dose: "الجرعة المقررة",
     documented: "تم التسجيل",
     dose: "الجرعة",
@@ -76,18 +78,18 @@ export const translations = {
     bad: "متعب",
     step_1: "الجرعة المأخوذة",
     step_2: "المؤشرات الحيوية",
-    confirm_log: "توثيق وتحديث المخزون", // Updated
+    confirm_log: "توثيق وتحديث المخزون",
     algo_active: "النظام نشط",
     recovery_path: "مسار التعافي",
     sos_button: "طوارئ",
     export_report: "تقرير طبي",
 
-    // Toasts / Messages (New)
+    // Toasts
     toast_log_success: "تم توثيق الجرعة وتحديث المخزون",
     toast_freeze_success: "تم تجميد الخطة لمدة 3 أيام للراحة",
     toast_speed_updated: "تم تحديث وتيرة الخطة بنجاح",
 
-    // New Features
+    // Features
     sleep_label: "ساعات النوم",
     symptoms_label: "الأعراض",
     sym_insomnia: "أرق",
@@ -104,7 +106,7 @@ export const translations = {
     badge_sleep: "نوم منتظم",
     badge_stable: "ثبات انفعالي",
 
-    // Onboarding & Doctor Plan
+    // Onboarding
     choose_path: "اختر مسار الخطة العلاجية",
     path_algo: "الخوارزمية الذكية",
     path_algo_desc: "حساب تلقائي لنسب التخفيض بناءً على المخزون وعلم الأعصاب.",
@@ -120,7 +122,7 @@ export const translations = {
     start_doctor_plan: "اعتماد خطة الطبيب",
 
     // Templates
-    templates_title: "القوالب الجاهزة (أنماط التوقف)",
+    templates_title: "القوالب الجاهزة",
     templates_subtitle: "إضافة سريعة لأنماط (يوم جرعة + أيام راحة).",
     template_dose_label: "جرعة يوم العلاج",
     template_off_label: "أيام الراحة (0 ملغ)",
@@ -164,22 +166,16 @@ export const translations = {
     breathe_out: "زفير",
     close: "إغلاق",
 
-    // Report
-    report_header: "تقرير المريض",
-    report_note: "تم إنشاء التقرير آلياً.",
-    print: "طباعة",
-
     // Settings
     settings_title: "الإعدادات",
     settings_subtitle: "تخصيص النظام",
     pace_control: "وتيرة الخطة العلاجية",
-    pace_desc: "اختر سرعة التخفيض المناسبة لحالتك. سيقوم النظام بإعادة جدولة الأيام المتبقية فوراً.",
+    pace_desc: "اختر سرعة التخفيض المناسبة لحالتك.",
     pace_slow: "بطيء (مريح)",
     pace_balanced: "متوازن (قياسي)",
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
-    factory_reset_desc: "حذف جميع البيانات والعودة للبداية.",
-    factory_reset_btn: "تهيئة النظام (Format)"
+    factory_reset_btn: "تهيئة النظام"
   },
   en: {
     // Auth
@@ -201,9 +197,11 @@ export const translations = {
     nav_settings: "Settings",
     nav_community: "Community",
     nav_admin: "Admin",
+    nav_support: "Support",        // NEW
+    nav_articles: "Knowledge",     // NEW
     logout: "Exit",
 
-    // Admin (New)
+    // Admin
     admin_title: "Admin Dashboard",
     admin_overview: "Overview",
     admin_users: "Users",
@@ -225,7 +223,7 @@ export const translations = {
     admin_note_placeholder: "Type message to user...",
     broadcast_placeholder: "Type broadcast message here...",
     send_broadcast: "Send to All",
-    broadcast_simulated: "Broadcast simulated (Backend required).",
+    broadcast_simulated: "Broadcast simulated.",
 
     // Community
     comm_title: "Recovery Community",
@@ -246,7 +244,7 @@ export const translations = {
     status_stable: "Stable",
     safety_active: "Safety Guard",
     safety_desc: "Biometric instability detected. Dose stabilization recommended.",
-    freeze_plan_btn: "Freeze Plan (3 Days)", // NEW
+    freeze_plan_btn: "Freeze Plan (3 Days)",
     target_dose: "Scheduled Dose",
     documented: "Logged",
     dose: "Dose",
@@ -256,18 +254,18 @@ export const translations = {
     bad: "Rough",
     step_1: "Dose Taken",
     step_2: "Vital Signs",
-    confirm_log: "Log & Update Inventory", // Updated
+    confirm_log: "Log & Update Inventory",
     algo_active: "System Active",
     recovery_path: "Recovery Path",
     sos_button: "SOS",
     export_report: "Medical Report",
 
-    // Toasts / Messages (New)
+    // Toasts
     toast_log_success: "Dose logged & inventory updated.",
     toast_freeze_success: "Plan frozen for 3 days to rest.",
     toast_speed_updated: "Plan pace updated successfully.",
 
-    // New Features
+    // Features
     sleep_label: "Sleep Hours",
     symptoms_label: "Symptoms",
     sym_insomnia: "Insomnia",
@@ -284,13 +282,12 @@ export const translations = {
     badge_sleep: "Sleep Restored",
     badge_stable: "Emotional Stability",
 
-    // Onboarding & Doctor Plan
+    // Onboarding
     choose_path: "Select Strategy",
     path_algo: "Smart Algorithm",
-    path_algo_desc: "Auto-calculated reduction based on neuroscience & inventory.",
+    path_algo_desc: "Auto-calculated reduction based on neuroscience.",
     path_doctor: "Doctor's Plan",
     path_doctor_desc: "Manually input the schedule provided by your physician.",
-    
     manual_builder_title: "Plan Builder",
     phase_dose: "Dose (mg)",
     phase_duration: "Duration (Days)",
@@ -344,25 +341,18 @@ export const translations = {
     breathe_out: "Exhale",
     close: "Close",
 
-    // Report
-    report_header: "Patient Report",
-    report_note: "Auto-generated report.",
-    print: "Print",
-
     // Settings
     settings_title: "Settings",
     settings_subtitle: "System Preferences",
     pace_control: "Treatment Pace",
-    pace_desc: "Select a pace. The system will instantly re-calculate the remaining schedule.",
+    pace_desc: "Select a pace. The system will instantly re-calculate.",
     pace_slow: "Slow (Relaxed)",
     pace_balanced: "Standard",
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
-    factory_reset_desc: "Wipe all data and restart.",
     factory_reset_btn: "System Format"
   },
   ru: {
-    // Simplified Russian
     welcome: "Добро пожаловать",
     subtitle: "Система восстановления",
     email: "Email / ID",
@@ -379,9 +369,11 @@ export const translations = {
     nav_settings: "Настройки",
     nav_community: "Сообщество",
     nav_admin: "Админ",
+    nav_support: "Поддержка",    // NEW
+    nav_articles: "Знания",      // NEW
     logout: "Выход",
     
-    // Admin (New)
+    // Admin
     admin_title: "Панель",
     admin_overview: "Обзор",
     admin_users: "Юзеры",
@@ -414,7 +406,7 @@ export const translations = {
     status_stable: "Стабильно",
     safety_active: "Защита",
     safety_desc: "Рекомендуется стабилизация дозы.",
-    freeze_plan_btn: "Заморозить (3 дня)", // NEW
+    freeze_plan_btn: "Заморозить (3 дня)",
     target_dose: "Доза по плану",
     documented: "Записано",
     dose: "Доза",
@@ -430,7 +422,7 @@ export const translations = {
     sos_button: "SOS",
     export_report: "Отчет",
 
-    // Toasts (New)
+    // Toasts
     toast_log_success: "Записано и обновлено.",
     toast_freeze_success: "План заморожен на 3 дня.",
     toast_speed_updated: "Скорость обновлена.",
@@ -500,9 +492,6 @@ export const translations = {
     breathe_hold: "Держать",
     breathe_out: "Выдох",
     close: "Закрыть",
-    report_header: "Отчет",
-    report_note: "Авто-отчет.",
-    print: "Печать",
     settings_title: "Настройки",
     settings_subtitle: "Опции системы",
     pace_control: "Темп лечения",
@@ -511,7 +500,6 @@ export const translations = {
     pace_balanced: "Баланс",
     pace_fast: "Быстро",
     danger_zone: "Опасная зона",
-    factory_reset_desc: "Удалить все данные.",
     factory_reset_btn: "Форматировать"
   }
 };
