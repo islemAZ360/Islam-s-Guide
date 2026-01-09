@@ -4,18 +4,17 @@ service cloud.firestore {
 
     // --- Helper Functions ---
     
-    // Check if user is authenticated
+    // هل المستخدم مسجل دخول؟
     function isSignedIn() {
       return request.auth != null;
     }
     
-    // Check if the user is accessing their own data
+    // هل المستخدم هو صاحب الملف؟
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
-    // Check if the user is an Admin
-    // Looks up the user's document to see if 'isAdmin' is true
+    // هل المستخدم أدمن؟ (يتم التحقق من الوثيقة الخاصة به في قاعدة البيانات)
     function isAdmin() {
       return isSignedIn() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -24,34 +23,40 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      // READ: 
-      // - Authenticated users can read user profiles (Needed for Leaderboard/Ranking).
+      // READ: مسموح لأي مستخدم مسجل (لأجل لوحة الشرف Leaderboard)
       allow read: if isSignedIn();
       
-      // WRITE:
-      // - Owner can update their own profile (e.g. daily logs sync).
-      // - Admin can update any user (e.g. to Ban them).
-      // - Prevent users from granting themselves admin privileges via validation.
-      allow write: if isSignedIn() && (
-        isOwner(userId) || isAdmin()
+      // CREATE: مسموح للمستخدم بإنشاء ملفه الشخصي عند التسجيل
+      allow create: if isSignedIn() && isOwner(userId);
+      
+      // UPDATE: 
+      // 1. الأدمن يمكنه تعديل أي شيء (مثل الحظر)
+      // 2. المالك يمكنه تعديل بياناته (مزامنة السجلات) بشرط عدم تغيير صلاحيات الأدمن أو حالة الحظر
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(userId) && 
+         request.resource.data.isAdmin == resource.data.isAdmin && // منع ترقية النفس لأدمن
+         request.resource.data.isBanned == resource.data.isBanned // منع فك الحظر عن النفس
+        )
       );
       
       // Subcollection: Admin Messages (Private)
       match /admin_messages/{msgId} {
-        // Owner can read their messages, Admin can read/write.
+        // المالك يقرأ رسائله، الأدمن يقرأ الكل
         allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
-        // Only Admin can send these messages.
+        // الأدمن فقط من ينشئ الرسائل
         allow create: if isAdmin();
+        // الأدمن فقط يعدل أو يحذف
         allow update, delete: if isAdmin();
       }
     }
 
     // --- Chat Rooms Collection ---
     match /rooms/{roomId} {
-      // Anyone signed in can read the list of rooms and create a new room.
+      // قراءة وإنشاء الغرف متاح للجميع
       allow read, create: if isSignedIn();
       
-      // Delete: Only the Creator of the room OR an Admin can delete it.
+      // الحذف: فقط منشئ الغرفة أو الأدمن
       allow delete: if isSignedIn() && (
         resource.data.createdBy == request.auth.uid || 
         isAdmin()
@@ -59,7 +64,7 @@ service cloud.firestore {
 
       // --- Messages Subcollection ---
       match /messages/{msgId} {
-        // Anyone signed in can read and send messages in a room.
+        // قراءة وإرسال الرسائل متاح للجميع داخل الغرف
         allow read, create: if isSignedIn();
       }
     }

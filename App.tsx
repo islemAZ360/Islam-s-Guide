@@ -33,7 +33,7 @@ function AppContent() {
   const [currentDoseHabit, setCurrentDoseHabit] = useState<number>(0);
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [logs, setLogs] = useState<DailyLog[]>([]);
-  const [speedModifier, setSpeedModifier] = useState<number>(1.0); // Actual committed speed
+  const [speedModifier, setSpeedModifier] = useState<number>(1.0);
   
   // Navigation History State
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -50,74 +50,95 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // -- Effects --
+  // -- Load Local Data on Mount --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
     const savedPlan = localStorage.getItem('taper_plan');
     const savedLogs = localStorage.getItem('taper_logs');
-    const savedSpeed = localStorage.getItem('taper_speed'); // Load Speed
-    const savedInventory = localStorage.getItem('taper_inventory'); // Load Inventory
+    const savedSpeed = localStorage.getItem('taper_speed');
+    const savedInventory = localStorage.getItem('taper_inventory');
     
     if (savedProfile) setUserProfile(JSON.parse(savedProfile));
     if (savedPlan) setPlan(JSON.parse(savedPlan));
     if (savedLogs) setLogs(JSON.parse(savedLogs));
     if (savedInventory) setInventory(JSON.parse(savedInventory));
-    if (savedSpeed) {
-        setSpeedModifier(parseFloat(savedSpeed));
-    }
+    if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
     
-    setLoading(false);
+    setLoading(false); 
   }, []);
 
+  // -- 1. FETCH DATA FROM FIREBASE ON LOGIN --
   useEffect(() => {
-    if (userProfile) {
-        localStorage.setItem('taper_profile', JSON.stringify(userProfile));
-        // SYNC WITH FIRESTORE FOR ADMIN/COMMUNITY VISIBILITY
-        if (authUser) {
-            const syncProfile = async () => {
-                // Determine progress
-                const totalDays = plan.length;
-                const daysCompleted = logs.length;
-                const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
-                
-                try {
-                    await setDoc(doc(db, "users", authUser.uid), {
-                        ...userProfile,
-                        email: authUser.email || email,
-                        lastActive: new Date().toISOString(),
-                        progress: progressPercentage,
-                        uid: authUser.uid
-                    }, { merge: true });
-                } catch(e) {
-                    // console.error("Sync failed", e);
-                }
-            };
-            syncProfile();
+    if (authUser) {
+      const fetchUserData = async () => {
+        setLoading(true);
+        try {
+          const docRef = doc(db, "users", authUser.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            // Load Cloud Data to State (Overwrite Local if Cloud exists)
+            if (data.userProfile) setUserProfile(data.userProfile);
+            if (data.plan) setPlan(data.plan);
+            if (data.logs) setLogs(data.logs);
+            if (data.inventory) setInventory(data.inventory);
+            if (data.speedModifier) setSpeedModifier(data.speedModifier);
+            
+            // Security Check
+            if (data.isBanned) {
+               alert(t('banned_msg'));
+               handleLogout();
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
         }
+        setLoading(false);
+      };
+      fetchUserData();
     }
+  }, [authUser]);
+
+  // -- 2. SYNC DATA TO FIREBASE & LOCAL STORAGE --
+  useEffect(() => {
+    // A. Local Storage Sync
+    if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
-    localStorage.setItem('taper_speed', speedModifier.toString()); // Save Speed
-  }, [userProfile, plan, logs, speedModifier, authUser, email, inventory]);
+    localStorage.setItem('taper_speed', speedModifier.toString());
 
-  // Check if banned on load
-  useEffect(() => {
-      if (authUser) {
-          const checkBan = async () => {
-             const userDoc = await getDoc(doc(db, "users", authUser.uid));
-             if (userDoc.exists() && userDoc.data().isBanned) {
-                 alert(t('banned_msg'));
-                 handleLogout();
-             }
-             // Refresh Profile if Admin
-             if (userDoc.exists() && userDoc.data().isAdmin) {
-                 setUserProfile(prev => prev ? { ...prev, isAdmin: true } : prev);
-             }
-          }
-          checkBan();
-      }
-  }, [authUser]);
+    // B. Firebase Cloud Sync
+    if (authUser && userProfile) {
+        const syncToCloud = async () => {
+            const totalDays = plan.length;
+            const daysCompleted = logs.length;
+            const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+            
+            try {
+                await setDoc(doc(db, "users", authUser.uid), {
+                    userProfile,
+                    email: authUser.email || email,
+                    plan, 
+                    logs, 
+                    inventory, 
+                    speedModifier,
+                    lastActive: new Date().toISOString(),
+                    progress: progressPercentage,
+                    uid: authUser.uid,
+                    isAdmin: userProfile.isAdmin || false,
+                    isBanned: userProfile.isBanned || false
+                }, { merge: true });
+            } catch(e) {
+                console.error("Cloud sync failed", e);
+            }
+        };
+        const timeoutId = setTimeout(syncToCloud, 2000);
+        return () => clearTimeout(timeoutId);
+    }
+  }, [userProfile, plan, logs, speedModifier, authUser, inventory]);
+
 
   // -- Navigation Logic --
   const navigateTo = (view: AppView) => {
@@ -132,7 +153,6 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      // Default fallback
       if (currentView !== AppView.DASHBOARD) {
         setCurrentView(AppView.DASHBOARD);
       }
@@ -145,32 +165,30 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // --- SPECIAL ADMIN LOGIN LOGIC ---
-    if (email === '0000' && password === 'bombaAZ360') {
-        if (!auth) {
-            setLoginError("Firebase not initialized.");
-            setLoading(false);
-            return;
+    // --- ADMIN LOGIN LOGIC (Specific Credentials) ---
+    if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
+        if (!auth) { 
+            setLoginError("Firebase not initialized."); 
+            setLoading(false); 
+            return; 
         }
 
-        const adminEmail = "admin@islamguide.com";
-        const adminPass = "bombaAZ360";
-
         try {
-            // Try to login as Admin
-            const cred = await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+            // 1. Try to login
+            const cred = await signInWithEmailAndPassword(auth, email, password);
             setAuthUser(cred.user);
             
-            // Force Admin Privileges in Firestore
+            // 2. Force Admin Privileges in Firestore (In case it's a new login or rights were lost)
             await setDoc(doc(db, "users", cred.user.uid), {
-                email: adminEmail,
+                email: email,
                 name: 'System Admin',
                 isAdmin: true,
                 setupComplete: true
             }, { merge: true });
 
+            // 3. Set Local Profile
             const adminProfile: UserProfile = {
-                email: adminEmail,
+                email: email,
                 name: 'System Admin',
                 medType: null,
                 durationMonths: 0,
@@ -181,22 +199,22 @@ function AppContent() {
             setCurrentView(AppView.ADMIN);
 
         } catch (err: any) {
-            // If user not found, create it (First time setup)
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+            // 4. If user not found, CREATE IT (First time setup)
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
                 try {
-                    const newCred = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
+                    // Try creating the account if login failed
+                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
                     
-                    // Force Admin Privileges
                     await setDoc(doc(db, "users", newCred.user.uid), {
-                        email: adminEmail,
+                        email: email,
                         name: 'System Admin',
                         isAdmin: true,
                         setupComplete: true
                     }, { merge: true });
 
                     const adminProfile: UserProfile = {
-                        email: adminEmail,
+                        email: email,
                         name: 'System Admin',
                         medType: null,
                         durationMonths: 0,
@@ -206,7 +224,7 @@ function AppContent() {
                     setUserProfile(adminProfile);
                     setCurrentView(AppView.ADMIN);
                 } catch (createErr: any) {
-                    setLoginError('Admin Setup Error: ' + createErr.message);
+                    setLoginError('Admin Setup Failed: ' + createErr.message);
                 }
             } else {
                 setLoginError('Admin Login Error: ' + err.message);
@@ -217,6 +235,7 @@ function AppContent() {
     }
     // ---------------------------------
 
+    // Demo Mode
     if (email === 'islamaz@bomba.com' && password === 'bombaAZ360') {
         setTimeout(() => {
             setIsDemoMode(true);
@@ -225,6 +244,7 @@ function AppContent() {
         return;
     }
 
+    // Standard Firebase Login
     if (auth) {
       try {
         const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -232,8 +252,6 @@ function AppContent() {
       } catch (err: any) {
         setLoginError('Login Error: ' + err.message);
       }
-    } else {
-       if (email && password) setIsDemoMode(true);
     }
     setLoading(false);
   };
@@ -245,13 +263,6 @@ function AppContent() {
         try {
             const result = await signInWithPopup(auth, googleProvider);
             setAuthUser(result.user);
-            
-            if (!userProfile) {
-                const saved = localStorage.getItem('taper_profile');
-                if (saved) {
-                    setUserProfile(JSON.parse(saved));
-                }
-            }
         } catch (err: any) {
             setLoginError('Google Login Error: ' + err.message);
         }
@@ -268,10 +279,22 @@ function AppContent() {
     setAuthUser(null);
     setIsDemoMode(false);
     setUserProfile(null);
+    setPlan([]);
+    setLogs([]);
+    setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+    
+    localStorage.removeItem('taper_profile');
+    localStorage.removeItem('taper_plan');
+    localStorage.removeItem('taper_logs');
+    localStorage.removeItem('taper_inventory');
+    
+    if (auth) {
+        auth.signOut().catch(console.error);
+    }
+    
     window.location.reload();
   };
 
-  // UPDATED: Now accepts planType explicitly to avoid the bug
   const startPlan = (customPlan: PlanDay[], speed: number = 1.0, planType: 'algorithm' | 'manual' = 'algorithm') => {
     setSpeedModifier(speed); 
     setPlan(customPlan);
@@ -288,26 +311,23 @@ function AppContent() {
     setUserProfile(newProfile);
   };
 
-  // --- SMART INVENTORY LOGIC HERE ---
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    // 1. Calculate New Inventory (Smart Deduction)
+    // 1. Inventory Logic
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, currentTotal - selectedDose);
-    
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
     
-    // Auto-balance boxes and loose pills
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
         newInventory.loosePills = newTotal % inventory.pillsPerBox;
     } else {
-        newInventory.loosePills = newTotal; // Fallback if pillsPerBox not set
+        newInventory.loosePills = newTotal;
     }
     setInventory(newInventory);
 
-    // 2. Add Log
+    // 2. Log Logic
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, 
@@ -319,9 +339,9 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Adjust Plan (Only algorithm, manual plans don't auto-adjust based on inv)
+    // 3. Plan Adjustment
     if (userProfile?.planType !== 'manual') {
-        const newPlan = adjustPlan(plan, newLogs, currentTotal, speedModifier); // pass original total reference for calculation
+        const newPlan = adjustPlan(plan, newLogs, currentTotal, speedModifier);
         setPlan(newPlan);
     }
     
@@ -330,20 +350,20 @@ function AppContent() {
     showToast("تم توثيق الجرعة وتحديث المخزون");
   };
 
-  // --- FREEZE PLAN LOGIC ---
   const handleFreezePlan = () => {
-      if (!todayPlan) return;
-      const freezeDose = todayPlan.plannedDose;
       const today = new Date().toISOString().split('T')[0];
+      const todayPlanItem = plan.find(p => p.date === today);
+      if (!todayPlanItem) return;
+
+      const freezeDose = todayPlanItem.plannedDose;
       
-      // Separate history from future
       const history = plan.filter(p => p.date <= today);
       const future = plan.filter(p => p.date > today);
       
       const newPlanDays: PlanDay[] = [];
       let currentDateObj = new Date(today);
       
-      // 1. Add 3 days of freeze
+      // Add 3 freeze days
       for (let i = 0; i < 3; i++) {
           currentDateObj.setDate(currentDateObj.getDate() + 1);
           newPlanDays.push({
@@ -353,7 +373,7 @@ function AppContent() {
           });
       }
       
-      // 2. Append original future plan shifted by 3 days
+      // Shift future plan
       future.forEach(day => {
           currentDateObj.setDate(currentDateObj.getDate() + 1);
           newPlanDays.push({
@@ -363,7 +383,7 @@ function AppContent() {
       });
       
       setPlan([...history, ...newPlanDays]);
-      showToast("تم تجميد الخطة لمدة 3 أيام للراحة");
+      showToast("تم تجميد الخطة لمدة 3 أيام");
   };
 
   const showToast = (msg: string) => {
@@ -371,7 +391,6 @@ function AppContent() {
       setTimeout(() => setToastMessage(null), 3000);
   }
 
-  // Button-based speed setting
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
       if (userProfile?.planType !== 'manual') {
@@ -386,40 +405,29 @@ function AppContent() {
     if (confirm('هل أنت متأكد؟ سيتم حذف جميع البيانات والعودة لنقطة الصفر.')) {
       setLoading(true);
       
-      // 1. Clear Local Storage
       localStorage.removeItem('taper_profile');
       localStorage.removeItem('taper_plan');
       localStorage.removeItem('taper_logs');
       localStorage.removeItem('taper_speed');
       localStorage.removeItem('taper_inventory');
       
-      // 2. Clear State
       setUserProfile(null);
       setPlan([]);
       setLogs([]);
+      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
       setAuthUser(null);
       setIsDemoMode(false);
-      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
 
-      // 3. Sign out from Firebase
       if (auth) {
-          try {
-              await auth.signOut();
-          } catch (e) {
-              console.error("Sign out failed", e);
-          }
+          try { await auth.signOut(); } catch (e) { console.error(e); }
       }
-
-      // 4. Force Reload to restart the app cleanly
       window.location.reload();
     }
   };
 
-  // -- Derived Data --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
-  
   const recentLogs = logs.slice(-3);
   const badMoodCount = recentLogs.filter(l => l.mood === 'bad').length;
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
@@ -476,7 +484,6 @@ function AppContent() {
           </div>
       )}
 
-      {/* GLOBAL BACK BUTTON (Appears when not on Dashboard OR when deep in history) */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button 
              onClick={goBack}
@@ -526,7 +533,7 @@ function AppContent() {
                 selectedMood={selectedMood}
                 setSelectedMood={setSelectedMood}
                 submitDailyLog={submitDailyLog}
-                handleFreezePlan={handleFreezePlan} // Pass the new handler
+                handleFreezePlan={handleFreezePlan}
             />
         )}
         
@@ -548,65 +555,33 @@ function AppContent() {
         
         {currentView === AppView.SETTINGS && (
             <LayoutContainer>
-                <PageHeader 
-                    title={t('settings_title')}
-                    subtitle={t('settings_subtitle')}
-                />
+                <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
                 
                 <Card className="bg-slate-900 border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <Activity className="text-indigo-400" />
-                        {t('pace_control')}
+                        <Activity className="text-indigo-400" /> {t('pace_control')}
                     </h2>
-                    <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">
-                        {t('pace_desc')}
-                    </p>
+                    <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
                     
                     {userProfile.planType === 'manual' ? (
                          <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
                              <ShieldCheck size={40} className="text-slate-700" />
                              <p>أنت تتبع خطة الطبيب اليدوية.</p>
-                             <p className="text-xs">لا يمكن تعديل الوتيرة تلقائياً لأن الجدول مثبت يدوياً. إذا أردت تغيير الخطة، يرجى إعادة ضبط المصنع وبناء جدول جديد.</p>
+                             <p className="text-xs">لا يمكن تعديل الوتيرة تلقائياً.</p>
                          </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <button 
-                                onClick={() => updateSpeedSettings(0.8)}
-                                className={`p-8 rounded-[2rem] border transition-all duration-300 active:scale-95 group relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_30px_rgba(79,70,229,0.3)]' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800 hover:border-slate-700'}`}
-                            >
-                                <div className="relative z-10 flex flex-col items-center gap-4">
-                                    <Clock size={32} className={speedModifier < 0.9 ? 'text-white' : 'text-slate-600 group-hover:text-slate-400'} />
-                                    <div className="text-center">
-                                        <span className="block font-bold text-lg">{t('pace_slow')}</span>
-                                        <span className="text-xs opacity-70">مدة أطول، أعراض أقل</span>
-                                    </div>
-                                </div>
+                            <button onClick={() => updateSpeedSettings(0.8)} className={`p-8 rounded-[2rem] border transition-all duration-300 ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                                <Clock size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold">{t('pace_slow')}</span>
                             </button>
-
-                            <button 
-                                onClick={() => updateSpeedSettings(1.0)}
-                                className={`p-8 rounded-[2rem] border transition-all duration-300 active:scale-95 group relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800 hover:border-slate-700'}`}
-                            >
-                                <div className="relative z-10 flex flex-col items-center gap-4">
-                                    <ShieldCheck size={32} className={speedModifier >= 0.9 && speedModifier <= 1.1 ? 'text-white' : 'text-slate-600 group-hover:text-slate-400'} />
-                                    <div className="text-center">
-                                        <span className="block font-bold text-lg">{t('pace_balanced')}</span>
-                                        <span className="text-xs opacity-70">الخيار الموصى به</span>
-                                    </div>
-                                </div>
+                            <button onClick={() => updateSpeedSettings(1.0)} className={`p-8 rounded-[2rem] border transition-all duration-300 ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                                <ShieldCheck size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold">{t('pace_balanced')}</span>
                             </button>
-
-                            <button 
-                                onClick={() => updateSpeedSettings(1.2)}
-                                className={`p-8 rounded-[2rem] border transition-all duration-300 active:scale-95 group relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800 hover:border-slate-700'}`}
-                            >
-                                <div className="relative z-10 flex flex-col items-center gap-4">
-                                    <Zap size={32} className={speedModifier > 1.1 ? 'text-white' : 'text-slate-600 group-hover:text-slate-400'} />
-                                    <div className="text-center">
-                                        <span className="block font-bold text-lg">{t('pace_fast')}</span>
-                                        <span className="text-xs opacity-70">مكثف، قد تزيد الأعراض</span>
-                                    </div>
-                                </div>
+                            <button onClick={() => updateSpeedSettings(1.2)} className={`p-8 rounded-[2rem] border transition-all duration-300 ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                                <Zap size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold">{t('pace_fast')}</span>
                             </button>
                         </div>
                     )}
@@ -614,10 +589,8 @@ function AppContent() {
 
                 <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <AlertTriangle className="text-rose-500"/>
-                        {t('danger_zone')}
+                        <AlertTriangle className="text-rose-500"/> {t('danger_zone')}
                     </h2>
-                    <p className="text-slate-400 mb-8 text-sm">{t('factory_reset_desc')}</p>
                     <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
                 </Card>
             </LayoutContainer>

@@ -97,7 +97,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     return (
-        <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col">
+            <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col">
             {/* Tabs */}
             <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 mb-4 shrink-0">
                 <button 

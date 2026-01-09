@@ -6,7 +6,7 @@ import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
     ShieldAlert, Ban, UserCheck, MessageSquare, Activity, Search, 
-    TrendingUp, AlertOctagon, Users, Megaphone, CheckCircle 
+    AlertOctagon, Users, Megaphone, CheckCircle, TrendingUp 
 } from 'lucide-react';
 import { 
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
@@ -46,9 +46,24 @@ export const AdminView = () => {
         try {
             const querySnapshot = await getDocs(collection(db, "users"));
             const fetchedUsers: UserProfile[] = [];
-            querySnapshot.forEach((doc) => {
-                fetchedUsers.push({ uid: doc.id, ...doc.data() } as UserProfile);
+            
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                // CRITICAL FIX: Flatten the data structure
+                // App.tsx saves profile data inside 'userProfile' object, but AdminView expects flat UserProfile interface
+                const profileData = data.userProfile || {};
+                
+                fetchedUsers.push({ 
+                    uid: docSnap.id, 
+                    email: data.email || profileData.email, // Ensure email is captured
+                    progress: data.progress || 0,
+                    lastActive: data.lastActive,
+                    isBanned: data.isBanned || false,
+                    isAdmin: data.isAdmin || false,
+                    ...profileData // Spread name, medType, etc. to root
+                } as UserProfile);
             });
+            
             setUsers(fetchedUsers);
         } catch (error) {
             console.error("Error fetching users:", error);
@@ -62,7 +77,6 @@ export const AdminView = () => {
 
     // -- Logic & Calculations --
 
-    // 1. Calculate Stats intelligently using useMemo
     const stats: DashboardStats = useMemo(() => {
         const medTypes = { narcotic: 0, psychiatric: 0, normal: 0, unknown: 0 };
         const progress = { start: 0, mid: 0, end: 0 };
@@ -88,14 +102,13 @@ export const AdminView = () => {
             else if (p < 80) progress.mid++;
             else progress.end++;
 
-            // Active Today Logic (Simulated based on lastActive string parsing)
+            // Active Today Logic
             if (u.lastActive) {
                 const last = new Date(u.lastActive).getTime();
                 if (now - last < oneDayMs) active++;
                 // Risk: Inactive for > 7 days AND progress < 50%
                 if (now - last > (oneDayMs * 7) && p < 50) risk++;
             } else {
-                // If never active and account exists, maybe risk
                 risk++;
             }
         });
@@ -118,16 +131,15 @@ export const AdminView = () => {
         };
     }, [users, t]);
 
-    // 2. Filter Users Logic
+    // Filter Users Logic
     const filteredUsers = users.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                              u.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
         
         let matchesFilter = true;
         if (filterType === 'banned') matchesFilter = !!u.isBanned;
         if (filterType === 'admin') matchesFilter = !!u.isAdmin;
         if (filterType === 'risk') {
-            // Re-using simplified risk logic
             const oneDayMs = 24 * 60 * 60 * 1000;
             const now = Date.now();
             const last = u.lastActive ? new Date(u.lastActive).getTime() : 0;
@@ -172,7 +184,7 @@ export const AdminView = () => {
 
     const handleBroadcast = () => {
         if (!broadcastMsg) return;
-        alert("Broadcast feature simulated (Requires Backend Function). Message logged.");
+        alert(t('broadcast_simulated'));
         setBroadcastMsg("");
     };
 
@@ -184,9 +196,9 @@ export const AdminView = () => {
             {/* Top Navigation Tabs */}
             <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 mb-8 w-full md:w-fit overflow-x-auto">
                 {[
-                    { id: 'overview', icon: Activity, label: "نظرة عامة" },
+                    { id: 'overview', icon: Activity, label: t('admin_overview') },
                     { id: 'users', icon: Users, label: t('admin_users') },
-                    { id: 'broadcast', icon: Megaphone, label: "بث عام" },
+                    { id: 'broadcast', icon: Megaphone, label: t('admin_broadcast') },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -214,7 +226,7 @@ export const AdminView = () => {
                                 <Badge color="blue">+12%</Badge>
                             </div>
                             <div className="text-3xl font-black text-white">{stats.totalUsers}</div>
-                            <div className="text-xs text-slate-500 font-bold uppercase mt-1">المستخدمين الكلي</div>
+                            <div className="text-xs text-slate-500 font-bold uppercase mt-1">{t('total_users')}</div>
                         </Card>
                         <Card className="bg-indigo-900/10 border-indigo-500/20 p-6">
                             <div className="flex justify-between items-start mb-2">
@@ -222,7 +234,7 @@ export const AdminView = () => {
                                 <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
                             </div>
                             <div className="text-3xl font-black text-indigo-100">{stats.activeToday}</div>
-                            <div className="text-xs text-indigo-300 font-bold uppercase mt-1">نشط اليوم</div>
+                            <div className="text-xs text-indigo-300 font-bold uppercase mt-1">{t('active_today')}</div>
                         </Card>
                         <Card className="bg-rose-900/10 border-rose-500/20 p-6">
                             <div className="flex justify-between items-start mb-2">
@@ -230,21 +242,21 @@ export const AdminView = () => {
                                 <Badge color="red">Attention</Badge>
                             </div>
                             <div className="text-3xl font-black text-rose-100">{stats.atRisk}</div>
-                            <div className="text-xs text-rose-300 font-bold uppercase mt-1">حالات متعثرة</div>
+                            <div className="text-xs text-rose-300 font-bold uppercase mt-1">{t('at_risk')}</div>
                         </Card>
                         <Card className="bg-emerald-900/10 border-emerald-500/20 p-6">
                             <div className="flex justify-between items-start mb-2">
                                 <CheckCircle className="text-emerald-400" />
                             </div>
                             <div className="text-3xl font-black text-emerald-100">{stats.progressDistribution[2]?.value || 0}</div>
-                            <div className="text-xs text-emerald-300 font-bold uppercase mt-1">قرب التعافي</div>
+                            <div className="text-xs text-emerald-300 font-bold uppercase mt-1">{t('near_recovery')}</div>
                         </Card>
                     </div>
 
                     {/* Charts Section */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <Card className="min-h-[350px] flex flex-col">
-                             <h3 className="text-lg font-bold text-white mb-6">توزيع أنواع البروتوكولات</h3>
+                             <h3 className="text-lg font-bold text-white mb-6">{t('protocol_dist')}</h3>
                              <div className="flex-1">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -274,7 +286,7 @@ export const AdminView = () => {
                          </Card>
 
                          <Card className="min-h-[350px] flex flex-col">
-                             <h3 className="text-lg font-bold text-white mb-6">مراحل تقدم المستخدمين</h3>
+                             <h3 className="text-lg font-bold text-white mb-6">{t('user_progress_dist')}</h3>
                              <div className="flex-1">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={stats.progressDistribution}>
@@ -338,7 +350,7 @@ export const AdminView = () => {
                             <div key={user.uid} className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:border-indigo-500/30 transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl relative ${user.isBanned ? 'bg-rose-500/20 text-rose-500' : 'bg-slate-800 text-slate-400'}`}>
-                                        {user.name.charAt(0).toUpperCase()}
+                                        {(user.name || '?').charAt(0).toUpperCase()}
                                         {/* Status Dot */}
                                         <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${
                                             user.lastActive && (Date.now() - new Date(user.lastActive).getTime() < 24*60*60*1000) 
@@ -400,14 +412,14 @@ export const AdminView = () => {
                                 <Megaphone size={24} />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-white">إرسال تنبيه عام</h3>
+                                <h3 className="text-xl font-bold text-white">{t('admin_broadcast')}</h3>
                                 <p className="text-slate-500 text-sm">سيظهر هذا الإشعار لجميع المستخدمين في لوحة التحكم.</p>
                             </div>
                         </div>
                         
                         <textarea 
                             className="w-full h-40 bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-6 outline-none focus:border-indigo-500 font-medium"
-                            placeholder="اكتب نص التنبيه هنا (مثال: صيانة للنظام، تحديث جديد، نصيحة عامة)..."
+                            placeholder={t('broadcast_placeholder')}
                             value={broadcastMsg}
                             onChange={(e) => setBroadcastMsg(e.target.value)}
                         />
@@ -415,7 +427,7 @@ export const AdminView = () => {
                         <div className="flex justify-end gap-4">
                             <Button variant="secondary" onClick={() => setBroadcastMsg("")}>مسح</Button>
                             <Button variant="primary" onClick={handleBroadcast} disabled={!broadcastMsg}>
-                                إرسال للجميع <TrendingUp size={16} />
+                                {t('send_broadcast')} <TrendingUp size={16} />
                             </Button>
                         </div>
                     </Card>

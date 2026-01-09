@@ -7,12 +7,14 @@ export interface UserProfile {
   medType: MedType;
   durationMonths: number;
   setupComplete: boolean;
+  
+  // New Fields for Enhanced Logic
   planType?: 'algorithm' | 'manual';
   isBanned?: boolean;
   isAdmin?: boolean;
-  lastActive?: string;
-  progress?: number; // For ranking
-  streak?: number;   // For ranking
+  lastActive?: string; // ISO Date String
+  progress?: number;   // 0-100
+  streak?: number;     // Consecutive days logged
 }
 
 export interface Inventory {
@@ -65,7 +67,7 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   timestamp: number;
-  isAdmin?: boolean;
+  isAdmin?: boolean; // For Golden Badge
 }
 
 export interface AdminMessage {
