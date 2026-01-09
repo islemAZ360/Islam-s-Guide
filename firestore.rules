@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    
+    // Check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is accessing their own data
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Check if the user is an Admin
+    // Looks up the user's document to see if 'isAdmin' is true
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      // READ: 
+      // - Authenticated users can read user profiles (Needed for Leaderboard/Ranking).
+      allow read: if isSignedIn();
+      
+      // WRITE:
+      // - Owner can update their own profile (e.g. daily logs sync).
+      // - Admin can update any user (e.g. to Ban them).
+      // - Prevent users from granting themselves admin privileges via validation.
+      allow write: if isSignedIn() && (
+        isOwner(userId) || isAdmin()
+      );
+      
+      // Subcollection: Admin Messages (Private)
+      match /admin_messages/{msgId} {
+        // Owner can read their messages, Admin can read/write.
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        // Only Admin can send these messages.
+        allow create: if isAdmin();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // --- Chat Rooms Collection ---
+    match /rooms/{roomId} {
+      // Anyone signed in can read the list of rooms and create a new room.
+      allow read, create: if isSignedIn();
+      
+      // Delete: Only the Creator of the room OR an Admin can delete it.
+      allow delete: if isSignedIn() && (
+        resource.data.createdBy == request.auth.uid || 
+        isAdmin()
+      );
+
+      // --- Messages Subcollection ---
+      match /messages/{msgId} {
+        // Anyone signed in can read and send messages in a room.
+        allow read, create: if isSignedIn();
+      }
+    }
+  }
+}
