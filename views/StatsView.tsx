@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, PageHeader, LayoutContainer } from '../components/UI';
 import { DailyLog, PlanDay } from '../types';
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine
 } from 'recharts';
-import { Smile, Activity, Award, Zap, Moon, Shield } from 'lucide-react';
+import { Smile, Activity, Award, Zap, Moon, Shield, PackageOpen } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface StatsViewProps {
@@ -15,13 +15,38 @@ interface StatsViewProps {
 export const StatsView = ({ logs, plan }: StatsViewProps) => {
     const { t } = useLanguage();
 
-    const moodData = [
-        { name: 'ممتاز', value: logs.filter(l => l.mood === 'good').length, color: '#10b981' },
-        { name: 'مستقر', value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' },
-        { name: 'سيء', value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },
-    ].filter(d => d.value > 0);
+    // 1. Mood Data Calculation
+    const moodData = useMemo(() => [
+        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' },
+        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' },
+        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },
+    ].filter(d => d.value > 0), [logs, t]);
 
-    // Badge Calculation Logic
+    // 2. Inventory Projection Calculation (Smart Feature)
+    const inventoryProjection = useMemo(() => {
+        // Calculate remaining pills starting from today
+        const todayStr = new Date().toISOString().split('T')[0];
+        const futurePlan = plan.filter(p => p.date >= todayStr);
+        
+        let currentStock = 100; // This should ideally come from props, but we visualize the curve relative to 100% or absolute if props allowed.
+        // Since we don't have inventory prop here, we calculate "Required Pills Accumulation" instead
+        // Or better: Calculate "Cumulative Dose" to show tapering curve + adherence.
+        
+        // Let's visualize the "Tapering Curve" vs "Actual Intake"
+        const data = [];
+        const combined = [...logs, ...plan.filter(p => p.date > (logs[logs.length-1]?.date || ''))];
+        
+        // Limit to last 7 days and next 14 days for clarity
+        const relevantDays = combined.sort((a,b) => a.date.localeCompare(b.date));
+        
+        return relevantDays.map(day => ({
+            date: day.date.slice(5), // MM-DD
+            planned: 'plannedDose' in day ? (day as PlanDay).plannedDose : 0,
+            actual: 'doseTaken' in day ? (day as DailyLog).doseTaken : null,
+        }));
+    }, [plan, logs]);
+
+    // 3. Badges Logic
     const badges = [
         {
             id: 'warrior',
@@ -57,7 +82,7 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
       <LayoutContainer>
           <PageHeader 
             title={t('nav_stats')}
-            subtitle="مراقبة الأداء والمزاج والالتزام بالخطة عبر رسوم بيانية تفاعلية."
+            subtitle="تحليلات الأداء والمؤشرات الحيوية."
           />
 
           {/* Dopamine Badges Section */}
@@ -76,13 +101,48 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Mood Distribution */}
-              <Card className="min-h-[450px] flex flex-col">
+              {/* 1. Planned vs Actual (Adherence) */}
+              <Card className="min-h-[400px] flex flex-col md:col-span-2 bg-slate-900/50">
                   <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                          <Activity className="w-5 h-5"/>
+                      </div>
+                       الالتزام بالخطة (مخطط vs فعلي)
+                  </h3>
+                  <div className="flex-1 h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={inventoryProjection.slice(-30)}> {/* Show last 30 points max */}
+                              <defs>
+                                <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                              <XAxis dataKey="date" stroke="#475569" fontSize={10} tickMargin={10} />
+                              <YAxis stroke="#475569" fontSize={10} />
+                              <Tooltip 
+                                  contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                  itemStyle={{color: '#fff'}}
+                              />
+                              <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" />
+                              <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" connectNulls />
+                          </AreaChart>
+                      </ResponsiveContainer>
+                  </div>
+              </Card>
+
+              {/* 2. Mood Distribution */}
+              <Card className="min-h-[350px] flex flex-col">
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                           <Smile className="w-5 h-5"/>
                       </div>
-                      الحالة المزاجية العامة
+                      الحالة المزاجية
                   </h3>
                   <div className="flex-1 relative">
                        {moodData.length > 0 ? (
@@ -92,20 +152,20 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
                                       data={moodData}
                                       cx="50%"
                                       cy="50%"
-                                      innerRadius={90}
-                                      outerRadius={150}
+                                      innerRadius={60}
+                                      outerRadius={100}
                                       paddingAngle={8}
                                       dataKey="value"
                                       stroke="none"
-                                      cornerRadius={12}
+                                      cornerRadius={8}
                                   >
                                       {moodData.map((entry, index) => (
                                           <Cell key={`cell-${index}`} fill={entry.color} />
                                       ))}
                                   </Pie>
                                   <Tooltip 
-                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
-                                      itemStyle={{color: '#fff', fontWeight: 'bold'}}
+                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                      itemStyle={{fontWeight: 'bold'}}
                                   />
                               </PieChart>
                           </ResponsiveContainer>
@@ -115,37 +175,40 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
                            </div>
                        )}
                   </div>
+                  <div className="flex justify-center gap-4 mt-2 flex-wrap">
+                      {moodData.map((d, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5">
+                              <div className="w-2 h-2 rounded-full" style={{backgroundColor: d.color}}></div>
+                              {d.name} ({d.value})
+                          </div>
+                      ))}
+                  </div>
               </Card>
 
-              {/* Adherence Chart */}
-              <Card className="min-h-[450px] flex flex-col">
-                  <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+              {/* 3. Sleep & Doses Bar Chart */}
+              <Card className="min-h-[350px] flex flex-col">
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                          <Activity className="w-5 h-5"/>
+                          <Moon className="w-5 h-5"/>
                       </div>
-                       سجل الجرعات
+                       جودة النوم (ساعات)
                   </h3>
                   <div className="flex-1">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={logs.slice(-14)}> {/* Last 14 logs */}
+                          <BarChart data={logs.slice(-7)}> {/* Last 7 days */}
                               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                              <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" tick={{fill: '#475569', fontSize: 10}} axisLine={false} tickLine={false} dy={10} />
-                              <YAxis stroke="#475569" tick={{fill: '#475569', fontSize: 10}} axisLine={false} tickLine={false} dx={-10} />
+                              <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                              <YAxis stroke="#475569" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
                               <Tooltip 
                                   cursor={{fill: '#1e293b', opacity: 0.5}}
-                                  contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px'}}
+                                  contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                               />
-                              <Bar dataKey="doseTaken" fill="#6366f1" radius={[10, 10, 0, 0]} barSize={28}>
-                                {logs.slice(-14).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill="url(#colorGradientBar)" />
+                              <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target', fill: '#10b981', fontSize: 10 }} />
+                              <Bar dataKey="sleepHours" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={20}>
+                                {logs.slice(-7).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
                                 ))}
                               </Bar>
-                              <defs>
-                                <linearGradient id="colorGradientBar" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#818cf8" />
-                                </linearGradient>
-                              </defs>
                           </BarChart>
                       </ResponsiveContainer>
                   </div>

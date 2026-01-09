@@ -23,10 +23,18 @@ export const translations = {
     nav_admin: "الإدارة",
     logout: "خروج",
     
-    // Admin
+    // Admin (New & Improved)
     admin_title: "لوحة التحكم",
+    admin_overview: "نظرة عامة",
     admin_users: "المستخدمين",
+    admin_broadcast: "بث عام",
     admin_stats: "الإحصائيات",
+    total_users: "إجمالي المستخدمين",
+    active_today: "نشط اليوم",
+    at_risk: "حالات متعثرة",
+    near_recovery: "قرب التعافي",
+    protocol_dist: "توزيع البروتوكولات",
+    user_progress_dist: "مراحل تقدم المستخدمين",
     user_ban: "حظر",
     user_unban: "فك الحظر",
     send_msg: "رسالة خاصة",
@@ -35,6 +43,9 @@ export const translations = {
     status: "الحالة",
     msg_sent: "تم الإرسال",
     admin_note_placeholder: "اكتب رسالة للمستخدم...",
+    broadcast_placeholder: "اكتب نص التنبيه هنا (مثال: صيانة للنظام، تحديث جديد)...",
+    send_broadcast: "إرسال للجميع",
+    broadcast_simulated: "تمت محاكاة الإرسال (تتطلب تفعيل Backend).",
 
     // Community
     comm_title: "مجتمع التعافي",
@@ -55,6 +66,7 @@ export const translations = {
     status_stable: "مستقر",
     safety_active: "نظام الحماية",
     safety_desc: "تم رصد تذبذب في المؤشرات الحيوية. يوصى بتثبيت الجرعة اليوم.",
+    freeze_plan_btn: "تجميد الخطة (3 أيام)", // NEW
     target_dose: "الجرعة المقررة",
     documented: "تم التسجيل",
     dose: "الجرعة",
@@ -64,11 +76,16 @@ export const translations = {
     bad: "متعب",
     step_1: "الجرعة المأخوذة",
     step_2: "المؤشرات الحيوية",
-    confirm_log: "توثيق اليوم",
+    confirm_log: "توثيق وتحديث المخزون", // Updated
     algo_active: "النظام نشط",
     recovery_path: "مسار التعافي",
     sos_button: "طوارئ",
     export_report: "تقرير طبي",
+
+    // Toasts / Messages (New)
+    toast_log_success: "تم توثيق الجرعة وتحديث المخزون",
+    toast_freeze_success: "تم تجميد الخطة لمدة 3 أيام للراحة",
+    toast_speed_updated: "تم تحديث وتيرة الخطة بنجاح",
 
     // New Features
     sleep_label: "ساعات النوم",
@@ -186,10 +203,18 @@ export const translations = {
     nav_admin: "Admin",
     logout: "Exit",
 
-    // Admin
+    // Admin (New)
     admin_title: "Admin Dashboard",
+    admin_overview: "Overview",
     admin_users: "Users",
+    admin_broadcast: "Broadcast",
     admin_stats: "Statistics",
+    total_users: "Total Users",
+    active_today: "Active Today",
+    at_risk: "At Risk",
+    near_recovery: "Near Recovery",
+    protocol_dist: "Protocol Distribution",
+    user_progress_dist: "User Progress",
     user_ban: "Ban",
     user_unban: "Unban",
     send_msg: "Private Msg",
@@ -198,6 +223,9 @@ export const translations = {
     status: "Status",
     msg_sent: "Message Sent",
     admin_note_placeholder: "Type message to user...",
+    broadcast_placeholder: "Type broadcast message here...",
+    send_broadcast: "Send to All",
+    broadcast_simulated: "Broadcast simulated (Backend required).",
 
     // Community
     comm_title: "Recovery Community",
@@ -218,6 +246,7 @@ export const translations = {
     status_stable: "Stable",
     safety_active: "Safety Guard",
     safety_desc: "Biometric instability detected. Dose stabilization recommended.",
+    freeze_plan_btn: "Freeze Plan (3 Days)", // NEW
     target_dose: "Scheduled Dose",
     documented: "Logged",
     dose: "Dose",
@@ -227,11 +256,16 @@ export const translations = {
     bad: "Rough",
     step_1: "Dose Taken",
     step_2: "Vital Signs",
-    confirm_log: "Confirm Entry",
+    confirm_log: "Log & Update Inventory", // Updated
     algo_active: "System Active",
     recovery_path: "Recovery Path",
     sos_button: "SOS",
     export_report: "Medical Report",
+
+    // Toasts / Messages (New)
+    toast_log_success: "Dose logged & inventory updated.",
+    toast_freeze_success: "Plan frozen for 3 days to rest.",
+    toast_speed_updated: "Plan pace updated successfully.",
 
     // New Features
     sleep_label: "Sleep Hours",
@@ -346,8 +380,31 @@ export const translations = {
     nav_community: "Сообщество",
     nav_admin: "Админ",
     logout: "Выход",
+    
+    // Admin (New)
     admin_title: "Панель",
+    admin_overview: "Обзор",
     admin_users: "Юзеры",
+    admin_broadcast: "Вещание",
+    admin_stats: "Статистика",
+    total_users: "Всего польз.",
+    active_today: "Активны сегодня",
+    at_risk: "В зоне риска",
+    near_recovery: "Почти здоровы",
+    protocol_dist: "Типы протоколов",
+    user_progress_dist: "Прогресс",
+    user_ban: "Бан",
+    user_unban: "Разбан",
+    send_msg: "ЛС",
+    plan_type: "Тип плана",
+    progress: "Прогресс",
+    status: "Статус",
+    msg_sent: "Отправлено",
+    admin_note_placeholder: "Сообщение...",
+    broadcast_placeholder: "Текст вещания...",
+    send_broadcast: "Всем",
+    broadcast_simulated: "Тест вещания.",
+
     comm_title: "Сообщество",
     comm_rooms: "Чаты",
     create_room: "Создать чат",
@@ -357,6 +414,7 @@ export const translations = {
     status_stable: "Стабильно",
     safety_active: "Защита",
     safety_desc: "Рекомендуется стабилизация дозы.",
+    freeze_plan_btn: "Заморозить (3 дня)", // NEW
     target_dose: "Доза по плану",
     documented: "Записано",
     dose: "Доза",
@@ -371,6 +429,12 @@ export const translations = {
     recovery_path: "Путь",
     sos_button: "SOS",
     export_report: "Отчет",
+
+    // Toasts (New)
+    toast_log_success: "Записано и обновлено.",
+    toast_freeze_success: "План заморожен на 3 дня.",
+    toast_speed_updated: "Скорость обновлена.",
+
     sleep_label: "Сон",
     symptoms_label: "Симптомы",
     sym_insomnia: "Бессонница",

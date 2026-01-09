@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText
+  ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText, PauseCircle
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { Button, Card, Badge, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal } from '../components/UI';
@@ -22,12 +22,14 @@ interface DashboardViewProps {
   selectedMood: 'bad' | 'normal' | 'good' | null;
   setSelectedMood: (m: 'bad' | 'normal' | 'good' | null) => void;
   submitDailyLog: (sleep: number, symptoms: string[]) => void;
+  handleFreezePlan: () => void; // New Prop
 }
 
 export const DashboardView = ({
   userProfile, plan, logs, todayPlan, todayLog, progressPercentage, 
   totalDays, daysCompleted, showDoctorWarning, 
-  selectedDose, setSelectedDose, selectedMood, setSelectedMood, submitDailyLog
+  selectedDose, setSelectedDose, selectedMood, setSelectedMood, submitDailyLog,
+  handleFreezePlan
 }: DashboardViewProps) => {
   const { t } = useLanguage();
   const [isSosOpen, setIsSosOpen] = useState(false);
@@ -87,16 +89,25 @@ export const DashboardView = ({
         }
       />
 
-      {/* Safety Warning */}
+      {/* Safety Warning & Freeze Option */}
       {showDoctorWarning && (
-        <div className="bg-rose-500/5 border border-rose-500/20 p-8 rounded-[2.5rem] flex items-start gap-6 backdrop-blur-md shadow-[0_0_40px_rgba(244,63,94,0.15)] animate-in zoom-in duration-500">
-          <div className="bg-rose-500/20 p-4 rounded-3xl shrink-0 ring-1 ring-rose-500/30"><AlertTriangle className="text-rose-500 w-8 h-8" /></div>
-          <div>
-            <h3 className="font-bold text-rose-400 text-2xl mb-2">{t('safety_active')}</h3>
-            <p className="text-rose-200/70 text-base leading-relaxed max-w-3xl">
-              {t('safety_desc')}
-            </p>
+        <div className="bg-rose-500/5 border border-rose-500/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 backdrop-blur-md shadow-[0_0_40px_rgba(244,63,94,0.15)] animate-in zoom-in duration-500">
+          <div className="flex items-start gap-4">
+            <div className="bg-rose-500/20 p-4 rounded-3xl shrink-0 ring-1 ring-rose-500/30"><AlertTriangle className="text-rose-500 w-8 h-8" /></div>
+            <div>
+                <h3 className="font-bold text-rose-400 text-2xl mb-2">{t('safety_active')}</h3>
+                <p className="text-rose-200/70 text-base leading-relaxed max-w-xl">
+                {t('safety_desc')}
+                </p>
+            </div>
           </div>
+          {/* Smart Feature: Freeze Plan Button */}
+          <Button 
+            onClick={handleFreezePlan} 
+            className="!bg-rose-500 hover:!bg-rose-600 !border-rose-400 !shadow-[0_0_20px_rgba(244,63,94,0.3)] whitespace-nowrap w-full md:w-auto"
+          >
+             <PauseCircle size={20} /> تجميد الخطة (3 أيام)
+          </Button>
         </div>
       )}
 

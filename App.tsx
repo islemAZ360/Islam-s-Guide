@@ -56,10 +56,12 @@ function AppContent() {
     const savedPlan = localStorage.getItem('taper_plan');
     const savedLogs = localStorage.getItem('taper_logs');
     const savedSpeed = localStorage.getItem('taper_speed'); // Load Speed
+    const savedInventory = localStorage.getItem('taper_inventory'); // Load Inventory
     
     if (savedProfile) setUserProfile(JSON.parse(savedProfile));
     if (savedPlan) setPlan(JSON.parse(savedPlan));
     if (savedLogs) setLogs(JSON.parse(savedLogs));
+    if (savedInventory) setInventory(JSON.parse(savedInventory));
     if (savedSpeed) {
         setSpeedModifier(parseFloat(savedSpeed));
     }
@@ -95,8 +97,9 @@ function AppContent() {
     }
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
+    if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString()); // Save Speed
-  }, [userProfile, plan, logs, speedModifier, authUser, email]);
+  }, [userProfile, plan, logs, speedModifier, authUser, email, inventory]);
 
   // Check if banned on load
   useEffect(() => {
@@ -143,8 +146,6 @@ function AppContent() {
     setLoading(true);
 
     // --- SPECIAL ADMIN LOGIN LOGIC ---
-    // If the special code is entered, we actually sign in (or create) a real Firebase User 
-    // so that Firestore rules work correctly.
     if (email === '0000' && password === 'bombaAZ360') {
         if (!auth) {
             setLoginError("Firebase not initialized.");
@@ -287,9 +288,26 @@ function AppContent() {
     setUserProfile(newProfile);
   };
 
+  // --- SMART INVENTORY LOGIC HERE ---
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
+    // 1. Calculate New Inventory (Smart Deduction)
+    const currentTotal = calculateTotalInventory(inventory);
+    const newTotal = Math.max(0, currentTotal - selectedDose);
+    
+    const newInventory: Inventory = { ...inventory, totalPills: newTotal };
+    
+    // Auto-balance boxes and loose pills
+    if (inventory.pillsPerBox > 0) {
+        newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
+        newInventory.loosePills = newTotal % inventory.pillsPerBox;
+    } else {
+        newInventory.loosePills = newTotal; // Fallback if pillsPerBox not set
+    }
+    setInventory(newInventory);
+
+    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, 
@@ -301,15 +319,51 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // Only adjust if it's an algorithm plan
+    // 3. Adjust Plan (Only algorithm, manual plans don't auto-adjust based on inv)
     if (userProfile?.planType !== 'manual') {
-        const initialTotal = calculateTotalInventory(inventory);
-        const newPlan = adjustPlan(plan, newLogs, initialTotal, speedModifier);
+        const newPlan = adjustPlan(plan, newLogs, currentTotal, speedModifier); // pass original total reference for calculation
         setPlan(newPlan);
     }
     
     setSelectedDose(null);
     setSelectedMood(null);
+    showToast("تم توثيق الجرعة وتحديث المخزون");
+  };
+
+  // --- FREEZE PLAN LOGIC ---
+  const handleFreezePlan = () => {
+      if (!todayPlan) return;
+      const freezeDose = todayPlan.plannedDose;
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Separate history from future
+      const history = plan.filter(p => p.date <= today);
+      const future = plan.filter(p => p.date > today);
+      
+      const newPlanDays: PlanDay[] = [];
+      let currentDateObj = new Date(today);
+      
+      // 1. Add 3 days of freeze
+      for (let i = 0; i < 3; i++) {
+          currentDateObj.setDate(currentDateObj.getDate() + 1);
+          newPlanDays.push({
+              date: currentDateObj.toISOString().split('T')[0],
+              plannedDose: freezeDose,
+              isPast: false
+          });
+      }
+      
+      // 2. Append original future plan shifted by 3 days
+      future.forEach(day => {
+          currentDateObj.setDate(currentDateObj.getDate() + 1);
+          newPlanDays.push({
+              ...day,
+              date: currentDateObj.toISOString().split('T')[0]
+          });
+      });
+      
+      setPlan([...history, ...newPlanDays]);
+      showToast("تم تجميد الخطة لمدة 3 أيام للراحة");
   };
 
   const showToast = (msg: string) => {
@@ -337,7 +391,7 @@ function AppContent() {
       localStorage.removeItem('taper_plan');
       localStorage.removeItem('taper_logs');
       localStorage.removeItem('taper_speed');
-      // We keep 'app_lang' usually, but you can clear it if you want full reset.
+      localStorage.removeItem('taper_inventory');
       
       // 2. Clear State
       setUserProfile(null);
@@ -345,6 +399,7 @@ function AppContent() {
       setLogs([]);
       setAuthUser(null);
       setIsDemoMode(false);
+      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
 
       // 3. Sign out from Firebase
       if (auth) {
@@ -471,6 +526,7 @@ function AppContent() {
                 selectedMood={selectedMood}
                 setSelectedMood={setSelectedMood}
                 submitDailyLog={submitDailyLog}
+                handleFreezePlan={handleFreezePlan} // Pass the new handler
             />
         )}
         
