@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
     collection, getDocs, updateDoc, doc, addDoc, query, orderBy, limit, where 
@@ -8,16 +7,14 @@ import { UserProfile, DailyLog, PlanDay, Article, Ticket, AuditLog } from '../ty
 import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
-    ShieldAlert, Ban, UserCheck, MessageSquare, Activity, Search, 
-    AlertOctagon, Users, Megaphone, CheckCircle, TrendingUp,
-    FileText, LifeBuoy, Lock, Eye, Save, Plus, X, Flag
+    Ban, MessageSquare, Activity, Search, 
+    Users, Megaphone, Lock, Eye, Save, Plus, X, Flag, FileText, LifeBuoy
 } from 'lucide-react';
 import { 
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area
 } from 'recharts';
 
-// --- Interfaces ---
 interface DashboardStats {
     totalUsers: number;
     activeToday: number;
@@ -40,10 +37,9 @@ export const AdminView = () => {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-    // -- User Inspection State (Doctor's Eye) --
+    // -- User Inspection State --
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
     const [inspectLogs, setInspectLogs] = useState<DailyLog[]>([]);
-    const [inspectPlan, setInspectPlan] = useState<PlanDay[]>([]);
     const [doctorNote, setDoctorNote] = useState("");
 
     // -- CMS State --
@@ -91,36 +87,28 @@ export const AdminView = () => {
         if (activeTab === 'audit') fetchAuditLogs();
     }, [activeTab]);
 
-    // -- 2. INSPECT USER (Fetch Details) --
+    // -- 2. INSPECT USER --
     const openInspector = async (user: UserProfile) => {
         if (!user.uid) return;
         setInspectLogs([]);
-        setInspectPlan([]);
         setDoctorNote(user.doctorNotes || "");
         setSelectedUser(user);
 
-        // Fetch User Logs & Plan from their sub-doc or main doc
-        // Assuming strictly structure from App.tsx where logs/plan are in the main doc
-        // We reuse the user object if it has the data, otherwise fetch fresh
         try {
-            const userDoc = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
-            // Note: In real app, we might store large arrays in subcollections, but here we read from main object
-            // based on App.tsx structure. We re-read to be sure.
+             // Dynamic import to avoid SSR issues if any, mainly ensuring standard firebase usage
              const d = await import('firebase/firestore').then(mod => mod.getDoc(mod.doc(db, "users", user.uid!)));
              if (d.exists()) {
                  const data = d.data();
                  setInspectLogs(data.logs || []);
-                 setInspectPlan(data.plan || []);
              }
         } catch (e) { console.error("Inspect error", e); }
     };
 
     // -- 3. ACTIONS --
-
-    // User Actions
     const saveDoctorNote = async () => {
         if (!selectedUser?.uid) return;
         await updateDoc(doc(db, "users", selectedUser.uid), { doctorNotes: doctorNote });
+        // Log action
         await addDoc(collection(db, "audit_logs"), {
             adminName: "Admin", action: "UPDATE_NOTES", details: `Updated notes for ${selectedUser.name}`, timestamp: Date.now()
         });
@@ -135,7 +123,6 @@ export const AdminView = () => {
         setUsers(users.map(u => u.uid === selectedUser.uid ? {...u, isFlagged: newVal} : u));
     };
 
-    // CMS Actions
     const publishArticle = async () => {
         if (!newArticle.title) return;
         await addDoc(collection(db, "articles"), {
@@ -149,7 +136,7 @@ export const AdminView = () => {
         fetchArticles();
     };
 
-    // -- 4. CALCULATIONS --
+    // -- 4. STATS ENGINE --
     const stats: DashboardStats = useMemo(() => {
         const medTypes = { narcotic: 0, psychiatric: 0, normal: 0 };
         const progress = { start: 0, mid: 0, end: 0 };
@@ -171,7 +158,7 @@ export const AdminView = () => {
         });
 
         return {
-            totalUsers: users.length - 1,
+            totalUsers: users.length - 1, // Exclude admin roughly
             activeToday: active,
             bannedUsers: banned,
             atRisk: risk,
@@ -194,6 +181,11 @@ export const AdminView = () => {
         let matchFilter = true;
         if (filterType === 'banned') matchFilter = !!u.isBanned;
         if (filterType === 'flagged') matchFilter = !!u.isFlagged;
+        if (filterType === 'risk') {
+             const now = Date.now();
+             const last = u.lastActive ? new Date(u.lastActive).getTime() : 0;
+             matchFilter = (now - last > 86400000 * 7) || !!u.isFlagged;
+        }
         return matchSearch && matchFilter;
     });
 
@@ -201,7 +193,6 @@ export const AdminView = () => {
         <LayoutContainer>
             <PageHeader title="غرفة التحكم المركزية" subtitle="نظام الإدارة المتكامل (Admin ERP)" />
 
-            {/* Navigation Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
                 {[
                     { id: 'overview', icon: Activity, label: 'نظرة عامة' },
@@ -225,7 +216,7 @@ export const AdminView = () => {
                 ))}
             </div>
 
-            {/* --- TAB 1: OVERVIEW --- */}
+            {/* OVERVIEW */}
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-in fade-in">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -274,7 +265,7 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* --- TAB 2: USERS LIST --- */}
+            {/* USERS */}
             {activeTab === 'users' && (
                 <div className="space-y-4 animate-in fade-in">
                     <div className="flex flex-col md:flex-row gap-4 justify-between bg-slate-900 p-4 rounded-2xl border border-white/5">
@@ -307,6 +298,11 @@ export const AdminView = () => {
                                     <div>
                                         <h4 className="font-bold text-white flex items-center gap-2">{user.name} {user.isBanned && <Ban size={12} className="text-rose-500"/>}</h4>
                                         <p className="text-xs text-slate-500">{user.email}</p>
+                                        {/* Added Med Info Display */}
+                                        <div className="flex gap-2 mt-1">
+                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.medType}</Badge>
+                                            {user.medForm && <Badge color="indigo" className="!text-[9px] !px-1.5 !py-0.5">{user.medForm === 'liquid' ? 'Liquid' : 'Tablet'}</Badge>}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
@@ -320,7 +316,7 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* --- TAB 3: CMS (Articles) --- */}
+            {/* CMS */}
             {activeTab === 'cms' && (
                 <div className="animate-in fade-in space-y-4">
                     <div className="flex justify-between items-center">
@@ -331,7 +327,7 @@ export const AdminView = () => {
                     {showArticleModal && (
                          <Card className="bg-slate-900 border-indigo-500/30 mb-6">
                              <div className="space-y-4">
-                                 <input className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10" placeholder="عنوان المقال" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} />
+                                 <input className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10" placeholder="العنوان" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} />
                                  <textarea className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32" placeholder="المحتوى..." value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} />
                                  <div className="flex justify-end gap-2">
                                      <Button variant="secondary" onClick={() => setShowArticleModal(false)}>إلغاء</Button>
@@ -353,7 +349,7 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* --- TAB 4: TICKETS --- */}
+            {/* TICKETS */}
             {activeTab === 'tickets' && (
                 <div className="animate-in fade-in">
                     <table className="w-full text-left text-sm text-slate-400">
@@ -363,7 +359,6 @@ export const AdminView = () => {
                                 <th className="p-4">الموضوع</th>
                                 <th className="p-4">الحالة</th>
                                 <th className="p-4">آخر تحديث</th>
-                                <th className="p-4">إجراء</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
@@ -377,7 +372,6 @@ export const AdminView = () => {
                                         </Badge>
                                     </td>
                                     <td className="p-4">{new Date(ticket.lastUpdate).toLocaleDateString()}</td>
-                                    <td className="p-4"><Button variant="secondary" className="!p-1.5"><MessageSquare size={14}/></Button></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -385,22 +379,17 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* --- TAB 5: AUDIT LOGS --- */}
+            {/* AUDIT */}
             {activeTab === 'audit' && (
                 <div className="animate-in fade-in bg-slate-950 rounded-2xl border border-white/5 overflow-hidden">
                     <div className="p-4 border-b border-white/5 bg-slate-900/50">
-                        <h3 className="font-bold text-white flex items-center gap-2"><Lock size={16} className="text-indigo-400"/> سجل العمليات الأمنية</h3>
+                        <h3 className="font-bold text-white flex items-center gap-2"><Lock size={16} className="text-indigo-400"/> سجل العمليات</h3>
                     </div>
                     <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                         {auditLogs.map((log, i) => (
                             <div key={i} className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/5 transition-colors font-mono text-xs">
-                                <div>
-                                    <span className="text-indigo-400 font-bold mr-2">[{log.action}]</span>
-                                    <span className="text-slate-300">{log.details}</span>
-                                </div>
-                                <div className="text-slate-600">
-                                    {new Date(log.timestamp).toLocaleString()} by <span className="text-slate-500">{log.adminName}</span>
-                                </div>
+                                <div><span className="text-indigo-400 font-bold mr-2">[{log.action}]</span><span className="text-slate-300">{log.details}</span></div>
+                                <div className="text-slate-600">{new Date(log.timestamp).toLocaleString()}</div>
                             </div>
                         ))}
                     </div>
@@ -415,7 +404,6 @@ export const AdminView = () => {
                             <X size={20} />
                         </button>
                         
-                        {/* Header */}
                         <div className="p-6 border-b border-white/5 flex items-center gap-6 bg-slate-950">
                             <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-2xl font-black text-white">
                                 {selectedUser.name.charAt(0)}
@@ -425,7 +413,15 @@ export const AdminView = () => {
                                     {selectedUser.name}
                                     {selectedUser.isFlagged && <Badge color="red">MAPPED FOR REVIEW</Badge>}
                                 </h2>
-                                <p className="text-slate-500 font-mono text-sm">{selectedUser.email} • {selectedUser.medType}</p>
+                                <div className="flex gap-2 text-slate-500 font-mono text-sm mt-1">
+                                    <span>{selectedUser.email}</span>
+                                    <span>•</span>
+                                    {/* Display Med Type and Form/Unit */}
+                                    <span className="text-indigo-400 font-bold">
+                                        {selectedUser.medType} 
+                                        {selectedUser.medForm ? ` (${selectedUser.medForm === 'liquid' ? 'Liquid' : 'Tablet'} - ${selectedUser.medUnit || 'mg'})` : ''}
+                                    </span>
+                                </div>
                             </div>
                             <div className="mr-auto flex gap-2">
                                 <Button onClick={toggleFlag} variant={selectedUser.isFlagged ? "success" : "danger"} className="!py-2 !px-4">
@@ -434,12 +430,10 @@ export const AdminView = () => {
                             </div>
                         </div>
 
-                        {/* Content */}
                         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 custom-scrollbar">
-                            {/* Left: Charts */}
                             <div className="lg:col-span-2 space-y-6">
                                 <Card className="bg-slate-950 border-white/5 min-h-[300px]">
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Dose Reduction History</h3>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Dose Reduction History ({selectedUser.medUnit || 'mg'})</h3>
                                     <ResponsiveContainer width="100%" height={250}>
                                         <AreaChart data={inspectLogs.slice(-30)}>
                                             <defs>
@@ -475,17 +469,16 @@ export const AdminView = () => {
                                 </div>
                             </div>
 
-                            {/* Right: Notes & Recent Logs */}
                             <div className="space-y-6">
                                 <Card className="bg-amber-900/5 border-amber-500/20">
-                                    <h3 className="text-amber-500 font-bold mb-2 flex items-center gap-2"><Save size={16}/> Doctor Notes (Private)</h3>
+                                    <h3 className="text-amber-500 font-bold mb-2 flex items-center gap-2"><Save size={16}/> Doctor Notes</h3>
                                     <textarea 
                                         className="w-full bg-slate-950/50 border border-amber-500/10 rounded-xl p-3 text-sm text-white h-32 focus:border-amber-500 outline-none resize-none"
-                                        placeholder="اكتب ملاحظات طبية سرية هنا..."
+                                        placeholder="ملاحظات سرية..."
                                         value={doctorNote}
                                         onChange={e => setDoctorNote(e.target.value)}
                                     />
-                                    <Button onClick={saveDoctorNote} variant="secondary" className="w-full mt-2 !py-2 !text-xs">Save Notes</Button>
+                                    <Button onClick={saveDoctorNote} variant="secondary" className="w-full mt-2 !py-2 !text-xs">Save</Button>
                                 </Card>
 
                                 <div className="bg-slate-950 rounded-2xl border border-white/5 p-4 max-h-[300px] overflow-y-auto custom-scrollbar">

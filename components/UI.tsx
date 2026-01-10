@@ -37,6 +37,9 @@ export const DoctorReportModal = ({
   plan: PlanDay[]
 }) => {
   const { t } = useLanguage();
+  
+  // Determine Unit Label
+  const unitLabel = userProfile?.medUnit || 'mg';
 
   if (!isOpen) return null;
 
@@ -67,6 +70,10 @@ export const DoctorReportModal = ({
                 <div className="text-right">
                     <p className="font-bold text-lg">{userProfile?.name}</p>
                     <p className="text-slate-500">{new Date().toLocaleDateString()}</p>
+                    {/* Show Form info */}
+                    <p className="text-xs font-bold text-indigo-600 uppercase mt-1">
+                        {userProfile?.medForm === 'liquid' ? 'LIQUID FORMULATION' : 'TABLET FORMULATION'}
+                    </p>
                 </div>
             </div>
 
@@ -102,8 +109,8 @@ export const DoctorReportModal = ({
                         return (
                             <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="p-3 font-mono text-slate-600">{log.date}</td>
-                                <td className="p-3 font-bold text-slate-500">{planned}mg</td>
-                                <td className="p-3 font-bold text-indigo-600">{log.doseTaken}mg</td>
+                                <td className="p-3 font-bold text-slate-500">{planned}{unitLabel}</td>
+                                <td className="p-3 font-bold text-indigo-600">{log.doseTaken}{unitLabel}</td>
                                 <td className="p-3">
                                     <span className={`px-2 py-1 rounded text-xs font-bold ${
                                         log.mood === 'good' ? 'bg-emerald-100 text-emerald-700' : 
@@ -135,19 +142,14 @@ export const DoctorReportModal = ({
   );
 };
 
-// --- SOS MODAL (INTERACTIVE) ---
+// --- SOS MODAL ---
 export const BreathingModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const { t } = useLanguage();
-  const [step, setStep] = useState(0); // 0: Panic Stop, 1: Grounding, 2: Cold Shock, 3: Breathe
-  
-  // Breathing animation state
+  const [step, setStep] = useState(0); 
   const [breathePhase, setBreathePhase] = useState<'in' | 'hold' | 'out'>('in');
   
   useEffect(() => {
-    if (!isOpen) {
-        setStep(0); // Reset on close
-        return;
-    }
+    if (!isOpen) { setStep(0); return; }
   }, [isOpen]);
 
   useEffect(() => {
@@ -156,9 +158,7 @@ export const BreathingModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
         setBreathePhase('in');
         setTimeout(() => {
             setBreathePhase('hold');
-            setTimeout(() => {
-            setBreathePhase('out');
-            }, 2000); 
+            setTimeout(() => { setBreathePhase('out'); }, 2000); 
         }, 4000); 
         };
         cycle();
@@ -172,83 +172,42 @@ export const BreathingModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
       <div className="relative w-full max-w-lg mx-4 bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center shadow-2xl overflow-hidden min-h-[500px] flex flex-col justify-center">
-        
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors z-20">
-          <X size={24} />
-        </button>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors z-20"><X size={24} /></button>
 
-        {/* STEP 0: REASSURANCE */}
         {step === 0 && (
             <div className="animate-in slide-in-from-bottom-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                    <ShieldCheck size={40} className="text-rose-500" />
-                </div>
+                <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><ShieldCheck size={40} className="text-rose-500" /></div>
                 <h2 className="text-4xl font-black text-white">{t('sos_phase_1_title')}</h2>
-                <p className="text-lg text-slate-300 leading-relaxed font-medium">
-                    {t('sos_phase_1_text')}
-                </p>
-                <Button variant="primary" onClick={() => setStep(1)} className="w-full text-lg py-6 shadow-indigo-500/30">
-                    {t('sos_btn_ground')} <ArrowRight />
-                </Button>
+                <p className="text-lg text-slate-300 leading-relaxed font-medium">{t('sos_phase_1_text')}</p>
+                <Button variant="primary" onClick={() => setStep(1)} className="w-full text-lg py-6 shadow-indigo-500/30">{t('sos_btn_ground')} <ArrowRight /></Button>
             </div>
         )}
-
-        {/* STEP 1: GROUNDING (5-4-3-2-1 Simplified) */}
         {step === 1 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Eye size={40} className="text-blue-500" />
-                </div>
+                <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Eye size={40} className="text-blue-500" /></div>
                 <h2 className="text-3xl font-bold text-white">{t('sos_phase_2_title')}</h2>
-                <p className="text-xl text-white font-bold bg-slate-800/50 p-6 rounded-2xl border border-white/5">
-                    {t('sos_phase_2_text')}
-                </p>
-                <div className="flex gap-2 justify-center">
-                     <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                     <span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span>
-                     <span className="w-3 h-3 rounded-full bg-blue-500 opacity-20"></span>
-                </div>
-                <Button variant="secondary" onClick={() => setStep(2)} className="w-full text-lg py-6">
-                    {t('sos_btn_next')}
-                </Button>
+                <p className="text-xl text-white font-bold bg-slate-800/50 p-6 rounded-2xl border border-white/5">{t('sos_phase_2_text')}</p>
+                <div className="flex gap-2 justify-center"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-20"></span></div>
+                <Button variant="secondary" onClick={() => setStep(2)} className="w-full text-lg py-6">{t('sos_btn_next')}</Button>
             </div>
         )}
-
-        {/* STEP 2: THERMAL SHOCK */}
         {step === 2 && (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Snowflake size={40} className="text-cyan-400" />
-                </div>
+                <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Snowflake size={40} className="text-cyan-400" /></div>
                 <h2 className="text-3xl font-bold text-white">{t('sos_phase_3_title')}</h2>
-                <p className="text-lg text-slate-300 leading-relaxed">
-                    {t('sos_phase_3_text')}
-                </p>
-                <Button variant="primary" onClick={() => setStep(3)} className="w-full text-lg py-6 shadow-cyan-500/20 border-cyan-500/20">
-                    {t('sos_btn_breathe')}
-                </Button>
+                <p className="text-lg text-slate-300 leading-relaxed">{t('sos_phase_3_text')}</p>
+                <Button variant="primary" onClick={() => setStep(3)} className="w-full text-lg py-6 shadow-cyan-500/20 border-cyan-500/20">{t('sos_btn_breathe')}</Button>
             </div>
         )}
-
-        {/* STEP 3: BREATHING */}
         {step === 3 && (
             <div className="animate-in fade-in duration-1000">
-                <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-                    <Wind className="text-indigo-400" />
-                    {t('sos_phase_4_title')}
-                </h2>
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2"><Wind className="text-indigo-400" />{t('sos_phase_4_title')}</h2>
                 <p className="text-slate-400 text-sm mb-12">{t('sos_phase_4_subtitle')}</p>
-                
                 <div className="relative h-64 flex items-center justify-center mb-8">
                 <div className={`absolute w-32 h-32 bg-indigo-500/20 rounded-full blur-xl transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.5] opacity-60' : breathePhase === 'hold' ? 'scale-[2.5] opacity-60' : 'scale-100 opacity-20'}`}></div>
                 <div className={`absolute w-32 h-32 bg-indigo-500/10 rounded-full border-2 border-indigo-500/30 transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.2]' : breathePhase === 'hold' ? 'scale-[2.2]' : 'scale-100'}`}></div>
-                <div className="relative z-10 text-3xl font-black text-indigo-100 transition-all duration-500">
-                    {breathePhase === 'in' && t('breathe_in')}
-                    {breathePhase === 'hold' && t('breathe_hold')}
-                    {breathePhase === 'out' && t('breathe_out')}
+                <div className="relative z-10 text-3xl font-black text-indigo-100 transition-all duration-500">{breathePhase === 'in' && t('breathe_in')}{breathePhase === 'hold' && t('breathe_hold')}{breathePhase === 'out' && t('breathe_out')}</div>
                 </div>
-                </div>
-                
                 <Button variant="secondary" onClick={onClose} className="w-full">{t('close')}</Button>
             </div>
         )}
@@ -282,7 +241,6 @@ export const PageHeader = ({ title, subtitle, action }: { title: string, subtitl
 
 export const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }: any) => {
   const baseStyle = "relative overflow-hidden px-6 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale group select-none cursor-pointer";
-  
   const variants: any = {
     primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] border border-indigo-400/20",
     secondary: "bg-slate-800/40 backdrop-blur-md text-slate-300 border border-white/5 hover:bg-slate-700/50 hover:text-white hover:border-white/10",
@@ -291,13 +249,8 @@ export const Button = ({ children, onClick, variant = 'primary', className = '',
     ghost: "text-slate-400 hover:text-white hover:bg-white/5",
     panic: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse"
   };
-
   return (
-    <button 
-      onClick={onClick} 
-      disabled={disabled}
-      className={`${baseStyle} ${variants[variant]} ${className}`}
-    >
+    <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
       <span className="relative z-10 flex items-center gap-2">{children}</span>
       {variant === 'primary' && <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-20 transition-opacity duration-300 mix-blend-overlay"></div>}
     </button>
@@ -321,13 +274,9 @@ export const Badge = ({ children, color = 'indigo', className = '' }: any) => {
     amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]',
     blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]',
   };
-  
   const selectedColor = colors[color] || colors.indigo;
-
   return (
-    <span className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${selectedColor} backdrop-blur-md flex items-center gap-1.5 animate-in fade-in zoom-in duration-300 whitespace-nowrap w-fit ${className}`}>
-      {children}
-    </span>
+    <span className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${selectedColor} backdrop-blur-md flex items-center gap-1.5 animate-in fade-in zoom-in duration-300 whitespace-nowrap w-fit ${className}`}>{children}</span>
   );
 };
 
@@ -336,19 +285,13 @@ export const ProgressRing = ({ radius, stroke, progress, totalSteps }: { radius:
   const circumference = normalizedRadius * 2 * Math.PI;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
   const { t } = useLanguage();
-
   return (
     <div className="relative flex items-center justify-center group cursor-default">
       <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
       <svg height={radius * 2} width={radius * 2} className="rotate-[-90deg] transform transition-transform duration-700 group-hover:scale-105">
         <circle stroke="#1e293b" strokeWidth={stroke} fill="transparent" r={normalizedRadius} cx={radius} cy={radius} className="opacity-50" />
         <circle stroke="url(#gradient)" strokeWidth={stroke} strokeDasharray={circumference + ' ' + circumference} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)' }} strokeLinecap="round" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
-        <defs>
-          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#818cf8" />
-          </linearGradient>
-        </defs>
+        <defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#818cf8" /></linearGradient></defs>
       </svg>
       <div className="absolute flex flex-col items-center text-center animate-in fade-in zoom-in duration-700 pointer-events-none">
         <span className="text-3xl md:text-4xl font-black text-white tracking-tighter drop-shadow-lg">{Math.round(progress)}%</span>

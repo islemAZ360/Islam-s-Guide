@@ -1,19 +1,21 @@
 import React, { useMemo } from 'react';
 import { Card, PageHeader, LayoutContainer } from '../components/UI';
-import { DailyLog, PlanDay } from '../types';
+import { DailyLog, PlanDay, UserProfile } from '../types';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine
 } from 'recharts';
-import { Smile, Activity, Award, Zap, Moon, Shield, PackageOpen } from 'lucide-react';
+import { Smile, Activity, Zap, Moon, Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface StatsViewProps {
     logs: DailyLog[];
     plan: PlanDay[];
+    userProfile?: UserProfile | null;
 }
 
-export const StatsView = ({ logs, plan }: StatsViewProps) => {
+export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     const { t } = useLanguage();
+    const unitLabel = userProfile?.medUnit || 'mg';
 
     // 1. Mood Data Calculation
     const moodData = useMemo(() => [
@@ -22,21 +24,9 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
         { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },
     ].filter(d => d.value > 0), [logs, t]);
 
-    // 2. Inventory Projection Calculation (Smart Feature)
+    // 2. Adherence / Projection Data
     const inventoryProjection = useMemo(() => {
-        // Calculate remaining pills starting from today
-        const todayStr = new Date().toISOString().split('T')[0];
-        const futurePlan = plan.filter(p => p.date >= todayStr);
-        
-        let currentStock = 100; // This should ideally come from props, but we visualize the curve relative to 100% or absolute if props allowed.
-        // Since we don't have inventory prop here, we calculate "Required Pills Accumulation" instead
-        // Or better: Calculate "Cumulative Dose" to show tapering curve + adherence.
-        
-        // Let's visualize the "Tapering Curve" vs "Actual Intake"
-        const data = [];
         const combined = [...logs, ...plan.filter(p => p.date > (logs[logs.length-1]?.date || ''))];
-        
-        // Limit to last 7 days and next 14 days for clarity
         const relevantDays = combined.sort((a,b) => a.date.localeCompare(b.date));
         
         return relevantDays.map(day => ({
@@ -85,7 +75,7 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
             subtitle="تحليلات الأداء والمؤشرات الحيوية."
           />
 
-          {/* Dopamine Badges Section */}
+          {/* Badges Section */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {badges.map((badge) => (
                   <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30` : 'bg-slate-900/40 border-white/5 opacity-50 grayscale'}`}>
@@ -111,7 +101,7 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
                   </h3>
                   <div className="flex-1 h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={inventoryProjection.slice(-30)}> {/* Show last 30 points max */}
+                          <AreaChart data={inventoryProjection.slice(-30)}>
                               <defs>
                                 <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -128,6 +118,7 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
                               <Tooltip 
                                   contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                   itemStyle={{color: '#fff'}}
+                                  formatter={(val: number) => [`${val} ${unitLabel}`, '']}
                               />
                               <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" />
                               <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" connectNulls />
@@ -195,7 +186,7 @@ export const StatsView = ({ logs, plan }: StatsViewProps) => {
                   </h3>
                   <div className="flex-1">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={logs.slice(-7)}> {/* Last 7 days */}
+                          <BarChart data={logs.slice(-7)}> 
                               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                               <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} dy={10} />
                               <YAxis stroke="#475569" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />

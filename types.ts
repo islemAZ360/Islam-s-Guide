@@ -1,31 +1,39 @@
 export type MedType = 'narcotic' | 'psychiatric' | 'normal' | null;
+// New: Medication Form & Unit
+export type MedForm = 'tablet' | 'liquid'; 
+export type MedUnit = 'mg' | 'g' | 'ml' | 'l';
 
 export interface UserProfile {
-  uid?: string; // Firebase UID
+  uid?: string; 
   email: string;
   name: string;
   medType: MedType;
+  
+  // New Fields for Dosage Form
+  medForm?: MedForm;
+  medUnit?: MedUnit;
+  
   durationMonths: number;
   setupComplete: boolean;
   
-  // Existing Fields
   planType?: 'algorithm' | 'manual';
   isBanned?: boolean;
   isAdmin?: boolean;
-  lastActive?: string; // ISO Date String
-  progress?: number;   // 0-100
-  streak?: number;     // Consecutive days logged
+  lastActive?: string; 
+  progress?: number;   
+  streak?: number;     
   
-  // New: Doctor's Eye Features
   doctorNotes?: string; 
   isFlagged?: boolean; 
 }
 
 export interface Inventory {
+  // We keep the logic "Boxes" vs "Single units" but concepts change for liquid
+  // For liquid: boxes = bottles, pillsPerBox = ml per bottle, etc.
   boxes: number;
-  pillsPerBox: number;
-  loosePills: number;
-  totalPills: number;
+  pillsPerBox: number; // Represents: Pills per box OR Volume (ml) per bottle
+  loosePills: number;  // Represents: Loose pills OR Loose ml remaining
+  totalPills: number;  // Represents: Total amount in Base Unit (mg or ml)
 }
 
 export interface ManualPhase {
@@ -56,10 +64,12 @@ export interface PlanDay {
   log?: DailyLog;
 }
 
+// ... (No changes needed for Chat/Admin interfaces below)
+
 export interface ChatRoom {
   id: string;
   name: string;
-  createdBy: string; // UID
+  createdBy: string; 
   creatorName: string;
   language: string;
   createdAt: number;
@@ -71,7 +81,7 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   timestamp: number;
-  isAdmin?: boolean; // For Golden Badge
+  isAdmin?: boolean; 
 }
 
 export interface AdminMessage {
@@ -82,9 +92,6 @@ export interface AdminMessage {
   read: boolean;
 }
 
-// --- NEW FEATURES TYPES ---
-
-// 1. CMS (Tips & Articles)
 export interface Article {
   id?: string;
   title: string;
@@ -95,7 +102,6 @@ export interface Article {
   authorName: string;
 }
 
-// 2. Support Tickets
 export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed';
 
 export interface Ticket {
@@ -110,20 +116,19 @@ export interface Ticket {
 }
 
 export interface TicketMessage {
-  senderId: string; // Admin ID or User ID
+  senderId: string; 
   senderName: string;
   text: string;
   timestamp: number;
   isAdmin: boolean;
 }
 
-// 3. Audit Logs (Security)
 export interface AuditLog {
   id?: string;
   adminId: string;
   adminName: string;
-  action: string; // e.g., "BAN_USER", "RESOLVE_TICKET"
-  targetId?: string; // User ID or Item ID affected
+  action: string; 
+  targetId?: string; 
   details: string;
   timestamp: number;
 }
@@ -135,7 +140,6 @@ export enum AppView {
   SETTINGS = 'SETTINGS',
   COMMUNITY = 'COMMUNITY',
   ADMIN = 'ADMIN',
-  // New Views
   SUPPORT = 'SUPPORT',
   ARTICLES = 'ARTICLES'
 }

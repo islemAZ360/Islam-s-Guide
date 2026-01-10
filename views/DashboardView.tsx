@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText, PauseCircle
+  ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText, PauseCircle,
+  FlaskConical, Pill, Edit3
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Button, Card, Badge, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal } from '../components/UI';
+import { Button, Card, Badge, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal, LanguageSwitcher } from '../components/UI';
 import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -22,7 +23,7 @@ interface DashboardViewProps {
   selectedMood: 'bad' | 'normal' | 'good' | null;
   setSelectedMood: (m: 'bad' | 'normal' | 'good' | null) => void;
   submitDailyLog: (sleep: number, symptoms: string[]) => void;
-  handleFreezePlan: () => void; // New Prop
+  handleFreezePlan: () => void;
 }
 
 export const DashboardView = ({
@@ -35,9 +36,16 @@ export const DashboardView = ({
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   
-  // New States for enhanced features
+  // Custom Dose Input State
+  const [isCustomDose, setIsCustomDose] = useState(false);
+  const [customDoseValue, setCustomDoseValue] = useState<string>('');
+  
   const [sleepHours, setSleepHours] = useState(7);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+
+  // Derived Values
+  const unitLabel = userProfile?.medUnit || 'mg';
+  const isLiquid = userProfile?.medForm === 'liquid';
 
   const toggleSymptom = (sym: string) => {
       if (selectedSymptoms.includes(sym)) {
@@ -56,8 +64,18 @@ export const DashboardView = ({
       { id: 'headache', label: t('sym_headache') },
   ];
 
-  // Generate dose options: 0.5 to 6.0 mg
-  const doseOptions = Array.from({ length: 12 }, (_, i) => (i + 1) * 0.5);
+  // Generate dose options smart based on current plan
+  // If plan says 5mg, show options around 5mg
+  const target = todayPlan?.plannedDose || 1;
+  const baseStep = isLiquid ? 0.1 : 0.5;
+  const doseOptions = Array.from({ length: 7 }, (_, i) => {
+      const val = target - (3 * baseStep) + (i * baseStep);
+      return Math.max(0, parseFloat(val.toFixed(2))); // Avoid negatives and floating point errors
+  }).filter((v, i, a) => a.indexOf(v) === i && v > 0); // Unique and positive
+
+  // Ensure target is included if filtered out
+  if (!doseOptions.includes(target) && target > 0) doseOptions.push(target);
+  doseOptions.sort((a,b) => a - b);
 
   return (
     <LayoutContainer>
@@ -75,6 +93,9 @@ export const DashboardView = ({
         subtitle={`${t('welcome')} ${userProfile?.name}`}
         action={
             <div className="flex flex-wrap gap-4 items-center">
+                <div className="hidden md:block">
+                     <LanguageSwitcher />
+                </div>
                 <Button onClick={() => setIsReportOpen(true)} variant="secondary" className="!py-2 !px-4 !text-sm !rounded-full">
                     <FileText size={16} /> {t('export_report')}
                 </Button>
@@ -101,12 +122,11 @@ export const DashboardView = ({
                 </p>
             </div>
           </div>
-          {/* Smart Feature: Freeze Plan Button */}
           <Button 
             onClick={handleFreezePlan} 
             className="!bg-rose-500 hover:!bg-rose-600 !border-rose-400 !shadow-[0_0_20px_rgba(244,63,94,0.3)] whitespace-nowrap w-full md:w-auto"
           >
-             <PauseCircle size={20} /> تجميد الخطة (3 أيام)
+             <PauseCircle size={20} /> {t('freeze_plan_btn')}
           </Button>
         </div>
       )}
@@ -114,7 +134,6 @@ export const DashboardView = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Action Card */}
         <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-10 border-indigo-500/10">
-          {/* Ambient Background Light */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
           
           <div className="relative z-10 h-full flex flex-col justify-between">
@@ -128,7 +147,7 @@ export const DashboardView = ({
                         <span className="text-8xl md:text-9xl font-black text-white tracking-tighter drop-shadow-2xl group-hover:text-indigo-100 transition-colors duration-500">
                             {todayPlan ? todayPlan.plannedDose : 0}
                         </span>
-                        <span className="text-3xl text-slate-600 font-bold group-hover:text-slate-500 transition-colors">mg</span>
+                        <span className="text-3xl text-slate-600 font-bold group-hover:text-slate-500 transition-colors">{unitLabel}</span>
                     </div>
                 </div>
                 
@@ -143,7 +162,7 @@ export const DashboardView = ({
                 <div>
                   <p className="text-emerald-400 font-bold text-3xl mb-3">{t('documented')}</p>
                   <div className="space-y-1">
-                     <p className="text-slate-400 font-medium text-lg">{t('dose')}: <span className="text-white font-mono font-bold">{todayLog.doseTaken}mg</span></p>
+                     <p className="text-slate-400 font-medium text-lg">{t('dose')}: <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span></p>
                      <p className="text-slate-400 font-medium text-lg">{t('mood')}: <span className="text-white">{todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}</span></p>
                   </div>
                 </div>
@@ -160,11 +179,12 @@ export const DashboardView = ({
                         {t('step_1')}
                     </p>
                     <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-2 px-1">
-                        {doseOptions.map(val => (
+                        {/* Standard Options */}
+                        {!isCustomDose && doseOptions.map(val => (
                         <button 
                             key={val}
                             onClick={() => setSelectedDose(val)}
-                            className={`min-w-[6rem] h-24 rounded-3xl border transition-all duration-300 font-mono font-bold text-2xl flex items-center justify-center relative group overflow-hidden ${
+                            className={`min-w-[5.5rem] h-20 rounded-2xl border transition-all duration-300 font-mono font-bold text-xl flex items-center justify-center relative group overflow-hidden ${
                                 selectedDose === val 
                                 ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_30px_rgba(79,70,229,0.4)] scale-110 z-10' 
                                 : 'bg-slate-800/30 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-indigo-500/30 hover:text-indigo-300'
@@ -172,15 +192,45 @@ export const DashboardView = ({
                         >
                             <span className="relative z-10">{val}</span>
                             {val === todayPlan?.plannedDose && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-400 rounded-full shadow-[0_0_10px_indigo]"></span>
+                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_10px_indigo]"></span>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                         </button>
                         ))}
+                        
+                        {/* Custom Input Toggle */}
+                        <button 
+                             onClick={() => setIsCustomDose(!isCustomDose)}
+                             className={`min-w-[5.5rem] h-20 rounded-2xl border border-dashed transition-all duration-300 flex flex-col items-center justify-center gap-1 ${
+                                 isCustomDose 
+                                 ? 'bg-slate-800 border-indigo-500 text-indigo-400' 
+                                 : 'bg-transparent border-slate-700 text-slate-600 hover:border-slate-500 hover:text-slate-400'
+                             }`}
+                        >
+                            <Edit3 size={18} />
+                            <span className="text-[10px] uppercase font-bold">Manual</span>
+                        </button>
+
+                        {/* Custom Input Field */}
+                        {isCustomDose && (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4">
+                                <input 
+                                    type="number" 
+                                    className="w-24 h-20 bg-slate-800 border border-indigo-500 rounded-2xl text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    placeholder="0.0"
+                                    value={customDoseValue}
+                                    onChange={(e) => {
+                                        setCustomDoseValue(e.target.value);
+                                        const val = parseFloat(e.target.value);
+                                        if(!isNaN(val)) setSelectedDose(val);
+                                    }}
+                                />
+                                <span className="text-slate-500 font-bold text-sm">{unitLabel}</span>
+                            </div>
+                        )}
                     </div>
                  </div>
                  
-                 {/* Step 2: Mental & Physical State (Combines Mood, Sleep, Symptoms) */}
+                 {/* Step 2: Mental & Physical State */}
                  <div className={`transition-all duration-700 transform ${selectedDose ? 'opacity-100 translate-y-0' : 'opacity-20 translate-y-8 pointer-events-none blur-sm'}`}>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5 flex items-center gap-3">
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-colors duration-300 ${selectedMood ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/40' : 'bg-slate-800 text-slate-500'}`}>2</span>
@@ -209,10 +259,9 @@ export const DashboardView = ({
                         ))}
                     </div>
 
-                    {/* Sleep & Symptoms (Visible only after mood selection for progressive disclosure) */}
+                    {/* Sleep & Symptoms */}
                     {selectedMood && (
                         <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-white/5 space-y-6 animate-in fade-in slide-in-from-top-4">
-                            {/* Sleep Slider */}
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                                     <Moon size={14} /> {t('sleep_label')}: <span className="text-white text-lg font-mono">{sleepHours}h</span>
@@ -225,7 +274,6 @@ export const DashboardView = ({
                                 />
                             </div>
 
-                            {/* Symptoms Chips */}
                             <div>
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                                     <HeartPulse size={14} /> {t('symptoms_label')}
@@ -270,7 +318,11 @@ export const DashboardView = ({
             <Card className="flex flex-col items-center justify-center text-center py-12 bg-slate-900/40">
                  <div className="w-24 h-24 rounded-full bg-slate-950 flex items-center justify-center mb-6 relative border border-white/5">
                      <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping duration-[3000ms]"></div>
-                     <Clock className="w-10 h-10 text-indigo-400" />
+                     {isLiquid ? (
+                        <FlaskConical className="w-10 h-10 text-indigo-400" />
+                     ) : (
+                        <Clock className="w-10 h-10 text-indigo-400" />
+                     )}
                  </div>
                  <h3 className="text-white font-bold text-xl mb-2">{t('algo_active')}</h3>
                  <p className="text-slate-500 text-sm px-6 leading-relaxed">

@@ -15,16 +15,16 @@ interface LoginViewProps {
 }
 
 export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds }: LoginViewProps) => {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6 relative overflow-hidden" dir={dir}>
       {/* Background Ambient Effects */}
       <div className="absolute top-0 left-0 w-[500px] md:w-[800px] h-[500px] md:h-[800px] bg-indigo-600/10 rounded-full blur-[100px] md:blur-[150px] -translate-x-1/2 -translate-y-1/2 animate-pulse duration-[10000ms]"></div>
       <div className="absolute bottom-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-violet-600/5 rounded-full blur-[80px] md:blur-[120px] translate-x-1/2 translate-y-1/2"></div>
       
-      {/* Top Language Switcher */}
-      <div className="absolute top-6 right-6 z-20">
+      {/* Top Language Switcher (Fixed Position) */}
+      <div className="absolute top-6 right-6 z-50">
         <LanguageSwitcher />
       </div>
 

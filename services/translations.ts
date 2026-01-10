@@ -21,8 +21,8 @@ export const translations = {
     nav_settings: "الإعدادات",
     nav_community: "المجتمع",
     nav_admin: "الإدارة",
-    nav_support: "مركز الدعم",     // NEW
-    nav_articles: "المعرفة",       // NEW
+    nav_support: "مركز الدعم",
+    nav_articles: "المعرفة",
     logout: "خروج",
     
     // Admin
@@ -106,7 +106,7 @@ export const translations = {
     badge_sleep: "نوم منتظم",
     badge_stable: "ثبات انفعالي",
 
-    // Onboarding
+    // Onboarding & Inventory
     choose_path: "اختر مسار الخطة العلاجية",
     path_algo: "الخوارزمية الذكية",
     path_algo_desc: "حساب تلقائي لنسب التخفيض بناءً على المخزون وعلم الأعصاب.",
@@ -114,39 +114,50 @@ export const translations = {
     path_doctor_desc: "إدخال يدوي للجدول الزمني كما حدده لك طبيبك المعالج.",
     
     manual_builder_title: "بناء الجدول العلاجي",
-    phase_dose: "الجرعة (ملغ)",
+    phase_dose: "الجرعة",
     phase_duration: "المدة (أيام)",
     add_phase: "إضافة مرحلة",
     phases_list: "مراحل العلاج الحالية",
     total_duration: "المدة الكلية",
     start_doctor_plan: "اعتماد خطة الطبيب",
 
-    // Templates
-    templates_title: "القوالب الجاهزة",
-    templates_subtitle: "إضافة سريعة لأنماط (يوم جرعة + أيام راحة).",
-    template_dose_label: "جرعة يوم العلاج",
-    template_off_label: "أيام الراحة (0 ملغ)",
-    template_cycles_label: "عدد مرات التكرار",
-    template_add_btn: "إدراج القالب",
-    day_off_1: "يوم واحد راحة",
-    day_off_n: "أيام راحة",
-    
     build_protocol: "إعداد البروتوكول",
     algo_desc: "نظام ذكي لحساب التخفيض التدريجي الآمن.",
-    med_narcotic: "أدوية مقيدة",
+    med_narcotic: "أدوية مقيدة (مخدرات)",
     med_psych: "أدوية نفسية",
     med_normal: "أدوية عامة",
-    med_desc_doc: "يتطلب إشراف طبي مباشر",
-    med_desc_std: "بروتوكول انسحاب معياري",
-    med_desc_safe: "تخفيض تدريجي آمن",
+    med_desc_doc: "ممنوع: يتطلب مصحة",
+    med_desc_std: "تحذير: استشر طبيبك",
+    med_desc_safe: "آمن: تخفيض تدريجي",
+    
+    // New Inventory Fields
+    med_form_label: "شكل الدواء",
+    med_form_tablet: "أقراص / حبوب",
+    med_form_liquid: "سائل / شراب",
+    med_unit_label: "وحدة القياس",
+    
+    // Error / Block Messages
+    narcotic_block_msg: "عذراً، هذا النظام غير مصرح له بالتعامل مع المواد المخدرة. يرجى التوجه لأقرب مصحة علاج إدمان فوراً.",
+    psych_warning_msg: "تنبيه هام: الأدوية النفسية تتطلب إشرافاً طبياً. استخدامك للخطة المقترحة هو وسيلة مساعدة وليست بديلاً عن الطبيب.",
+
     inventory_title: "المخزون الدوائي",
-    boxes: "عدد العلب",
-    pills_per_box: "حبات/علبة",
-    loose_pills: "حبات متفرقة",
+    boxes: "عدد العبوات",
+    pills_per_box: "الكمية في العبوة",
+    loose_pills: "الكمية المفردة المتبقية",
     total_balance: "الرصيد الكلي",
     current_habit: "الجرعة الحالية الثابتة",
     analyze_plan: "إنشاء الخطة",
     guest: "زائر",
+
+    // Templates
+    templates_title: "القوالب الجاهزة",
+    templates_subtitle: "إضافة سريعة لأنماط (يوم جرعة + أيام راحة).",
+    template_dose_label: "جرعة يوم العلاج",
+    template_off_label: "أيام الراحة (0)",
+    template_cycles_label: "عدد مرات التكرار",
+    template_add_btn: "إدراج القالب",
+    day_off_1: "يوم واحد راحة",
+    day_off_n: "أيام راحة",
     
     // SOS
     sos_title: "بروتوكول الطوارئ",
@@ -197,8 +208,8 @@ export const translations = {
     nav_settings: "Settings",
     nav_community: "Community",
     nav_admin: "Admin",
-    nav_support: "Support",        // NEW
-    nav_articles: "Knowledge",     // NEW
+    nav_support: "Support",
+    nav_articles: "Knowledge",
     logout: "Exit",
 
     // Admin
@@ -282,46 +293,57 @@ export const translations = {
     badge_sleep: "Sleep Restored",
     badge_stable: "Emotional Stability",
 
-    // Onboarding
+    // Onboarding & Inventory
     choose_path: "Select Strategy",
     path_algo: "Smart Algorithm",
     path_algo_desc: "Auto-calculated reduction based on neuroscience.",
     path_doctor: "Doctor's Plan",
     path_doctor_desc: "Manually input the schedule provided by your physician.",
     manual_builder_title: "Plan Builder",
-    phase_dose: "Dose (mg)",
+    phase_dose: "Dose",
     phase_duration: "Duration (Days)",
     add_phase: "Add Phase",
     phases_list: "Current Phases",
     total_duration: "Total Duration",
     start_doctor_plan: "Confirm Doctor's Plan",
 
-    // Templates
-    templates_title: "Smart Templates",
-    templates_subtitle: "Quickly add 'Day On / Days Off' patterns.",
-    template_dose_label: "Dose (On Day)",
-    template_off_label: "Days Off (0mg)",
-    template_cycles_label: "Repetitions",
-    template_add_btn: "Insert Template",
-    day_off_1: "1 Day Off",
-    day_off_n: "Days Off",
-
     build_protocol: "Protocol Setup",
     algo_desc: "Intelligent tapering system designed for safety.",
     med_narcotic: "Controlled Substance",
     med_psych: "Psychiatric Med",
     med_normal: "General Med",
-    med_desc_doc: "Medical supervision required",
-    med_desc_std: "Standard protocol",
-    med_desc_safe: "Safe reduction plan",
+    med_desc_doc: "Blocked: Rehab Required",
+    med_desc_std: "Warning: Consult Doctor",
+    med_desc_safe: "Safe: Tapering Plan",
+
+    // New Inventory Fields
+    med_form_label: "Medication Form",
+    med_form_tablet: "Tablet / Pill",
+    med_form_liquid: "Liquid / Syrup",
+    med_unit_label: "Unit",
+
+    // Error / Block Messages
+    narcotic_block_msg: "This system is NOT authorized for narcotics. Please visit a rehab center immediately.",
+    psych_warning_msg: "Important: Psychiatric meds require doctor supervision. Use this plan only as a secondary aid.",
+
     inventory_title: "Inventory",
-    boxes: "Boxes",
-    pills_per_box: "Pills/Box",
-    loose_pills: "Loose Pills",
+    boxes: "Containers/Boxes",
+    pills_per_box: "Amount per Unit",
+    loose_pills: "Loose Amount",
     total_balance: "Total Balance",
     current_habit: "Current Stable Dose",
     analyze_plan: "Generate Plan",
     guest: "Guest",
+
+    // Templates
+    templates_title: "Smart Templates",
+    templates_subtitle: "Quickly add 'Day On / Days Off' patterns.",
+    template_dose_label: "Dose (On Day)",
+    template_off_label: "Days Off (0)",
+    template_cycles_label: "Repetitions",
+    template_add_btn: "Insert Template",
+    day_off_1: "1 Day Off",
+    day_off_n: "Days Off",
 
     // SOS
     sos_title: "Emergency Protocol",
@@ -369,8 +391,8 @@ export const translations = {
     nav_settings: "Настройки",
     nav_community: "Сообщество",
     nav_admin: "Админ",
-    nav_support: "Поддержка",    // NEW
-    nav_articles: "Знания",      // NEW
+    nav_support: "Поддержка",
+    nav_articles: "Знания",
     logout: "Выход",
     
     // Admin
@@ -446,7 +468,7 @@ export const translations = {
     path_doctor: "План врача",
     path_doctor_desc: "Вручную ввести план.",
     manual_builder_title: "Конструктор",
-    phase_dose: "Доза (мг)",
+    phase_dose: "Доза",
     phase_duration: "Дней",
     add_phase: "Добавить",
     phases_list: "Этапы",
@@ -466,11 +488,20 @@ export const translations = {
     med_psych: "Психо",
     med_normal: "Общий",
     med_desc_doc: "Нужен врач",
-    med_desc_std: "Стандарт",
+    med_desc_std: "Внимание",
     med_desc_safe: "Безопасно",
+
+    med_form_label: "Форма",
+    med_form_tablet: "Таблетки",
+    med_form_liquid: "Жидкость",
+    med_unit_label: "Ед. изм.",
+
+    narcotic_block_msg: "Система не работает с наркотиками. Обратитесь к врачу.",
+    psych_warning_msg: "Внимание: Психотропные препараты требуют наблюдения врача.",
+
     inventory_title: "Запас",
     boxes: "Пачки",
-    pills_per_box: "Таб/Пач",
+    pills_per_box: "Кол-во",
     loose_pills: "Остаток",
     total_balance: "Всего",
     current_habit: "Текущая доза",

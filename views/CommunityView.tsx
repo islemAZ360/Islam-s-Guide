@@ -6,7 +6,10 @@ import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { LayoutContainer, Card, Button, Badge } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, ShieldCheck } from 'lucide-react';
+import { 
+    Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
+    ShieldCheck, Pill, FlaskConical, Zap 
+} from 'lucide-react';
 
 interface CommunityViewProps {
     currentUser: UserProfile;
@@ -124,6 +127,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         else if (idx === 1) { rankColor = 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-500/20 shadow-lg'; borderClass = 'border-slate-400/30'; }
                         else if (idx === 2) { rankColor = 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/20 shadow-lg'; borderClass = 'border-orange-500/30'; }
 
+                        const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
+
                         return (
                             <div key={idx} className={`flex items-center justify-between p-4 bg-slate-900/80 rounded-2xl border ${borderClass} relative overflow-hidden group`}>
                                 {idx < 3 && <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
@@ -136,9 +141,18 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {user.name} 
                                             {user.isAdmin && <ShieldCheck size={14} className="text-indigo-400" />}
                                         </p>
-                                        <p className="text-xs text-slate-500 flex items-center gap-1">
-                                            <Trophy size={10} /> {t('streak')}: {user.streak || 0}
-                                        </p>
+                                        <div className="flex gap-2 mt-1">
+                                            {user.medType && (
+                                                <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 flex items-center gap-1">
+                                                    <MedIcon size={10} /> {user.medType}
+                                                </span>
+                                            )}
+                                            {user.streak ? (
+                                                <span className="text-[10px] text-amber-500 flex items-center gap-1 font-bold">
+                                                    <Zap size={10} /> {user.streak} days
+                                                </span>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right relative z-10">
