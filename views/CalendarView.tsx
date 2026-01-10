@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
 import { PlanDay, DailyLog, UserProfile } from '../types';
 import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CalendarViewProps {
     plan: PlanDay[];
@@ -11,6 +12,8 @@ interface CalendarViewProps {
 }
 
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
+    const { t, language } = useLanguage();
+
     // تحديد تاريخ البداية لحساب الفراغات في التقويم
     const startDate = new Date(plan[0]?.date || new Date());
     const startDayIndex = (startDate.getDay() + 1) % 7; // ضبط الترتيب ليبدأ من السبت
@@ -22,20 +25,29 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
     // هل الخطة طبية أم خوارزمية؟
     const isDoctorPlan = userProfile?.planType === 'manual';
 
+    // ترجمة أيام الأسبوع
+    const daysMap: Record<string, string[]> = {
+        ar: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+        en: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        ru: ['Сб', 'Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт']
+    };
+    
+    const weekDays = daysMap[language] || daysMap['en'];
+
     return (
       <LayoutContainer>
         <PageHeader 
-            title="الجدول الزمني"
-            subtitle="خارطة الطريق نحو التعافي."
+            title={t('nav_calendar')}
+            subtitle={language === 'ar' ? "خارطة الطريق نحو التعافي." : "Your recovery roadmap."}
             action={
                 <div className="flex gap-2">
                     {isDoctorPlan ? (
                         <Badge color="indigo" className="!text-sm !py-2 !px-4">
-                            <Stethoscope size={16} className="mr-2" /> خطة الطبيب المعالج
+                            <Stethoscope size={16} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
                         </Badge>
                     ) : (
                         <Badge color="emerald" className="!text-sm !py-2 !px-4">
-                            <BrainCircuit size={16} className="mr-2" /> الخوارزمية الذكية
+                            <BrainCircuit size={16} className="mr-2" /> {t('path_algo')}
                         </Badge>
                     )}
                 </div>
@@ -45,15 +57,27 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-6">
           {/* Legend / مفتاح الخريطة */}
           <div className="flex flex-wrap gap-4 mb-6 text-xs text-slate-400 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-600"></div> اليوم الحالي</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> تم الالتزام</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500"></div> لم يتم الالتزام</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> القادم</div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-indigo-600"></div> 
+                  {language === 'ar' ? 'اليوم الحالي' : language === 'ru' ? 'Сегодня' : 'Today'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div> 
+                  {language === 'ar' ? 'تم الالتزام' : language === 'ru' ? 'Выполнено' : 'Done'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-rose-500"></div> 
+                  {language === 'ar' ? 'لم يتم الالتزام' : language === 'ru' ? 'Пропущено' : 'Missed'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> 
+                  {language === 'ar' ? 'القادم' : language === 'ru' ? 'Будущее' : 'Upcoming'}
+              </div>
           </div>
 
           {/* ترويسة أيام الأسبوع */}
           <div className="grid grid-cols-7 gap-2 md:gap-4 mb-3">
-            {['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'].map(d => (
+            {weekDays.map(d => (
               <div key={d} className="bg-slate-950/50 p-2 md:p-3 text-center text-[10px] md:text-xs font-bold text-slate-500 rounded-xl">{d}</div>
             ))}
           </div>

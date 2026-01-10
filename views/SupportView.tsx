@@ -28,10 +28,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
     // -- 1. Fetch User Tickets --
     useEffect(() => {
-        // FIX: Ensure uid exists before querying
         if (!user.uid) return;
         
-        // جلب التذاكر الخاصة بالمستخدم الحالي فقط
         const q = query(
             collection(db, "tickets"), 
             where("userId", "==", user.uid), 
@@ -45,7 +43,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
-            // تحديث التذكرة المفتوحة حالياً إذا وصل رد جديد (Real-time)
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -67,7 +64,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
     // -- 2. Actions --
     
     const createTicket = async () => {
-        // FIX: Ensure uid exists
         if (!user.uid) return;
         if (!newSubject.trim() || !newMessage.trim()) return;
         
@@ -94,12 +90,11 @@ export const SupportView = ({ user }: SupportViewProps) => {
             setNewMessage("");
         } catch (e) {
             console.error("Error creating ticket:", e);
-            alert("فشل إنشاء التذكرة. يرجى المحاولة لاحقاً.");
+            alert("Failed to create ticket.");
         }
     };
 
     const sendReply = async () => {
-        // FIX: Ensure uid and ticket ID exist
         if (!user.uid) return;
         if (!newMessage.trim() || !activeTicket || !activeTicket.id) return;
 
@@ -118,7 +113,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
             await updateDoc(ticketRef, {
                 messages: [...currentMessages, newMsg],
                 lastUpdate: Date.now(),
-                // إذا رد المستخدم، نعيد فتح التذكرة إذا كانت "قيد الانتظار" أو "مغلقة"
                 status: 'open' 
             });
             setNewMessage("");
@@ -127,14 +121,25 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     };
 
+    // Helper for translation keys
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'open': return t('status_open') || 'Open';
+            case 'pending': return t('status_pending') || 'Pending';
+            case 'resolved': return t('status_resolved') || 'Resolved';
+            case 'closed': return t('status_closed') || 'Closed';
+            default: return status;
+        }
+    };
+
     return (
         <LayoutContainer>
             <PageHeader 
-                title="مركز المساعدة والدعم" 
-                subtitle="تواصل مباشرة مع الفريق التقني والإداري للنظام."
+                title={t('nav_support')} 
+                subtitle={t('support_desc') || "Contact the support team directly."}
                 action={
                     <Button onClick={() => setShowCreateModal(true)} variant="primary">
-                        <Plus size={18} /> فتح تذكرة جديدة
+                        <Plus size={18} /> {t('new_ticket') || "New Ticket"}
                     </Button>
                 }
             />
@@ -148,7 +153,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                          user.medForm === 'tablet' ? <Pill size={20} /> : <User size={20}/>}
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">حسابك الحالي</p>
+                        <p className="text-xs text-slate-500 uppercase font-bold">{t('current_account') || "Current Account"}</p>
                         <p className="text-white font-bold text-sm flex items-center gap-2">
                             {user.name} 
                             <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">{user.role.toUpperCase()}</Badge>
@@ -156,7 +161,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                     </div>
                 </div>
                 {user.role === 'normal_user' && user.planType === 'algorithm' && (
-                    <Badge color="indigo">خوارزمية ذكية</Badge>
+                    <Badge color="indigo">Smart Algorithm</Badge>
                 )}
             </div>
 
@@ -164,7 +169,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 {/* LIST COLUMN */}
                 <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900 border-white/5 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/30">
-                        <h3 className="font-bold text-white">تذاكري</h3>
+                        <h3 className="font-bold text-white">{t('my_tickets') || "My Tickets"}</h3>
                         <Badge color="indigo">{tickets.length}</Badge>
                     </div>
                     
@@ -172,7 +177,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         {tickets.length === 0 && (
                             <div className="text-center py-10 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-xl m-2">
                                 <LifeBuoy className="mx-auto mb-2 opacity-50" size={24}/>
-                                لا توجد تذاكر سابقة.
+                                {t('no_tickets') || "No previous tickets."}
                             </div>
                         )}
                         {tickets.map(ticket => (
@@ -190,7 +195,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         {ticket.subject}
                                     </h4>
                                     <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-1.5">
-                                        {ticket.status === 'resolved' ? 'مغلق' : ticket.status === 'open' ? 'مفتوح' : 'قيد المراجعة'}
+                                        {getStatusLabel(ticket.status)}
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between items-end text-[10px] text-slate-500">
@@ -209,7 +214,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4 opacity-50">
                                 <LifeBuoy size={40} />
                             </div>
-                            <p>اختر تذكرة لعرض التفاصيل أو ابدأ تذكرة جديدة</p>
+                            <p>{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
                         </div>
                     ) : (
                         <>
@@ -217,14 +222,14 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
                                 <div>
                                     <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
-                                        <X size={14}/> إغلاق
+                                        <X size={14}/> {t('close')}
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-2">
                                         <Lock size={14} className="text-emerald-500"/> {activeTicket.subject}
                                     </h3>
                                     <p className="text-[10px] text-slate-500 font-mono mt-1">Ref: {activeTicket.id}</p>
                                 </div>
-                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> تم الحل</Badge>}
+                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> {t('status_resolved') || "Resolved"}</Badge>}
                             </div>
 
                             {/* Messages Area */}
@@ -241,7 +246,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                                 {msg.text}
                                             </div>
                                             <span className="text-[10px] text-slate-600 mt-1 px-1 flex items-center gap-1">
-                                                {isMe ? 'أنا' : 'الدعم الفني'} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {isMe ? (t('me') || "Me") : (t('support_team') || "Support")} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </div>
                                     );
@@ -253,13 +258,13 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="p-4 border-t border-white/5 bg-slate-950/30">
                                 {activeTicket.status === 'resolved' ? (
                                     <div className="text-center text-xs text-emerald-500 font-bold bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                                        تم إغلاق هذه التذكرة. لفتحها مجدداً، يرجى إنشاء تذكرة جديدة.
+                                        {t('ticket_closed_msg') || "This ticket is closed."}
                                     </div>
                                 ) : (
                                     <div className="flex gap-2">
                                         <input 
                                             className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-600"
-                                            placeholder="اكتب ردك هنا..."
+                                            placeholder={t('write_reply') || "Write your reply..."}
                                             value={newMessage}
                                             onChange={e => setNewMessage(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && sendReply()}
@@ -282,30 +287,30 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
                         
                         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <LifeBuoy className="text-indigo-500"/> طلب مساعدة جديد
+                            <LifeBuoy className="text-indigo-500"/> {t('new_ticket_title') || "New Support Request"}
                         </h3>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">الموضوع</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_subject') || "Subject"}</label>
                                 <input 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none transition-all" 
                                     value={newSubject} 
                                     onChange={e => setNewSubject(e.target.value)} 
-                                    placeholder="مثال: مشكلة في تسجيل الجرعة" 
+                                    placeholder="..." 
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">التفاصيل</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_details') || "Details"}</label>
                                 <textarea 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none transition-all" 
                                     value={newMessage} 
                                     onChange={e => setNewMessage(e.target.value)} 
-                                    placeholder="اشرح المشكلة بالتفصيل..." 
+                                    placeholder="..." 
                                 />
                             </div>
                             <Button onClick={createTicket} variant="primary" className="w-full py-3" disabled={!newSubject || !newMessage}>
-                                إرسال الطلب
+                                {t('send_request') || "Submit"}
                             </Button>
                         </div>
                     </Card>

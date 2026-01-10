@@ -1,18 +1,21 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
-    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, deleteDoc, where 
+    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, deleteDoc 
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
 import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, Eye, Save, Plus, X, Flag, FileText, LifeBuoy, Stethoscope, CheckCircle, XCircle, Trash2
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus
 } from 'lucide-react';
 import { 
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
+    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
+import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
 
 export const AdminView = () => {
+    const { t } = useLanguage(); // تفعيل الترجمة
+
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
     const [loading, setLoading] = useState(false);
@@ -54,22 +57,20 @@ export const AdminView = () => {
     // -- DOCTOR MANAGEMENT ACTIONS --
     
     const approveDoctor = async (docUid: string) => {
-        if (!confirm("هل أنت متأكد من اعتماد هذا الطبيب؟ سيتمكن من الوصول لبيانات المرضى.")) return;
+        if (!confirm("Are you sure you want to approve this doctor?")) return;
         
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "approved"
             });
-            // تحديث القائمة محلياً
             setUsers(prev => prev.map(u => u.uid === docUid ? {
                 ...u, doctorData: { ...u.doctorData!, accountStatus: 'approved' }
             } : u));
-            alert("تم اعتماد الطبيب بنجاح.");
         } catch (e) { console.error(e); }
     };
 
     const rejectDoctor = async (docUid: string) => {
-        if (!confirm("رفض الطلب سيمنع الطبيب من الدخول.")) return;
+        if (!confirm("Rejecting will prevent login. Continue?")) return;
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "rejected"
@@ -85,7 +86,7 @@ export const AdminView = () => {
     const toggleBan = async (user: UserProfile) => {
         if (!user.uid) return;
         const newVal = !user.isBanned;
-        if(confirm(newVal ? "حظر هذا المستخدم؟" : "فك الحظر عن المستخدم؟")) {
+        if(confirm(newVal ? "Ban this user?" : "Unban this user?")) {
             await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
             setUsers(users.map(u => u.uid === user.uid ? {...u, isBanned: newVal} : u));
         }
@@ -94,15 +95,17 @@ export const AdminView = () => {
     // -- CMS ACTIONS --
 
     const publishArticle = async () => {
+        const currentUser = auth?.currentUser;
         if (!newArticle.title || !newArticle.content) return;
+        
         try {
             await addDoc(collection(db, "articles"), {
                 ...newArticle,
                 isPublished: true,
                 createdAt: Date.now(),
-                authorName: "System Admin",
+                authorName: currentUser?.displayName || "System Admin",
                 authorRole: "admin",
-                authorId: "ADMIN"
+                authorId: currentUser?.uid || "ADMIN_CONSOLE"
             });
             setShowArticleModal(false);
             setNewArticle({ title: '', content: '', category: 'tip' });
@@ -111,41 +114,39 @@ export const AdminView = () => {
     };
 
     const deleteArticle = async (id: string) => {
-        if(confirm("حذف هذا المقال؟")) {
+        if(confirm("Delete this article?")) {
             await deleteDoc(doc(db, "articles", id));
             setArticles(prev => prev.filter(a => a.id !== id));
         }
     }
 
     // -- DERIVED DATA --
-    
     const doctorsList = users.filter(u => u.role === 'doctor');
     const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
     const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
-    
     const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
     const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
 
     // Stats for Overview
     const stats = useMemo(() => {
         return [
-            { name: 'إجمالي المرضى', value: normalUsers.length, color: '#6366f1' },
-            { name: 'أطباء معتمدين', value: approvedDoctors.length, color: '#10b981' },
-            { name: 'حالات تعافي', value: recoveredUsers.length, color: '#f59e0b' },
-            { name: 'طلبات أطباء', value: pendingDoctors.length, color: '#f43f5e' },
+            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
+            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981' },
+            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b' },
+            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e' },
         ];
-    }, [users]);
+    }, [users, t]);
 
     return (
         <LayoutContainer>
-            <PageHeader title="غرفة التحكم المركزية" subtitle="نظام الإدارة المتكامل (Admin Dashboard)" />
+            <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
 
             <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
                 {[
-                    { id: 'overview', icon: Activity, label: 'نظرة عامة' },
-                    { id: 'doctors', icon: Stethoscope, label: 'إدارة الأطباء' },
-                    { id: 'users', icon: Users, label: 'المستخدمين' },
-                    { id: 'cms', icon: FileText, label: 'إدارة المحتوى' },
+                    { id: 'overview', icon: Activity, label: t('tab_overview') },
+                    { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
+                    { id: 'users', icon: Users, label: t('tab_users') },
+                    { id: 'cms', icon: FileText, label: t('tab_cms') },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -179,7 +180,7 @@ export const AdminView = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Card className="bg-slate-900 border-white/5 min-h-[300px]">
-                            <h3 className="text-white font-bold mb-4">توزيع المستخدمين</h3>
+                            <h3 className="text-white font-bold mb-4">{t('stat_overview')}</h3>
                             <ResponsiveContainer width="100%" height="250px">
                                 <BarChart data={stats}>
                                     <XAxis dataKey="name" stroke="#475569" fontSize={10} tick={false} />
@@ -196,10 +197,10 @@ export const AdminView = () => {
                         {/* Pending Approvals Quick View */}
                         <Card className="bg-slate-900 border-white/5">
                             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                                <Lock size={16} className="text-amber-500"/> طلبات الانضمام المعلقة
+                                <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
                             </h3>
                             {pendingDoctors.length === 0 ? (
-                                <div className="text-center text-slate-500 py-10">لا توجد طلبات معلقة حالياً.</div>
+                                <div className="text-center text-slate-500 py-10">No pending approvals.</div>
                             ) : (
                                 <div className="space-y-3">
                                     {pendingDoctors.slice(0, 3).map(doc => (
@@ -208,7 +209,7 @@ export const AdminView = () => {
                                                 <div className="font-bold text-white text-sm">{doc.name}</div>
                                                 <div className="text-xs text-slate-500">{doc.doctorData?.specialty}</div>
                                             </div>
-                                            <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">مراجعة</Button>
+                                            <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">{t('review_btn')}</Button>
                                         </div>
                                     ))}
                                 </div>
@@ -225,12 +226,12 @@ export const AdminView = () => {
                      {pendingDoctors.length > 0 && (
                          <div className="space-y-4">
                              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                 <Lock className="text-amber-500" /> طلبات الاعتماد الجديدة
+                                 <Lock className="text-amber-500" /> {t('pending_approvals')}
                              </h2>
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {pendingDoctors.map(doc => (
                                     <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                                        <Badge color="amber" className="absolute top-4 left-4">قيد المراجعة</Badge>
+                                        <Badge color="amber" className="absolute top-4 left-4">Pending</Badge>
                                         
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
@@ -241,17 +242,17 @@ export const AdminView = () => {
                                         </div>
                                         
                                         <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 space-y-2 mb-6">
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>الترخيص:</span> <span className="text-white font-mono">{doc.doctorData?.licenseNumber}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>الهاتف:</span> <span className="text-white font-mono">{doc.doctorData?.phoneNumber}</span></div>
-                                            <div className="flex justify-between"><span>الموقع:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono">{doc.doctorData?.licenseNumber}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono">{doc.doctorData?.phoneNumber}</span></div>
+                                            <div className="flex justify-between"><span>Loc:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
                                         </div>
 
                                         <div className="flex gap-2">
                                             <Button onClick={() => doc.uid && approveDoctor(doc.uid)} variant="success" className="flex-1 !py-2">
-                                                <CheckCircle size={16} className="mr-2"/> اعتماد
+                                                <CheckCircle size={16} className="mr-2"/> {t('approve_btn')}
                                             </Button>
                                             <Button onClick={() => doc.uid && rejectDoctor(doc.uid)} variant="danger" className="flex-1 !py-2">
-                                                <XCircle size={16} className="mr-2"/> رفض
+                                                <XCircle size={16} className="mr-2"/> {t('reject_btn')}
                                             </Button>
                                         </div>
                                     </div>
@@ -263,28 +264,25 @@ export const AdminView = () => {
                      {/* 2. Active Doctors List & Stats */}
                      <div>
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                             <Stethoscope className="text-emerald-500" /> قائمة الأطباء المعتمدين
+                             <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
                         </h2>
                         <Card className="bg-slate-900 border-white/5 overflow-hidden !p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-right text-sm text-slate-400">
                                     <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
                                         <tr>
-                                            <th className="p-4">الطبيب</th>
-                                            <th className="p-4">التخصص</th>
-                                            <th className="p-4 text-center">المرضى الحاليين</th>
-                                            <th className="p-4 text-center">حالات التعافي</th>
-                                            <th className="p-4 text-center">المستوى</th>
-                                            <th className="p-4">الحالة</th>
+                                            <th className="p-4">Doctor</th>
+                                            <th className="p-4">Specialty</th>
+                                            <th className="p-4 text-center">Patients</th>
+                                            <th className="p-4 text-center">Recovered</th>
+                                            <th className="p-4 text-center">Level</th>
+                                            <th className="p-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
                                         {approvedDoctors.map(doc => {
-                                            // حساب إحصائيات مع استخدام ?. لتجنب الأخطاء
                                             const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
                                             const recoveredCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && u.patientData?.isRecovered).length;
-                                            
-                                            // حساب المستوى
                                             const level = Math.floor(recoveredCount / 5) + 1;
 
                                             return (
@@ -298,7 +296,7 @@ export const AdminView = () => {
                                                     </td>
                                                     <td className="p-4">
                                                         <Button variant="danger" className="!py-1 !px-2 !text-xs" onClick={() => toggleBan(doc)}>
-                                                            {doc.isBanned ? 'فك الحظر' : 'حظر'}
+                                                            {doc.isBanned ? t('unban_user') : t('ban_user')}
                                                         </Button>
                                                     </td>
                                                 </tr>
@@ -319,7 +317,7 @@ export const AdminView = () => {
                         <Search className="text-slate-500 ml-4" size={20} />
                         <input 
                             className="bg-transparent w-full text-white outline-none"
-                            placeholder="بحث عن مستخدم..."
+                            placeholder={t('search_user_placeholder')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -340,9 +338,9 @@ export const AdminView = () => {
                                             {user.isBanned && <Ban size={12} className="text-rose-500"/>}
                                         </h4>
                                         <div className="flex gap-2 mt-1">
-                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? 'مريض' : 'مستخدم عادي'}</Badge>
+                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? t('role_patient') : 'User'}</Badge>
                                             {user.patientData?.assignedDoctorName && (
-                                                <span className="text-[9px] text-slate-500 flex items-center">طبيب: {user.patientData.assignedDoctorName}</span>
+                                                <span className="text-[9px] text-slate-500 flex items-center">Dr: {user.patientData.assignedDoctorName}</span>
                                             )}
                                         </div>
                                     </div>
@@ -360,8 +358,8 @@ export const AdminView = () => {
             {activeTab === 'cms' && (
                 <div className="animate-in fade-in space-y-4">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-white">إدارة المحتوى</h2>
-                        <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm"><Plus size={16}/> مقال جديد</Button>
+                        <h2 className="text-xl font-bold text-white">{t('tab_cms')}</h2>
+                        <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm"><Plus size={16}/> {t('new_article_btn')}</Button>
                     </div>
 
                     {showArticleModal && (
@@ -369,13 +367,13 @@ export const AdminView = () => {
                              <div className="space-y-4">
                                  <input 
                                      className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 outline-none focus:border-indigo-500" 
-                                     placeholder="العنوان" 
+                                     placeholder={t('article_title_label')}
                                      value={newArticle.title} 
                                      onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
                                  />
                                  
                                  <div>
-                                     <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">التصنيف</label>
+                                     <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">{t('article_cat_label')}</label>
                                      <div className="flex gap-2">
                                          {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
                                              <button 
@@ -391,14 +389,14 @@ export const AdminView = () => {
 
                                  <textarea 
                                      className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32 outline-none focus:border-indigo-500" 
-                                     placeholder="المحتوى..." 
+                                     placeholder={t('article_content_label')}
                                      value={newArticle.content} 
                                      onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
                                  />
                                  
                                  <div className="flex justify-end gap-2">
-                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>إلغاء</Button>
-                                     <Button variant="success" onClick={publishArticle}>نشر</Button>
+                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
+                                     <Button variant="success" onClick={publishArticle}>{t('publish_now')}</Button>
                                  </div>
                              </div>
                          </Card>

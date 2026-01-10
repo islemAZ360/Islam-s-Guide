@@ -31,7 +31,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
       );
-      // ملاحظة: لم نقم بإضافة الإعدادات هنا للأدمن
+      // ملاحظة: تم إزالة الإعدادات للأدمن كما طلبت
     }
     
     // 2. DOCTOR MENU
@@ -43,7 +43,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
       );
-      // الطبيب يحتاج الإعدادات؟ عادة نعم، لكن إذا أردت إزالتها له أيضاً أخبرني. سأتركها للطبيب والمستخدم العادي حالياً.
+      // الإعدادات للطبيب
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 
@@ -66,7 +66,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       }
-      // إضافة الإعدادات للمستخدم العادي والمريض
+      // الإعدادات للمستخدم العادي والمريض
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 

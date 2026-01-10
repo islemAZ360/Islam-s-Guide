@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 10/1/2026, 08:25:30
+Generated: 10/1/2026, 20:48:38
 
 ## 🌳 Project Structure
 ```text
@@ -188,6 +188,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
       );
+      // ملاحظة: لم نقم بإضافة الإعدادات هنا للأدمن
     }
     
     // 2. DOCTOR MENU
@@ -199,6 +200,8 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
       );
+      // الطبيب يحتاج الإعدادات؟ عادة نعم، لكن إذا أردت إزالتها له أيضاً أخبرني. سأتركها للطبيب والمستخدم العادي حالياً.
+      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 
     // 3. PATIENT / NORMAL USER MENU
@@ -220,10 +223,9 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       }
+      // إضافة الإعدادات للمستخدم العادي والمريض
+      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
-
-    // Settings is common for everyone
-    items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
 
     return items;
   };
@@ -1961,10 +1963,12 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     // -- Publish Action --
     const handlePublish = async () => {
-        // FIX: Store currentUser in a const to ensure it doesn't change (Typescript null check fix)
-        const currentUser = auth.currentUser;
+        // FIX: Use optional chaining (?.) for auth
+        const currentUser = auth?.currentUser;
 
+        // التحقق من المتغير المحلي
         if (!currentUser || !userProfile) return;
+        
         if (!newArticle.title.trim() || !newArticle.content.trim()) return;
 
         try {
@@ -1974,9 +1978,10 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 category: newArticle.category,
                 isPublished: true,
                 createdAt: Date.now(),
-                authorId: currentUser.uid, // Use the constant variable
+                // استخدام المتغير المحلي الآمن
+                authorId: currentUser.uid, 
                 authorName: userProfile.name,
-                authorRole: userProfile.role // 'doctor' or 'admin'
+                authorRole: userProfile.role 
             });
             
             // Reset and Refresh
@@ -2567,6 +2572,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // 1. جلب غرف الدردشة (Smart Filtering)
     useEffect(() => {
+        // إذا لم يكن للمستخدم معرف، لا نقوم بجلب البيانات
+        if (!currentUser.uid) return;
+
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const allRooms: ChatRoom[] = [];
@@ -2629,7 +2637,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     // --- Actions ---
 
     const createRoom = async () => {
-        if (!newRoomName.trim()) return;
+        if (!newRoomName.trim() || !currentUser.uid) return;
         
         const isDoctor = currentUser.role === 'doctor';
         
@@ -2656,7 +2664,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     const sendMessage = async () => {
-        if (!newMessage.trim() || !activeRoom) return;
+        if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: newMessage,
@@ -2905,7 +2913,7 @@ import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardViewProps {
-  userProfile: UserProfile | null;
+  userProfile: UserProfile | null; // نقبل null هنا لتجنب مشاكل النوع، لكننا نتحقق منه
   plan: PlanDay[];
   logs: DailyLog[];
   todayPlan: PlanDay | undefined;
@@ -2992,7 +3000,7 @@ export const DashboardView = ({
       
       <PageHeader 
         title={t('daily_report')}
-        subtitle={`${t('welcome')} ${userProfile?.name}`}
+        subtitle={`${t('welcome')} ${userProfile?.name || ''}`}
         action={
             <div className="flex flex-wrap gap-4 items-center">
                 <div className="hidden md:block"><LanguageSwitcher /></div>
@@ -3029,7 +3037,6 @@ export const DashboardView = ({
       )}
 
       {/* Safety Warning & Freeze Option */}
-      {/* يظهر فقط لمستخدمي الخوارزمية، لأن المريض يجب أن يراجع طبيبه في حالات الخطر */}
       {showDoctorWarning && !isManualPlan && (
         <div className="bg-rose-500/5 border border-rose-500/20 p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md animate-in zoom-in duration-500 mb-6">
           <div className="flex items-center gap-4">
@@ -3293,10 +3300,414 @@ import {
     collection, query, where, getDocs, updateDoc, doc, getDoc 
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
+import { UserProfile, ManualPhase } from '../types';
+import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
+import { 
+    Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
+    ChevronRight, Save, AlertCircle 
+} from 'lucide-react';
+import { 
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
+} from 'recharts';
+import { generateManualPlan } from '../services/taperingEngine';
+
+export const DoctorDashboardView = () => {
+    // -- State --
+    const [loading, setLoading] = useState(true);
+    const [doctorProfile, setDoctorProfile] = useState<UserProfile | null>(null);
+    const [patients, setPatients] = useState<UserProfile[]>([]);
+    const [pendingPatients, setPendingPatients] = useState<UserProfile[]>([]);
+    
+    // -- Modal State (For Plan Creation) --
+    const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
+    const [phases, setPhases] = useState<ManualPhase[]>([]);
+    const [newDose, setNewDose] = useState('');
+    const [newDays, setNewDays] = useState('7'); // Default to 1 week
+    const [doctorNote, setDoctorNote] = useState('');
+
+    // -- Fetch Data --
+    useEffect(() => {
+        const fetchDoctorData = async () => {
+            // FIX: Use optional chaining (?.) because auth might be undefined
+            const currentUser = auth?.currentUser;
+            
+            // إذا لم يكن هناك مستخدم، نتوقف فوراً لتجنب الأخطاء
+            if (!currentUser) return;
+            
+            setLoading(true);
+
+            try {
+                // 1. Get Doctor Profile using local currentUser variable
+                const docRef = doc(db, "users", currentUser.uid);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setDoctorProfile(docSnap.data() as UserProfile);
+                }
+
+                // 2. Get Assigned Patients using local currentUser variable
+                const q = query(
+                    collection(db, "users"), 
+                    where("patientData.assignedDoctorId", "==", currentUser.uid)
+                );
+                const querySnapshot = await getDocs(q);
+                const allPatients: UserProfile[] = [];
+                querySnapshot.forEach((doc) => {
+                    allPatients.push({ uid: doc.id, ...doc.data() } as UserProfile);
+                });
+
+                // Separate into Pending (No Plan) and Active (Has Plan)
+                setPendingPatients(allPatients.filter(p => !p.patientData?.isPlanAssigned));
+                setPatients(allPatients.filter(p => p.patientData?.isPlanAssigned));
+
+            } catch (error) {
+                console.error("Error fetching doctor data:", error);
+            }
+            setLoading(false);
+        };
+
+        fetchDoctorData();
+    }, []);
+
+    // -- Actions --
+
+    const handleAddPhase = () => {
+        const dose = parseFloat(newDose);
+        const days = parseInt(newDays);
+        if (!isNaN(dose) && !isNaN(days) && days > 0) {
+            setPhases([...phases, { dose, days }]);
+            setNewDose(''); 
+        }
+    };
+
+    const handleRemovePhase = (index: number) => {
+        setPhases(phases.filter((_, i) => i !== index));
+    };
+
+    const saveTreatmentPlan = async () => {
+        if (!selectedPatient?.uid || phases.length === 0) return;
+
+        if (!confirm(`هل أنت متأكد من اعتماد هذه الخطة للمريض ${selectedPatient.name}؟`)) return;
+
+        // Generate full calendar plan
+        const fullPlan = generateManualPlan(phases, new Date().toISOString());
+
+        try {
+            await updateDoc(doc(db, "users", selectedPatient.uid), {
+                plan: fullPlan,
+                "patientData.isPlanAssigned": true,
+                "patientData.isRecovered": false,
+                doctorNotes: doctorNote,
+                planType: 'manual', // Enforce manual type so algorithm doesn't override
+                lastActive: new Date().toISOString()
+            });
+
+            // Update Local State
+            setPendingPatients(prev => prev.filter(p => p.uid !== selectedPatient.uid));
+            setPatients(prev => [...prev, { 
+                ...selectedPatient, 
+                patientData: { ...selectedPatient.patientData!, isPlanAssigned: true } 
+            }]);
+            
+            // Close Modal
+            setSelectedPatient(null);
+            setPhases([]);
+            setDoctorNote('');
+            alert("تم إرسال الخطة العلاجية للمريض بنجاح.");
+
+        } catch (e) {
+            console.error("Error saving plan:", e);
+            alert("حدث خطأ أثناء حفظ الخطة.");
+        }
+    };
+
+    const markAsRecovered = async (patient: UserProfile) => {
+        if (!patient.uid) return;
+        if (!confirm("هل تريد إغلاق ملف هذا المريض وتسجيله كمتعافي؟")) return;
+
+        await updateDoc(doc(db, "users", patient.uid), {
+            "patientData.isRecovered": true,
+            "patientData.recoveryDate": new Date().toISOString()
+        });
+
+        // Update UI locally
+        setPatients(prev => prev.map(p => p.uid === patient.uid ? { 
+            ...p, patientData: { ...p.patientData!, isRecovered: true } 
+        } : p));
+    };
+
+    // -- Stats Data for Chart --
+    const statsData = [
+        { name: 'بانتظار الخطة', value: pendingPatients.length, color: '#f59e0b' },
+        { name: 'قيد العلاج', value: patients.filter(p => !p.patientData?.isRecovered).length, color: '#6366f1' },
+        { name: 'متعافين', value: patients.filter(p => p.patientData?.isRecovered).length, color: '#10b981' },
+    ];
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 animate-pulse">جاري تحميل بيانات العيادة...</div>;
+
+    return (
+        <LayoutContainer>
+            <PageHeader 
+                title="لوحة تحكم الطبيب" 
+                subtitle={`د. ${doctorProfile?.name || 'Doctor'} - ${doctorProfile?.doctorData?.specialty || ''}`} 
+            />
+
+            {/* STATS CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <Card className="bg-slate-900 border-white/5 p-5">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-slate-500 text-xs font-bold uppercase mb-1">إجمالي المرضى</p>
+                            <h3 className="text-3xl font-black text-white">{patients.length + pendingPatients.length}</h3>
+                        </div>
+                        <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Users size={20}/></div>
+                    </div>
+                </Card>
+                
+                <Card className="bg-amber-900/10 border-amber-500/20 p-5">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">طلبات جديدة</p>
+                            <h3 className="text-3xl font-black text-amber-500">{pendingPatients.length}</h3>
+                        </div>
+                        <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 animate-pulse"><Clock size={20}/></div>
+                    </div>
+                </Card>
+
+                <Card className="bg-emerald-900/10 border-emerald-500/20 p-5">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-emerald-500/70 text-xs font-bold uppercase mb-1">حالات التعافي</p>
+                            <h3 className="text-3xl font-black text-emerald-500">{patients.filter(p => p.patientData?.isRecovered).length}</h3>
+                        </div>
+                        <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><CheckCircle size={20}/></div>
+                    </div>
+                </Card>
+
+                <Card className="bg-slate-900 border-white/5 p-5">
+                    <p className="text-slate-500 text-xs font-bold uppercase mb-4">نظرة عامة</p>
+                    <div className="h-16">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={statsData} layout="vertical">
+                                <XAxis type="number" hide />
+                                <YAxis type="category" dataKey="name" hide />
+                                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155'}} itemStyle={{color: '#fff'}} />
+                                <Bar dataKey="value" barSize={12} radius={[0, 4, 4, 0]}>
+                                    {statsData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            </div>
+
+            {/* PENDING REQUESTS SECTION (Waiting for Plan) */}
+            {pendingPatients.length > 0 && (
+                <div className="mb-8 animate-in slide-in-from-bottom-4">
+                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <AlertCircle className="text-amber-500" /> طلبات العلاج المعلقة
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {pendingPatients.map(patient => (
+                            <div key={patient.uid} className="bg-slate-900 border border-amber-500/30 p-5 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.05)]">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold">
+                                        {patient.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-white">{patient.name}</h3>
+                                        <p className="text-xs text-slate-500">{patient.email}</p>
+                                    </div>
+                                    <Badge color="amber" className="mr-auto">جديد</Badge>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 mb-4 space-y-1">
+                                    <div className="flex justify-between"><span>نوع الدواء:</span> <span className="text-white">{patient.medType}</span></div>
+                                    <div className="flex justify-between"><span>الشكل:</span> <span className="text-white">{patient.medForm}</span></div>
+                                    <div className="flex justify-between"><span>الوحدة:</span> <span className="text-white">{patient.medUnit}</span></div>
+                                </div>
+                                <Button onClick={() => setSelectedPatient(patient)} className="w-full" variant="primary">
+                                    إنشاء الخطة العلاجية <ChevronRight size={16} />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ACTIVE PATIENTS LIST */}
+            <Card className="bg-slate-900 border-white/5 overflow-hidden">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Users className="text-indigo-400" /> ملفات المرضى
+                    </h2>
+                    <div className="text-sm text-slate-500">
+                        العدد الكلي: {patients.length}
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right text-sm text-slate-400">
+                        <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
+                            <tr>
+                                <th className="p-4 rounded-tr-xl">المريض</th>
+                                <th className="p-4">الحالة</th>
+                                <th className="p-4">التقدم</th>
+                                <th className="p-4">آخر نشاط</th>
+                                <th className="p-4 rounded-tl-xl">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                            {patients.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">لا يوجد مرضى حالياً.</td>
+                                </tr>
+                            )}
+                            {patients.map(patient => (
+                                <tr key={patient.uid} className="hover:bg-slate-800/50 transition-colors">
+                                    <td className="p-4 font-medium text-white flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs">
+                                            {patient.name.charAt(0)}
+                                        </div>
+                                        {patient.name}
+                                    </td>
+                                    <td className="p-4">
+                                        {patient.patientData?.isRecovered ? (
+                                            <Badge color="green">متعافي</Badge>
+                                        ) : (
+                                            <Badge color="indigo">قيد العلاج</Badge>
+                                        )}
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-full bg-indigo-500" style={{width: `${patient.progress || 0}%`}}></div>
+                                            </div>
+                                            <span className="text-xs">{Math.round(patient.progress || 0)}%</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 font-mono text-xs">
+                                        {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : '-'}
+                                    </td>
+                                    <td className="p-4">
+                                        {!patient.patientData?.isRecovered && (
+                                            <button 
+                                                onClick={() => markAsRecovered(patient)}
+                                                className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all"
+                                            >
+                                                تسجيل تعافي
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {/* PLAN CREATION MODAL */}
+            {selectedPatient && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col">
+                        <button onClick={() => setSelectedPatient(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20">
+                            <X size={20} />
+                        </button>
+
+                        <div className="p-6 border-b border-white/5">
+                            <h2 className="text-2xl font-bold text-white mb-1">إنشاء الخطة العلاجية</h2>
+                            <p className="text-slate-500">المريض: <span className="text-indigo-400 font-bold">{selectedPatient.name}</span></p>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                            
+                            {/* Doctor Notes */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ملاحظات للمريض (اختياري)</label>
+                                <textarea 
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white h-20 outline-none focus:border-indigo-500"
+                                    placeholder="اكتب تعليمات خاصة..."
+                                    value={doctorNote}
+                                    onChange={e => setDoctorNote(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Phases Builder */}
+                            <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
+                                <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16}/> مراحل التخفيض</h3>
+                                
+                                <div className="flex gap-2 mb-4">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-slate-500 block mb-1">الجرعة ({selectedPatient.medUnit})</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
+                                            placeholder="الجرعة"
+                                            value={newDose}
+                                            onChange={e => setNewDose(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-slate-500 block mb-1">المدة (أيام)</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
+                                            placeholder="الأيام"
+                                            value={newDays}
+                                            onChange={e => setNewDays(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <Button onClick={handleAddPhase} className="!p-3"><Plus size={20}/></Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">لم تتم إضافة أي مراحل بعد.</p>}
+                                    {phases.map((phase, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-white/5 animate-in slide-in-from-right-2">
+                                            <span className="text-white font-bold text-sm">
+                                                المرحلة {idx + 1}: <span className="text-indigo-400">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> لمدة {phase.days} يوم
+                                            </span>
+                                            <button onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {/* Summary */}
+                            <div className="flex justify-between items-center text-sm font-bold text-slate-400 bg-slate-950 p-3 rounded-lg">
+                                <span>المدة الكلية: {phases.reduce((a,b) => a + b.days, 0)} يوم</span>
+                                <span>عدد المراحل: {phases.length}</span>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-white/5 bg-slate-900 flex justify-end gap-3">
+                            <Button variant="secondary" onClick={() => setSelectedPatient(null)}>إلغاء</Button>
+                            <Button variant="success" onClick={saveTreatmentPlan} disabled={phases.length === 0}>
+                                <Save size={18} className="mr-2"/> اعتماد وإرسال
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+        </LayoutContainer>
+    );
+};
+```
+---
+
+### File: `views\DoctorPatientsView.tsx`
+```tsx
+import React, { useEffect, useState } from 'react';
+import { 
+    collection, query, where, getDocs, updateDoc, doc, getDoc 
+} from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
 import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X 
+    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, ChevronRight, X 
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -3316,17 +3727,15 @@ export const DoctorPatientsView = () => {
     
     // -- Fetch Doctor's Patients --
     const fetchMyPatients = async () => {
-        // خطوة 1: تخزين المستخدم في متغير ثابت
-        const currentUser = auth.currentUser;
-
-        // خطوة 2: التحقق من المتغير
+        // التصحيح هنا: استخدام ?. للتحقق من وجود auth أولاً
+        const currentUser = auth?.currentUser;
+        
         if (!currentUser) return;
         
         setLoading(true);
         try {
             const q = query(
                 collection(db, "users"), 
-                // خطوة 3: استخدام المتغير currentUser.uid بدلاً من auth.currentUser.uid
                 where("patientData.assignedDoctorId", "==", currentUser.uid)
             );
             const snapshot = await getDocs(q);
@@ -3364,8 +3773,8 @@ export const DoctorPatientsView = () => {
     };
 
     const handleAddPatient = async (user: UserProfile) => {
-        // نفس الإصلاح هنا
-        const currentUser = auth.currentUser;
+        // التصحيح هنا أيضاً: استخدام ?.
+        const currentUser = auth?.currentUser;
 
         if (!currentUser || !user.uid) return;
         
@@ -3375,7 +3784,6 @@ export const DoctorPatientsView = () => {
             await updateDoc(doc(db, "users", user.uid), {
                 role: 'patient',
                 patientData: {
-                    // استخدام currentUser.uid هنا
                     assignedDoctorId: currentUser.uid,
                     assignedDoctorName: currentUser.displayName || 'Doctor',
                     isPlanAssigned: false, 
@@ -3388,366 +3796,8 @@ export const DoctorPatientsView = () => {
                 ...user, 
                 role: 'patient', 
                 patientData: { 
-                    // استخدام currentUser.uid هنا أيضاً
                     assignedDoctorId: currentUser.uid, 
                     assignedDoctorName: currentUser.displayName || 'Doctor', 
-                    isPlanAssigned: false, 
-                    isRecovered: false 
-                } 
-            }]);
-            
-            alert("تم إضافة المريض بنجاح.");
-            setViewMode('LIST');
-        } catch (e) {
-            console.error("Error adding patient:", e);
-        }
-    };
-
-    // -- Inspect Patient Details --
-    const openPatientDetails = async (patient: UserProfile) => {
-        if (!patient.uid) return;
-        setSelectedPatient(patient);
-        setPatientLogs([]); 
-        
-        try {
-            const d = await getDoc(doc(db, "users", patient.uid));
-            if (d.exists()) {
-                const data = d.data();
-                setPatientLogs(data.logs || []);
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    // -- Filtering --
-    const filteredAvailable = availableUsers.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const filteredMyPatients = myPatients.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return (
-        <LayoutContainer>
-            <PageHeader 
-                title="إدارة ملفات المرضى" 
-                subtitle="متابعة الحالات وإضافة مرضى جدد للعيادة."
-                action={
-                    viewMode === 'LIST' ? (
-                        <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary">
-                            <UserPlus size={18} /> ضم مريض جديد
-                        </Button>
-                    ) : (
-                        <Button onClick={() => setViewMode('LIST')} variant="secondary">
-                            <ChevronLeft size={18} /> العودة للقائمة
-                        </Button>
-                    )
-                }
-            />
-
-            {/* --- ADD NEW PATIENT MODE --- */}
-            {viewMode === 'ADD_NEW' && (
-                <div className="animate-in fade-in slide-in-from-right-4">
-                    <Card className="bg-slate-900 border-white/5 mb-6">
-                        <h3 className="text-xl font-bold text-white mb-4">البحث عن مستخدمين لضمهم</h3>
-                        <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-white/5 mb-6">
-                            <Search className="text-slate-500" />
-                            <input 
-                                className="bg-transparent w-full text-white outline-none placeholder-slate-600"
-                                placeholder="بحث عن مستخدم بالاسم أو البريد..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            {filteredAvailable.length === 0 && (
-                                <p className="text-slate-500 text-center col-span-2 py-8">لا يوجد مستخدمين متاحين للبحث الحالي.</p>
-                            )}
-                            {filteredAvailable.map(user => (
-                                <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
-                                            {user.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">{user.name}</h4>
-                                            <p className="text-xs text-slate-500">{user.email}</p>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'غير محدد'}</Badge>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Button onClick={() => handleAddPatient(user)} variant="success" className="!py-2 !px-3 !text-xs">
-                                        <UserPlus size={14} className="mr-1"/> ضم
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {/* --- MY PATIENTS LIST MODE --- */}
-            {viewMode === 'LIST' && (
-                <div className="animate-in fade-in">
-                    <div className="mb-6 relative">
-                         <Search className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-500" size={18} />
-                         <input 
-                            className="w-full bg-slate-900 border border-white/5 rounded-2xl py-4 px-12 text-white outline-none focus:border-indigo-500 transition-all"
-                            placeholder="بحث في مرضاك..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                         />
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {filteredMyPatients.map(patient => (
-                            <div 
-                                key={patient.uid} 
-                                onClick={() => openPatientDetails(patient)}
-                                className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-indigo-500/50 hover:bg-slate-800 cursor-pointer transition-all group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-bl-[4rem] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-                                
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-xl">
-                                            {patient.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-white">{patient.name}</h3>
-                                            <p className="text-sm text-slate-500">{patient.email}</p>
-                                        </div>
-                                    </div>
-                                    <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'}>
-                                        {patient.patientData?.isRecovered ? 'متعافي' : patient.patientData?.isPlanAssigned ? 'نشط' : 'بانتظار الخطة'}
-                                    </Badge>
-                                </div>
-                                
-                                <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">التقدم</span>
-                                        <span className="block font-bold text-indigo-400">{Math.round(patient.progress || 0)}%</span>
-                                    </div>
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">المراحل</span>
-                                        <span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'جارية' : '-'}</span>
-                                    </div>
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">آخر ظهور</span>
-                                        <span className="block font-bold text-slate-300 text-[10px] mt-1">
-                                            {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* --- PATIENT DETAILS MODAL (FULL STATS) --- */}
-            {selectedPatient && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-5xl h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative !p-0 overflow-hidden">
-                        {/* Header */}
-                        <div className="p-6 bg-slate-950 border-b border-white/5 flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-                                    {selectedPatient.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2>
-                                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                                        <FileText size={12}/> {selectedPatient.medType || 'غير محدد'} • {selectedPatient.medForm} • {selectedPatient.medUnit}
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white">
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 custom-scrollbar">
-                            {/* LEFT COLUMN: CHARTS */}
-                            <div className="lg:col-span-2 space-y-6">
-                                <Card className="bg-slate-950 border-white/5">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16} className="text-indigo-400"/> سجل الالتزام بالجرعات</h3>
-                                    <div className="h-64 w-full">
-                                        {patientLogs.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={patientLogs.slice(-30)}>
-                                                    <defs>
-                                                        <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                                    <XAxis dataKey="date" hide />
-                                                    <YAxis stroke="#475569" fontSize={10} />
-                                                    <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b'}} />
-                                                    <Area type="monotone" dataKey="doseTaken" stroke="#6366f1" fill="url(#colorDoseP)" />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-slate-600">لا توجد سجلات متاحة</div>
-                                        )}
-                                    </div>
-                                </Card>
-                            </div>
-
-                            {/* RIGHT COLUMN: STATS & LOGS */}
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">متوسط النوم</span>
-                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
-                                             <Moon size={16} className="text-blue-400"/> 
-                                             {patientLogs.length > 0 
-                                                ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) 
-                                                : '-'}h
-                                         </span>
-                                     </div>
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">المزاج العام</span>
-                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
-                                             <Smile size={16} className="text-emerald-400"/>
-                                             Good
-                                         </span>
-                                     </div>
-                                </div>
-
-                                <Card className="bg-slate-900 border-white/5 flex-1 max-h-[400px] overflow-hidden flex flex-col">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-slate-950 pb-2"><Calendar size={16} className="text-indigo-400"/> السجل اليومي</h3>
-                                    <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
-                                        {patientLogs.slice().reverse().map((log, i) => (
-                                            <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-white/5 text-xs">
-                                                <span className="text-slate-400">{log.date}</span>
-                                                <span className="font-bold text-white">{log.doseTaken} {selectedPatient.medUnit}</span>
-                                                <span>
-                                                    {log.mood === 'good' ? <Smile size={14} className="text-emerald-500"/> : 
-                                                     log.mood === 'bad' ? <Frown size={14} className="text-rose-500"/> : 
-                                                     <Meh size={14} className="text-amber-500"/>}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </Card>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
-        </LayoutContainer>
-    );
-};
-```
----
-
-### File: `views\DoctorPatientsView.tsx`
-```tsx
-import React, { useEffect, useState } from 'react';
-import { 
-    collection, query, where, getDocs, updateDoc, doc, getDoc 
-} from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
-import { UserProfile, DailyLog, PlanDay } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
-import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, ChevronRight, X 
-} from 'lucide-react';
-import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
-} from 'recharts';
-
-export const DoctorPatientsView = () => {
-    // -- State --
-    const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
-    const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-    
-    // -- UI State --
-    const [viewMode, setViewMode] = useState<'LIST' | 'ADD_NEW'>('LIST');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
-    const [patientLogs, setPatientLogs] = useState<DailyLog[]>([]);
-    
-    // -- Fetch Doctor's Patients --
-    const fetchMyPatients = async () => {
-        if (!auth.currentUser) return;
-        setLoading(true);
-        try {
-            const q = query(
-                collection(db, "users"), 
-                where("patientData.assignedDoctorId", "==", auth.currentUser.uid)
-            );
-            const snapshot = await getDocs(q);
-            const list: UserProfile[] = [];
-            snapshot.forEach(d => list.push({ uid: d.id, ...d.data() } as UserProfile));
-            setMyPatients(list);
-        } catch (e) { console.error(e); }
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        fetchMyPatients();
-    }, []);
-
-    // -- Fetch Available Users (For Adding) --
-    // يجلب المستخدمين الذين ليس لديهم طبيب وليسوا أطباء أو أدمن
-    const fetchAvailableUsers = async () => {
-        setLoading(true);
-        try {
-            const q = query(collection(db, "users")); 
-            const snapshot = await getDocs(q);
-            const list: UserProfile[] = [];
-            
-            snapshot.forEach(d => {
-                const data = d.data() as UserProfile;
-                // الشرط: ليس لديه طبيب، وليس طبيباً، وليس أدمناً
-                const hasDoctor = data.patientData?.assignedDoctorId;
-                const isStaff = data.role === 'doctor' || data.role === 'admin';
-                
-                // نقبل المستخدم العادي، أو المريض الذي لم يحدد له طبيب بعد (نظرياً)
-                if (!hasDoctor && !isStaff) {
-                    list.push({ uid: d.id, ...data });
-                }
-            });
-            setAvailableUsers(list);
-        } catch (e) { console.error(e); }
-        setLoading(false);
-    };
-
-    const handleAddPatient = async (user: UserProfile) => {
-        if (!auth.currentUser || !user.uid) return;
-        if (!confirm(`هل تريد ضم المستخدم ${user.name} إلى قائمة مرضاك؟`)) return;
-
-        try {
-            // تحديث بيانات المستخدم ليصبح مريضاً تابعاً لهذا الطبيب
-            await updateDoc(doc(db, "users", user.uid), {
-                role: 'patient',
-                patientData: {
-                    assignedDoctorId: auth.currentUser.uid,
-                    assignedDoctorName: auth.currentUser.displayName || 'Doctor',
-                    isPlanAssigned: false, // يحتاج خطة (سيظهر في الداشبورد كطلب معلق)
-                    isRecovered: false
-                },
-                // نحتفظ ببياناته الطبية كما هي ليراها الطبيب
-            });
-            
-            // تحديث القوائم محلياً
-            setAvailableUsers(prev => prev.filter(u => u.uid !== user.uid));
-            setMyPatients(prev => [...prev, { 
-                ...user, 
-                role: 'patient', 
-                patientData: { 
-                    assignedDoctorId: auth.currentUser!.uid, 
-                    assignedDoctorName: auth.currentUser!.displayName || 'Doctor', 
                     isPlanAssigned: false, 
                     isRecovered: false 
                 } 
@@ -3764,9 +3814,8 @@ export const DoctorPatientsView = () => {
     const openPatientDetails = async (patient: UserProfile) => {
         if (!patient.uid) return;
         setSelectedPatient(patient);
-        setPatientLogs([]); // Reset
+        setPatientLogs([]); 
         
-        // Fetch specific logs for charts
         try {
             const d = await getDoc(doc(db, "users", patient.uid));
             if (d.exists()) {
@@ -4992,6 +5041,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
     // -- 1. Fetch User Tickets --
     useEffect(() => {
+        // FIX: Ensure uid exists before querying
         if (!user.uid) return;
         
         // جلب التذاكر الخاصة بالمستخدم الحالي فقط
@@ -5030,7 +5080,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
     // -- 2. Actions --
     
     const createTicket = async () => {
-        if (!newSubject.trim() || !newMessage.trim() || !user.uid) return;
+        // FIX: Ensure uid exists
+        if (!user.uid) return;
+        if (!newSubject.trim() || !newMessage.trim()) return;
         
         const initialMsg: TicketMessage = {
             senderId: user.uid,
@@ -5060,7 +5112,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
     };
 
     const sendReply = async () => {
-        if (!newMessage.trim() || !activeTicket || !activeTicket.id || !user.uid) return;
+        // FIX: Ensure uid and ticket ID exist
+        if (!user.uid) return;
+        if (!newMessage.trim() || !activeTicket || !activeTicket.id) return;
 
         const newMsg: TicketMessage = {
             senderId: user.uid,
@@ -5072,8 +5126,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
-            // استخدمنا any هنا لتجاوز تدقيق Typescript الصارم مع Firestore arrayUnion في بعض النسخ، 
-            // لكن التحديث المباشر للمصفوفة كما يلي يعمل بشكل جيد مع البيانات المجلوبة
             const currentMessages = activeTicket.messages || [];
             
             await updateDoc(ticketRef, {
@@ -5100,7 +5152,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 }
             />
 
-            {/* Context Banner: يعرض هوية المستخدم لتسهيل لقطات الشاشة للدعم */}
+            {/* Context Banner */}
             <div className="mb-6 bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
@@ -5177,7 +5229,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             {/* Ticket Header */}
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
                                 <div>
-                                    <button onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
+                                    <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
                                         <X size={14}/> إغلاق
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-2">
@@ -5240,7 +5292,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             {showCreateModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
                     <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl">
-                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
                         
                         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                             <LifeBuoy className="text-indigo-500"/> طلب مساعدة جديد
@@ -5283,7 +5335,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Lock, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore'; 
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
@@ -5344,6 +5396,22 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // -- 0. Auth State Listener (Fixes Reload Issue) --
+  useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setAuthUser(user);
+        if (!user && !isDemoMode) {
+            setLoading(false);
+        }
+    });
+    return () => unsubscribe();
+  }, [isDemoMode]);
+
   // -- Load Local Data --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
@@ -5357,8 +5425,6 @@ function AppContent() {
     if (savedLogs) setLogs(JSON.parse(savedLogs));
     if (savedInventory) setInventory(JSON.parse(savedInventory));
     if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
-    
-    setLoading(false); 
   }, []);
 
   // -- 1. FETCH CLOUD DATA --
@@ -5373,10 +5439,10 @@ function AppContent() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // دمج البيانات مع الحالة المحلية
+            // Merge data with local state structure
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
             
-            // تصحيح هيكلية البيانات القديمة إذا وجدت
+            // Handle legacy data structure
             if (data.userProfile) {
                 Object.assign(fetchedProfile, data.userProfile);
             }
@@ -5388,11 +5454,24 @@ function AppContent() {
             if (data.inventory) setInventory(data.inventory);
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
             
-            // التعامل مع الحظر
+            // Handle Bans
             if (data.isBanned) {
                alert(t('banned_msg'));
                handleLogout();
             }
+          } else {
+            // Guest Issue Fix: Create basic profile if none exists
+            const newProfile: UserProfile = {
+                uid: authUser.uid,
+                email: authUser.email || '',
+                name: authUser.displayName || 'New User',
+                role: 'normal_user', // Default
+                setupComplete: false,
+                durationMonths: 0
+            };
+            
+            await setDoc(docRef, newProfile);
+            setUserProfile(newProfile);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -5414,25 +5493,30 @@ function AppContent() {
 
     // 2. Cloud Sync (Smart)
     if (authUser && userProfile) {
+        // Capture variables locally
+        const currentUser = authUser;
+        const currentProfileData = { ...userProfile };
+        
+        // Extract primitive values explicitly
+        const currentUid = currentUser.uid;
+        const currentEmail = currentUser.email || email || '';
+
         const syncToCloud = async () => {
             const totalDays = plan.length;
             const daysCompleted = logs.length;
             const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
             
             try {
-                // FIX: Define safeEmail explicitly before usage
-                const safeEmail = authUser.email || email || '';
-
-                // إعداد البيانات المراد تحديثها بناءً على الدور
+                // FIX: Spread `currentProfileData` FIRST, then overwrite with safe variables.
                 const updateData: any = {
-                    email: safeEmail,
+                    ...currentProfileData, 
+                    email: currentEmail,   
+                    uid: currentUid,       
                     lastActive: new Date().toISOString(),
-                    uid: authUser.uid,
-                    ...userProfile, // Save flat structure for easier querying
                 };
 
-                // فقط المرضى والمستخدمين العاديين لديهم خطة وسجلات ومخزون
-                if (userProfile.role === 'patient' || userProfile.role === 'normal_user') {
+                // Add specific data based on role
+                if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
                     updateData.inventory = inventory;
@@ -5440,12 +5524,11 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
-                // الأطباء لديهم بيانات إحصائية
-                if (userProfile.role === 'doctor' && userProfile.doctorData) {
-                    updateData.doctorData = userProfile.doctorData;
+                if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
+                    updateData.doctorData = currentProfileData.doctorData;
                 }
 
-                await setDoc(doc(db, "users", authUser.uid), updateData, { merge: true });
+                await setDoc(doc(db, "users", currentUid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
@@ -5453,7 +5536,7 @@ function AppContent() {
         const timeoutId = setTimeout(syncToCloud, 2000); // Debounce
         return () => clearTimeout(timeoutId);
     }
-  }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); // Added email to deps
+  }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); 
 
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
@@ -5467,7 +5550,6 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      // Default fallback based on role
       if (userProfile?.role === 'doctor') {
           if (currentView !== AppView.DOCTOR_DASHBOARD) setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
@@ -5484,7 +5566,6 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
@@ -5564,7 +5645,6 @@ function AppContent() {
             ...userProfile,
             setupComplete: true,
             planType: planType,
-            // If patient, assume doctor assigned it
             patientData: userProfile.role === 'patient' && userProfile.patientData ? {
                 ...userProfile.patientData,
                 isPlanAssigned: true 
@@ -5577,7 +5657,6 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    // 1. Update Inventory
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
@@ -5590,7 +5669,6 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
@@ -5598,7 +5676,6 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Dynamic Adjustment (Only for Algorithm users)
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
@@ -5606,7 +5683,6 @@ function AppContent() {
         setPlan(newPlan);
     }
     
-    // 4. Cleanup UI
     setSelectedDose(null);
     setSelectedMood(null);
     showToast(t('toast_log_success'));
@@ -5642,7 +5718,6 @@ function AppContent() {
       showToast(t('toast_freeze_success'));
   };
 
-  // --- SETTINGS: SPEED CONTROL ---
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
       if (userProfile?.planType === 'algorithm') {
@@ -5673,7 +5748,6 @@ function AppContent() {
     }
   };
 
-  // -- CALCULATED PROPS --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
@@ -5686,16 +5760,12 @@ function AppContent() {
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
 
-  // -- RENDER STATES --
-
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
-  // 1. LOGIN SCREEN
   if (!authUser && !isDemoMode) {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
-  // 2. ONBOARDING (If user exists but setup not complete)
   if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
     return <OnboardingView 
         userProfile={userProfile} 
@@ -5710,7 +5780,6 @@ function AppContent() {
     />;
   }
 
-  // 3. MAIN APP ROUTING
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -5719,7 +5788,6 @@ function AppContent() {
           </div>
       )}
 
-      {/* Navigation Bars */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
@@ -5731,7 +5799,6 @@ function AppContent() {
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
         
-        {/* --- DOCTOR WAITING SCREEN --- */}
         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
@@ -5747,7 +5814,6 @@ function AppContent() {
             </div>
         ) : 
 
-        /* --- PATIENT WAITING SCREEN --- */
         userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
@@ -5764,15 +5830,14 @@ function AppContent() {
             </div>
         ) : 
 
-        /* --- APPROVED VIEWS --- */
         (
             <>
-                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
-                {(userProfile?.role === 'normal_user' || (userProfile?.role === 'patient' && userProfile?.patientData?.isPlanAssigned)) && (
+                {/* FIX: Ensure userProfile exists before usage */}
+                {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                     <>
                         {currentView === AppView.DASHBOARD && (
                             <DashboardView 
-                                userProfile={userProfile}
+                                userProfile={userProfile} // Passed safely
                                 plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
                                 progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
                                 showDoctorWarning={showDoctorWarning}
@@ -5792,7 +5857,6 @@ function AppContent() {
                     </>
                 )}
 
-                {/* --- DOCTOR VIEWS --- */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                      <>
                         {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -5800,7 +5864,6 @@ function AppContent() {
                      </>
                 )}
 
-                {/* --- SHARED VIEWS --- */}
                 {currentView === AppView.COMMUNITY && userProfile && (
                      <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
                 )}
@@ -5816,7 +5879,6 @@ function AppContent() {
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
-                {/* SETTINGS VIEW */}
                 {currentView === AppView.SETTINGS && userProfile && (
                     <LayoutContainer>
                         <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
@@ -5861,7 +5923,6 @@ function AppContent() {
                             )}
                         </Card>
 
-                        {/* Account Actions */}
                         <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                             <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
@@ -6343,6 +6404,7 @@ export default {
     "noFallthroughCasesInSwitch": true
   },
   "include": ["."],
+  "exclude": ["vite.config.ts", "node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 ```
@@ -6590,5 +6652,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 34
-- Total Characters: 318221
-- Estimated Tokens: ~79.556 (GPT-4 Context)
+- Total Characters: 320231
+- Estimated Tokens: ~80.058 (GPT-4 Context)

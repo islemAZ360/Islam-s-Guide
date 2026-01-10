@@ -62,8 +62,9 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // -- 0. Auth State Listener (Fixes Reload Issue) --
+  // -- 0. Auth State Listener --
   useEffect(() => {
+    // FIX: Check if auth exists
     if (!auth) {
         setLoading(false);
         return;
@@ -73,6 +74,7 @@ function AppContent() {
         setAuthUser(user);
         if (!user && !isDemoMode) {
             setLoading(false);
+            setUserProfile(null); // Clear profile on logout
         }
     });
     return () => unsubscribe();
@@ -105,39 +107,44 @@ function AppContent() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Merge data with local state structure
+            // Merge data
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
             
-            // Handle legacy data structure
             if (data.userProfile) {
                 Object.assign(fetchedProfile, data.userProfile);
             }
 
             setUserProfile(fetchedProfile);
 
+            // *** FIX: Auto-redirect based on Role IMMEDIATELY ***
+            if (fetchedProfile.role === 'admin') {
+                setCurrentView(AppView.ADMIN);
+            } else if (fetchedProfile.role === 'doctor') {
+                setCurrentView(AppView.DOCTOR_DASHBOARD);
+            }
+            // Normal users stay on DASHBOARD (default)
+
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
             
-            // Handle Bans
             if (data.isBanned) {
                alert(t('banned_msg'));
                handleLogout();
             }
           } else {
-            // Guest Issue Fix: Create basic profile if none exists
-            const newProfile: UserProfile = {
+            // FIX: New User - Initialize as Skeleton to force Onboarding
+            const skeletonProfile: UserProfile = {
                 uid: authUser.uid,
                 email: authUser.email || '',
                 name: authUser.displayName || 'New User',
-                role: 'normal_user', // Default
-                setupComplete: false,
+                role: 'normal_user', // Will change in Onboarding
+                setupComplete: false, // Forces Onboarding View
                 durationMonths: 0
             };
-            
-            await setDoc(docRef, newProfile);
-            setUserProfile(newProfile);
+            setUserProfile(skeletonProfile);
+            // We don't save to DB yet to avoid creating "Guest" records unintentionally
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -150,20 +157,18 @@ function AppContent() {
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
-    // 1. Local Storage Sync
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
-    // 2. Cloud Sync (Smart)
-    if (authUser && userProfile) {
-        // Capture variables locally
+    if (authUser && userProfile && userProfile.setupComplete) {
+        // FIX: Capture variables locally
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Extract primitive values explicitly
+        // Extract primitive values
         const currentUid = currentUser.uid;
         const currentEmail = currentUser.email || email || '';
 
@@ -173,7 +178,7 @@ function AppContent() {
             const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
             
             try {
-                // FIX: Spread `currentProfileData` FIRST, then overwrite with safe variables.
+                // FIX: Spread first, then overwrite with safe values
                 const updateData: any = {
                     ...currentProfileData, 
                     email: currentEmail,   
@@ -181,7 +186,6 @@ function AppContent() {
                     lastActive: new Date().toISOString(),
                 };
 
-                // Add specific data based on role
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -199,7 +203,7 @@ function AppContent() {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 2000); // Debounce
+        const timeoutId = setTimeout(syncToCloud, 2000); 
         return () => clearTimeout(timeoutId);
     }
   }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); 
@@ -232,6 +236,7 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
+    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
@@ -239,7 +244,8 @@ function AppContent() {
             setAuthUser(cred.user);
             
             const adminProfile: UserProfile = { 
-                email, 
+                uid: cred.user.uid,
+                email: email, 
                 name: 'System Admin', 
                 role: 'admin', 
                 setupComplete: true, 
@@ -248,15 +254,22 @@ function AppContent() {
             
             await setDoc(doc(db, "users", cred.user.uid), adminProfile, { merge: true });
             setUserProfile(adminProfile);
-            setCurrentView(AppView.ADMIN);
+            setCurrentView(AppView.ADMIN); // Force Admin View
         } catch (err: any) {
              if (err.code === 'auth/user-not-found') {
                 const newCred = await createUserWithEmailAndPassword(auth, email, password);
                 setAuthUser(newCred.user);
-                const adminProfile: UserProfile = { email, name: 'System Admin', role: 'admin', setupComplete: true, durationMonths: 0 };
+                const adminProfile: UserProfile = { 
+                    uid: newCred.user.uid,
+                    email, 
+                    name: 'System Admin', 
+                    role: 'admin', 
+                    setupComplete: true, 
+                    durationMonths: 0 
+                };
                 await setDoc(doc(db, "users", newCred.user.uid), adminProfile, { merge: true });
                 setUserProfile(adminProfile);
-                setCurrentView(AppView.ADMIN);
+                setCurrentView(AppView.ADMIN); // Force Admin View
              } else {
                 setLoginError(err.message);
              }
@@ -428,10 +441,13 @@ function AppContent() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
+  // 1. LOGIN SCREEN
   if (!authUser && !isDemoMode) {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
+  // 2. ONBOARDING (If user exists but setup not complete)
+  // FIX: This ensures new users (who have setupComplete: false) see the onboarding, not Dashboard
   if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
     return <OnboardingView 
         userProfile={userProfile} 
@@ -446,6 +462,7 @@ function AppContent() {
     />;
   }
 
+  // 3. MAIN APP ROUTING
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -465,6 +482,7 @@ function AppContent() {
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
         
+        {/* --- DOCTOR WAITING SCREEN --- */}
         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
@@ -480,6 +498,7 @@ function AppContent() {
             </div>
         ) : 
 
+        /* --- PATIENT WAITING SCREEN --- */
         userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
@@ -496,14 +515,15 @@ function AppContent() {
             </div>
         ) : 
 
+        /* --- APPROVED VIEWS --- */
         (
             <>
-                {/* FIX: Ensure userProfile exists before usage */}
+                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
                 {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                     <>
                         {currentView === AppView.DASHBOARD && (
                             <DashboardView 
-                                userProfile={userProfile} // Passed safely
+                                userProfile={userProfile}
                                 plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
                                 progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
                                 showDoctorWarning={showDoctorWarning}
@@ -523,6 +543,7 @@ function AppContent() {
                     </>
                 )}
 
+                {/* --- DOCTOR VIEWS --- */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                      <>
                         {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -530,6 +551,7 @@ function AppContent() {
                      </>
                 )}
 
+                {/* --- SHARED VIEWS --- */}
                 {currentView === AppView.COMMUNITY && userProfile && (
                      <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
                 )}
@@ -538,13 +560,13 @@ function AppContent() {
                      <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
                 )}
                 
-                {/* FIX: Ensure userProfile is passed with valid data */}
                 {currentView === AppView.ARTICLES && (
                     <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
                 )}
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
+                {/* SETTINGS VIEW */}
                 {currentView === AppView.SETTINGS && userProfile && (
                     <LayoutContainer>
                         <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
@@ -589,6 +611,7 @@ function AppContent() {
                             )}
                         </Card>
 
+                        {/* Account Actions */}
                         <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                             <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
