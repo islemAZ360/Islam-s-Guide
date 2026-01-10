@@ -17,9 +17,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Check Roles
+    // --- CORE FIX: Super Admin Identification ---
+    // هذه الدالة تمنح صلاحيات الأدمن إذا كان الدور مسجلاً في القاعدة "أو" إذا كان البريد هو بريد الأدمن الرئيسي
     function isAdmin() {
-      return isSignedIn() && getUserData().role == 'admin';
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
+        request.auth.token.email == 'admin@islamguide.com' ||
+        request.auth.token.email == 'islamaz@bomba.com'
+      );
     }
     
     function isApprovedDoctor() {
@@ -29,38 +34,37 @@ service cloud.firestore {
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // Read: Owner, Admin, or Assigned Doctor
+      // Read: Admin sees ALL. Owner sees self. Doctors see approved profiles or their patients.
       allow read: if isSignedIn() && (
         isOwner(userId) || 
         isAdmin() || 
-        // Allow reading public doctor profiles (for selection list in onboarding)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        // Allow doctor to read their assigned patient's data
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Allow doctor to search for available users to add them
         (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
       );
 
-      // Create: Anyone (Registration)
+      // Create: Anyone can sign up.
       allow create: if isSignedIn() && isOwner(userId);
 
-      // Update: 
+      // Update: Logic to allow role changes securely
       allow update: if isSignedIn() && (
-        // 1. Admin can update anything
+        // 1. Admin can do ANYTHING (Ban, Approve, Edit Roles)
         isAdmin() || 
         
-        // 2. Owner can update own profile (Onboarding & Settings)
+        // 2. Normal User updating their own profile
         (isOwner(userId) && 
-         // Security Check: User cannot promote themselves to 'admin'
+         // Allow updating basic fields
+         // CRITICAL FIX: Allow Doctor Registration (switching from normal -> doctor)
+         // But prevent switching TO admin unless you are already the Super Admin
          request.resource.data.role != 'admin' &&
-         // Security Check: User cannot unban themselves if they are banned
+         // Prevent unbanning self
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
         
-        // 3. Doctor can update their patient's plan/status
+        // 3. Doctor updating their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
         
-        // 4. Doctor can assign themselves to a user (if user has no doctor)
+        // 4. Doctor claiming a new patient
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
          resource.data.role != 'doctor' &&
@@ -71,24 +75,16 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      // Read: Logic for Private Doctor Rooms
       allow read: if isSignedIn() && (
         isAdmin() ||
-        // Public Room
         resource.data.isDoctorRoom == false ||
-        // Doctor's Own Room
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
-        // Patient assigned to this Doctor
         (resource.data.isDoctorRoom == true && getUserData().patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      // Create: Admin or Approved Doctor
       allow create: if isAdmin() || isApprovedDoctor();
-
-      // Update/Delete: Creator or Admin
       allow update, delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
       
-      // Messages Sub-collection
       match /messages/{msgId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn();
@@ -97,19 +93,16 @@ service cloud.firestore {
 
     // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
-      // Everyone can read published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
-      
-      // Admin or Approved Doctor can write
       allow create: if isAdmin() || isApprovedDoctor();
       allow update, delete: if isAdmin() || (isApprovedDoctor() && resource.data.authorId == request.auth.uid);
     }
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); // Admin sees all tickets
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // --- 5. Audit Logs ---

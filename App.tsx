@@ -90,15 +90,23 @@ function AppContent() {
             const data = docSnap.data();
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
             
-            // Merge nested userProfile if exists (legacy support)
             if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
             // Auto-redirect logic based on Role status
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
             } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                // If doctor is approved, move them to dashboard if they aren't there
-                if (![AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, AppView.COMMUNITY].includes(currentView)) {
+                // FIX: Added all allowed views for doctors to prevent navigation loop
+                const allowedDoctorViews = [
+                    AppView.DOCTOR_DASHBOARD, 
+                    AppView.DOCTOR_PATIENTS, 
+                    AppView.COMMUNITY,
+                    AppView.ARTICLES,
+                    AppView.SUPPORT,
+                    AppView.SETTINGS
+                ];
+                
+                if (!allowedDoctorViews.includes(currentView)) {
                      setCurrentView(AppView.DOCTOR_DASHBOARD);
                 }
             }
@@ -134,25 +142,20 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]);
+  }, [authUser]); // Removed currentView dependency to avoid loops
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
-    // Local Storage Sync
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
-    // Cloud Sync (With Safety Guard)
     if (authUser && userProfile && userProfile.setupComplete) {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // === SAFETY GUARD ===
-        // If local state says 'doctor' but implies incomplete data (missing doctorData),
-        // STOP sync immediately to prevent overwriting the DB with empty data.
         if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
             console.warn("Sync blocked: Local doctor data is incomplete.");
             return;
@@ -168,11 +171,9 @@ function AppContent() {
                     email: currentUser.email || email,   
                     uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
-                    // Update name only if present
                     ...(currentProfileData.name ? { name: currentProfileData.name } : {})
                 };
 
-                // Sync Medical Data ONLY for Patients/Users
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -181,15 +182,12 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
-                // Never overwrite 'doctorData' via this automatic sync
-                // Doctor data is critical and should only be updated via dedicated forms (Onboarding/Settings)
-
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 5000); // 5s debounce to be safe
+        const timeoutId = setTimeout(syncToCloud, 5000); 
         return () => clearTimeout(timeoutId);
     }
   }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
@@ -222,7 +220,6 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {

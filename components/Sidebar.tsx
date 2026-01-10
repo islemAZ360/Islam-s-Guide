@@ -16,7 +16,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // تحديد القوائم بناءً على الدور
   const getMenuItems = () => {
@@ -26,22 +26,21 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     // 1. ADMIN MENU
     if (role === 'admin') {
       items.push(
-        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, // الرئيسية للأدمن
-        { id: AppView.COMMUNITY, icon: Users, label: 'إدارة المجتمع' },
-        { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
+        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
+        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') }, // استخدام مفاتيح الترجمة
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
-      // ملاحظة: تم إزالة الإعدادات للأدمن كما طلبت
     }
     
     // 2. DOCTOR MENU
     else if (role === 'doctor') {
       items.push(
-        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'لوحة القيادة' },
-        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'ملفات المرضى' },
-        { id: AppView.ARTICLES, icon: BookOpen, label: 'نشر مقال' },
-        { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
+        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, // "Patient Files Management"
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, // "Chat Rooms"
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
       // الإعدادات للطبيب
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
@@ -91,12 +90,12 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         <div className="mr-[3.25rem] mt-2">
             {userProfile?.role === 'doctor' && (
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    نسخة الأطباء
+                    {language === 'ar' ? 'نسخة الأطباء' : 'Doctor Edition'}
                 </span>
             )}
             {userProfile?.role === 'admin' && (
                 <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    لوحة الإدارة
+                    {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
                 </span>
             )}
             {(userProfile?.role === 'patient' || userProfile?.role === 'normal_user') && (
@@ -123,7 +122,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
               <div className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_indigo]"></div>
             )}
             <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
-            <span className="font-bold text-lg tracking-wide">{item.label}</span>
+            <span className="font-bold text-lg tracking-wide truncate">{item.label}</span>
             
             {item.id === AppView.ADMIN && (
                 <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
