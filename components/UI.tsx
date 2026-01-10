@@ -41,12 +41,10 @@ export const DoctorReportModal = ({
   // Determine Unit Label
   const unitLabel = userProfile?.medUnit || 'mg';
   
-  // Pace Description
-  const getPaceLabel = (speed?: number) => {
-      if (!speed || speed === 1.0) return "Standard (Balanced)";
-      if (speed < 1.0) return "Extended (Slow Taper)";
-      return "Accelerated (Fast Taper)";
-  };
+  // Plan Description
+  const planTypeLabel = userProfile?.planType === 'manual' 
+    ? `Managed by Dr. ${userProfile.patientData?.assignedDoctorName || 'Unknown'}` 
+    : 'Automated Smart Algorithm';
 
   if (!isOpen) return null;
 
@@ -72,7 +70,7 @@ export const DoctorReportModal = ({
             <div className="border-b pb-6 flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 mb-1">Islam's Guide Report</h1>
-                    <p className="text-slate-500 text-sm">Automated Tapering Log & Biometrics</p>
+                    <p className="text-slate-500 text-sm">Recovery Progress & Adherence Log</p>
                 </div>
                 <div className="text-right">
                     <p className="font-bold text-lg">{userProfile?.name}</p>
@@ -82,7 +80,7 @@ export const DoctorReportModal = ({
                             {userProfile?.medForm === 'liquid' ? 'LIQUID FORMULATION' : 'TABLET FORMULATION'}
                         </span>
                         <span className="text-xs font-bold text-slate-400 uppercase">
-                            Strategy: {userProfile?.planType === 'manual' ? 'Doctor Fixed Plan' : 'Smart Algorithm'}
+                            Strategy: {planTypeLabel}
                         </span>
                     </div>
                 </div>
@@ -94,8 +92,10 @@ export const DoctorReportModal = ({
                      <span className="font-bold text-lg capitalize">{userProfile?.medType || 'Standard'}</span>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                     <span className="block text-xs text-slate-500 uppercase font-bold">Tapering Pace</span>
-                     <span className="font-bold text-lg">{getPaceLabel(userProfile?.speedModifier)}</span>
+                     <span className="block text-xs text-slate-500 uppercase font-bold">Current Dose</span>
+                     <span className="font-bold text-lg">
+                        {plan.find(p => p.date === new Date().toISOString().split('T')[0])?.plannedDose || 0}{unitLabel}
+                     </span>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                      <span className="block text-xs text-slate-500 uppercase font-bold">Compliance Score</span>

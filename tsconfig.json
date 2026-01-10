@@ -5,25 +5,21 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+
+    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+
+    /* Linting */
     "strict": true,
-    
-    /* التعديل هنا: السماح بالمتغيرات غير المستخدمة لكي لا يفشل البناء */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    
     "noFallthroughCasesInSwitch": true
   },
   "include": ["."],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "vite.config.ts" 
-  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

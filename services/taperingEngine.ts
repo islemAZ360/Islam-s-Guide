@@ -1,7 +1,7 @@
 import { Inventory, PlanDay, DailyLog, ManualPhase } from '../types';
 
 /**
- * Helper to add days safely
+ * Helper to add days safely to a date string
  */
 const addDays = (dateStr: string, days: number): string => {
   const date = new Date(dateStr);
@@ -10,10 +10,11 @@ const addDays = (dateStr: string, days: number): string => {
 };
 
 /**
- * Calculates total inventory based on form type
+ * Calculates total inventory based on form type (Pills or Liquid)
  */
 export const calculateTotalInventory = (inv: Inventory): number => {
-  const total = (inv.boxes * inv.pillsPerBox) + inv.loosePills;
+  // If pillsPerBox is 0, we assume raw count in loosePills or boxes
+  const total = (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
   return Math.max(0, total);
 };
 
@@ -26,7 +27,9 @@ const roundToSplit = (num: number): number => {
 };
 
 /**
- * GENERATE MANUAL PLAN
+ * --- 1. MANUAL PLAN GENERATOR (For Doctors) ---
+ * Converts doctor's phases (e.g., "5mg for 7 days", "2.5mg for 7 days")
+ * into a full calendar array.
  */
 export const generateManualPlan = (
   phases: ManualPhase[], 
@@ -42,6 +45,7 @@ export const generateManualPlan = (
         plannedDose: phase.dose,
         isPast: false
       });
+      // Move to next day
       currentDate = addDays(currentDate, 1);
     }
   });
@@ -50,8 +54,7 @@ export const generateManualPlan = (
 };
 
 /**
- * SMART INTELLIGENT ALGORITHM (Elastic Inventory Logic)
- * 
+ * --- 2. SMART INTELLIGENT ALGORITHM (For Normal Users) ---
  * Philosophy:
  * 1. "Safety First": Always reserve pills for the 'Tail' (Stopping Phase).
  * 2. If Inventory is LOW: Shorten the high-dose duration, but keep the tail long.
@@ -61,12 +64,12 @@ export const generatePlan = (
   totalPills: number, 
   startDose: number, 
   startDateStr: string,
-  speedModifier: number = 1.0 // 0.8 (Slow/Extended), 1.0 (Normal), 1.2 (Fast)
+  speedModifier: number = 1.0 // 0.8 (Slow), 1.0 (Normal), 1.2 (Fast)
 ): PlanDay[] => {
   
   if (totalPills <= 0 || startDose <= 0) return [];
 
-  // --- 1. SETUP & DEFINITIONS ---
+  // --- A. SETUP & DEFINITIONS ---
   let currentDose = roundToSplit(startDose);
   
   // Define the "Tail Unit" (The smallest dose before stopping)
@@ -78,7 +81,7 @@ export const generatePlan = (
   // Faster speed (1.2) means SHORTER duration.
   const basePhaseDuration = Math.max(7, Math.round(14 / speedModifier));
 
-  // --- 2. RESERVE INVENTORY FOR THE "ESSENTIAL TAIL" ---
+  // --- B. RESERVE INVENTORY FOR THE "ESSENTIAL TAIL" ---
   // We MUST guarantee these phases exist to prevent shock.
   // Phase T1: Every Other Day (1 On, 1 Off) -> Needs (basePhaseDuration / 2) pills
   // Phase T2: Every 3rd Day (1 On, 2 Off)   -> Needs (basePhaseDuration / 3) pills
@@ -99,7 +102,7 @@ export const generatePlan = (
       inventoryForDescent = 0; // We will just use whatever we have for the tail
   }
 
-  // --- 3. BUILD THE DESCENTS (From StartDose down to TailUnit) ---
+  // --- C. BUILD THE DESCENTS (From StartDose down to TailUnit) ---
   let descentPlan: { dose: number, days: number }[] = [];
   
   // Only calculate descent if we are above the tail unit
@@ -122,10 +125,7 @@ export const generatePlan = (
           if (actualDays > 0) {
               descentPlan.push({ dose: currentDose, days: actualDays });
               inventoryForDescent -= (currentDose * actualDays);
-          } else {
-              // We can't afford any days at this high dose, force reduce to save pills
-              // This acts like a "Rapid Detox" for the start to ensure soft landing
-          }
+          } 
           
           // Calculate Next Dose
           let nextDose = roundToSplit(currentDose * (1 - reductionRate));
@@ -144,7 +144,7 @@ export const generatePlan = (
       currentDose = tailUnit; 
   }
 
-  // --- 4. BUILD THE TAIL (Smart Extension) ---
+  // --- D. BUILD THE TAIL (Smart Extension) ---
   // Now we use ALL remaining pills to build the best possible tail.
   
   // Re-calculate true remaining (Total - Used in Descent)
@@ -173,13 +173,11 @@ export const generatePlan = (
       // B. Level 1: Skip 1 Day (1 On, 1 Off)
       // Loop until we reach base duration OR run out
       let daysCount1 = 0;
-      // We want to reach at least baseDuration * 2 (total days passed)
-      // Cycle is 2 days.
       while (remainingForTail >= tailUnit && daysCount1 < basePhaseDuration) {
           tailPlan.push({ dose: tailUnit, days: 1 });
           tailPlan.push({ dose: 0, days: 1 });
           remainingForTail -= tailUnit;
-          daysCount1 += 2; // 2 days passed in calendar
+          daysCount1 += 2; 
       }
 
       // C. Level 2: Skip 2 Days (1 On, 2 Off)
@@ -206,7 +204,7 @@ export const generatePlan = (
       }
   }
 
-  // --- 5. ASSEMBLE ---
+  // --- E. ASSEMBLE FINAL PLAN ---
   const finalSteps = [...descentPlan, ...tailPlan];
   const plan: PlanDay[] = [];
   let currDate = startDateStr.split('T')[0];
@@ -226,8 +224,8 @@ export const generatePlan = (
 };
 
 /**
- * RE-CALCULATE PLAN DYNAMICALLY
- * Adjusted to ensure it recalculates based on remaining inventory correctly.
+ * --- 3. RE-CALCULATE DYNAMICALLY ---
+ * Used by the algorithm to adjust the future based on real usage.
  */
 export const adjustPlan = (
   originalPlan: PlanDay[],
@@ -247,11 +245,11 @@ export const adjustPlan = (
   const lastLog = sortedLogs[sortedLogs.length - 1];
   const lastLogDate = lastLog.date;
 
-  // Calculate REAL remaining inventory
+  // Calculate REAL remaining inventory based on what was actually taken
   const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
   const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
 
-  // Preserve History
+  // Preserve History (Past days remain as they were logged/planned)
   const historyDays = originalPlan
     .filter(day => day.date <= lastLogDate)
     .map(day => {
@@ -264,13 +262,12 @@ export const adjustPlan = (
     });
   
   // Generate Future from TOMORROW
-  // Use the last dose taken as the new start point (or the planned next if today was skipped/0)
-  // If last dose was 0 (skip day), we need to find the last active dose to know where we are.
   let newStartDose = lastLog.doseTaken;
+  
+  // If last dose was 0 (skip day), find the last active dose to know our level
   if (newStartDose === 0) {
-      // Find last non-zero dose
       const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
-      newStartDose = lastActive ? lastActive.doseTaken : originalPlan[0].plannedDose;
+      newStartDose = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0);
   }
 
   const nextDayStr = addDays(lastLogDate, 1);

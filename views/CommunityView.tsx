@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc 
+    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc, where 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
@@ -8,7 +8,7 @@ import { LayoutContainer, Card, Button, Badge } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap 
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock 
 } from 'lucide-react';
 
 interface CommunityViewProps {
@@ -30,16 +30,40 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-    // 1. جلب غرف الدردشة (Realtime)
+    // 1. جلب غرف الدردشة (Smart Filtering)
     useEffect(() => {
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const r: ChatRoom[] = [];
-            snapshot.forEach((doc) => r.push({ id: doc.id, ...doc.data() } as ChatRoom));
-            setRooms(r);
+            const allRooms: ChatRoom[] = [];
+            snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
+            
+            // تصفية الغرف بناءً على الصلاحيات
+            const filteredRooms = allRooms.filter(room => {
+                // الأدمن يرى كل شيء
+                if (currentUser.role === 'admin') return true;
+
+                // الغرف العامة تظهر للكل
+                if (!room.isDoctorRoom) return true;
+
+                // غرف الأطباء الخاصة
+                if (currentUser.role === 'doctor') {
+                    // الطبيب يرى غرفته الخاصة فقط
+                    return room.doctorId === currentUser.uid;
+                }
+
+                if (currentUser.role === 'patient') {
+                    // المريض يرى غرفة طبيبه المعالج فقط
+                    return room.doctorId === currentUser.patientData?.assignedDoctorId;
+                }
+
+                // المستخدم العادي لا يرى غرف الأطباء
+                return false;
+            });
+
+            setRooms(filteredRooms);
         });
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     // 2. جلب لوحة المتصدرين (Top 20 by Progress)
     useEffect(() => {
@@ -62,27 +86,35 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             const m: ChatMessage[] = [];
             snapshot.forEach((doc) => m.push({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(m);
-            // التمرير التلقائي لآخر رسالة
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
         });
         return () => unsubscribe();
     }, [activeRoom]);
 
+    // --- Actions ---
+
     const createRoom = async () => {
         if (!newRoomName.trim()) return;
+        
+        const isDoctor = currentUser.role === 'doctor';
+        
         await addDoc(collection(db, "rooms"), {
             name: newRoomName,
             createdBy: currentUser.uid,
             creatorName: currentUser.name,
             language: 'mixed',
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            // Doctor logic
+            isDoctorRoom: isDoctor,
+            doctorId: isDoctor ? currentUser.uid : null
         });
+        
         setNewRoomName("");
         setShowCreateModal(false);
     };
 
     const deleteRoom = async (roomId: string) => {
-        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟")) {
+        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟ سيتم حذف جميع الرسائل.")) {
             await deleteDoc(doc(db, "rooms", roomId));
             if (activeRoom?.id === roomId) setActiveRoom(null);
         }
@@ -90,12 +122,16 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom) return;
+        
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: newMessage,
             senderId: currentUser.uid,
             senderName: currentUser.name,
             timestamp: Date.now(),
-            isAdmin: !!currentUser.isAdmin
+            // Flags for UI styling
+            role: currentUser.role,
+            isDoctor: currentUser.role === 'doctor',
+            isAdmin: currentUser.role === 'admin'
         });
         setNewMessage("");
     };
@@ -122,14 +158,12 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             {tab === 'leaderboard' && (
                 <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
                     {leaderboard.map((user, idx) => {
-                        // تلوين المراكز الثلاثة الأولى
                         let rankColor = 'bg-slate-800 text-slate-400';
                         let borderClass = 'border-white/5';
                         if (idx === 0) { rankColor = 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-amber-500/20 shadow-lg'; borderClass = 'border-amber-500/30'; }
                         else if (idx === 1) { rankColor = 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-500/20 shadow-lg'; borderClass = 'border-slate-400/30'; }
                         else if (idx === 2) { rankColor = 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/20 shadow-lg'; borderClass = 'border-orange-500/30'; }
 
-                        // تحديد أيقونة الدواء (سائل أم حبوب)
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
@@ -142,7 +176,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     <div>
                                         <p className="font-bold text-white flex items-center gap-2">
                                             {user.name} 
-                                            {user.isAdmin && <ShieldCheck size={14} className="text-indigo-400" />}
+                                            {user.role === 'admin' && <ShieldCheck size={14} className="text-rose-400" />}
+                                            {user.role === 'doctor' && <Stethoscope size={14} className="text-blue-400" />}
                                         </p>
                                         <div className="flex gap-2 mt-1">
                                             {user.medType && (
@@ -171,21 +206,23 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             {tab === 'rooms' && !activeRoom && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                     <div className="flex justify-between items-center mb-4 shrink-0">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2"><Globe size={20} className="text-indigo-400"/> الغرف النشطة</h2>
-                        <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-full">
-                            <Plus size={16} /> {t('create_room')}
-                        </Button>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2"><Globe size={20} className="text-indigo-400"/> الغرف المتاحة</h2>
+                        {/* فقط الأدمن والطبيب يمكنهم إنشاء غرف */}
+                        {(currentUser.role === 'admin' || currentUser.role === 'doctor') && (
+                            <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-full">
+                                <Plus size={16} /> {t('create_room')}
+                            </Button>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pb-20 custom-scrollbar pr-1">
                         {rooms.map(room => (
-                            <div key={room.id} onClick={() => setActiveRoom(room)} className="bg-slate-900 border border-white/5 p-5 rounded-2xl hover:border-indigo-500/50 hover:bg-slate-800 transition-all cursor-pointer group relative flex flex-col justify-between h-32">
+                            <div key={room.id} onClick={() => setActiveRoom(room)} className={`bg-slate-900 border p-5 rounded-2xl hover:bg-slate-800 transition-all cursor-pointer group relative flex flex-col justify-between h-32 ${room.isDoctorRoom ? 'border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5'}`}>
                                 <div className="flex justify-between items-start">
-                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                                        <MessageCircle size={20} />
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${room.isDoctorRoom ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
+                                        {room.isDoctorRoom ? <Stethoscope size={20} /> : <MessageCircle size={20} />}
                                     </div>
-                                    {/* زر الحذف لصاحب الغرفة أو الأدمن */}
-                                    {(currentUser.uid === room.createdBy || currentUser.isAdmin) && (
+                                    {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
                                             className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-full transition-colors"
@@ -195,8 +232,13 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     )}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white truncate">{room.name}</h3>
-                                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">By {room.creatorName}</p>
+                                    <h3 className="text-lg font-bold text-white truncate flex items-center gap-2">
+                                        {room.name}
+                                        {room.isDoctorRoom && <Lock size={12} className="text-indigo-400"/>}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                        {room.isDoctorRoom ? 'عيادة خاصة' : `By ${room.creatorName}`}
+                                    </p>
                                 </div>
                             </div>
                         ))}
@@ -206,13 +248,20 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     {showCreateModal && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
                             <Card className="w-full max-w-sm bg-slate-900 border-white/10 shadow-2xl">
-                                <h3 className="text-lg font-bold text-white mb-4">{t('create_room')}</h3>
+                                <h3 className="text-lg font-bold text-white mb-4">
+                                    {currentUser.role === 'doctor' ? 'إنشاء غرفة للمرضى' : t('create_room')}
+                                </h3>
                                 <input 
                                     className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-4 outline-none focus:border-indigo-500"
                                     placeholder={t('room_name')}
                                     value={newRoomName}
                                     onChange={(e) => setNewRoomName(e.target.value)}
                                 />
+                                {currentUser.role === 'doctor' && (
+                                    <p className="text-xs text-indigo-400 mb-4 bg-indigo-500/10 p-2 rounded-lg">
+                                        * سيتمكن جميع مرضاك الحاليين والمستقبليين من دخول هذه الغرفة تلقائياً.
+                                    </p>
+                                )}
                                 <div className="flex gap-2 justify-end">
                                     <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('close')}</Button>
                                     <Button variant="primary" onClick={createRoom}>{t('create_room')}</Button>
@@ -229,8 +278,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     {/* Header */}
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-md absolute top-0 left-0 right-0 z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
-                                <MessageCircle size={16} />
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${activeRoom.isDoctorRoom ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                {activeRoom.isDoctorRoom ? <Stethoscope size={16}/> : <MessageCircle size={16} />}
                             </div>
                             <div>
                                 <h3 className="font-bold text-white text-sm">{activeRoom.name}</h3>
@@ -248,6 +297,12 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             const isMe = msg.senderId === currentUser.uid;
                             const showAvatar = i === 0 || messages[i-1].senderId !== msg.senderId;
                             
+                            // Styling based on role
+                            let bubbleClass = 'bg-slate-800 text-slate-200';
+                            if (isMe) bubbleClass = 'bg-indigo-600 text-white';
+                            else if (msg.isDoctor || msg.role === 'doctor') bubbleClass = 'bg-blue-900/40 border border-blue-500/30 text-blue-100';
+                            else if (msg.isAdmin || msg.role === 'admin') bubbleClass = 'bg-rose-900/40 border border-rose-500/30 text-rose-100';
+
                             return (
                                 <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                                     {/* Avatar */}
@@ -259,17 +314,12 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         {showAvatar && !isMe && (
                                             <span className="text-[10px] text-slate-500 mb-1 ml-1 flex items-center gap-1">
                                                 {msg.senderName}
-                                                {msg.isAdmin && <Badge color="amber" className="!text-[8px] !px-1.5 !py-0">ADMIN</Badge>}
+                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0">DR</Badge>}
+                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0">ADMIN</Badge>}
                                             </span>
                                         )}
                                         
-                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                                            isMe 
-                                            ? 'bg-indigo-600 text-white rounded-tr-none' 
-                                            : msg.isAdmin 
-                                                ? 'bg-amber-900/20 border border-amber-500/30 text-amber-100 rounded-tl-none'
-                                                : 'bg-slate-800 text-slate-200 rounded-tl-none'
-                                        }`}>
+                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${bubbleClass} ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}`}>
                                             {msg.text}
                                         </div>
                                         <span className="text-[9px] text-slate-600 mt-1 px-1 opacity-70">

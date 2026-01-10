@@ -2,75 +2,117 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- دوال مساعدة (Helper Functions) ---
+    // --- Helper Functions ---
     
-    // التحقق من تسجيل الدخول
     function isSignedIn() {
       return request.auth != null;
     }
     
-    // التحقق من ملكية الحساب
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
-    // التحقق من صلاحيات الأدمن (عن طريق قراءة مستند المستخدم)
+    // Fetch the requesting user's profile
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check Roles
     function isAdmin() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      return isSignedIn() && getUserData().role == 'admin';
+    }
+    
+    function isApprovedDoctor() {
+      let user = getUserData();
+      return isSignedIn() && user.role == 'doctor' && user.doctorData.accountStatus == 'approved';
     }
 
-    // --- 1. مجموعة المستخدمين (Users) ---
+    // --- 1. Users Collection ---
     match /users/{userId} {
-      // الجميع يقرأ (لأجل لوحة المتصدرين)، الكتابة للمالك أو الأدمن
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isOwner(userId);
-      // الأدمن فقط يستطيع تعديل حقول حساسة مثل الحظر (isBanned)
-      allow update: if isSignedIn() && (
+      // Read: Owner, Admin, or Assigned Doctor
+      allow read: if isSignedIn() && (
+        isOwner(userId) || 
         isAdmin() || 
+        // Allow reading public doctor profiles (for selection list)
+        (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
+        // Allow doctor to read their assigned patient's data
+        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        // Allow doctor to search for users (to add them) - Restricted to essential fields in query usually, 
+        // but for simplicity allow read if user has NO doctor yet (available users)
+        (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
+      );
+
+      // Create: Anyone (Registration)
+      allow create: if isSignedIn() && isOwner(userId);
+
+      // Update: 
+      allow update: if isSignedIn() && (
+        // 1. Admin can update anything (bans, approvals)
+        isAdmin() || 
+        // 2. Owner can update own profile (with restrictions)
         (isOwner(userId) && 
-         // منع المستخدم من منح نفسه صلاحيات أدمن أو فك الحظر عن نفسه
-         request.resource.data.isAdmin == resource.data.isAdmin && 
+         // Prevent self-promoting to admin or unbanning self
+         request.resource.data.role == resource.data.role && 
          request.resource.data.isBanned == resource.data.isBanned
+        ) ||
+        // 3. Doctor can update their patient's plan/status
+        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        // 4. Doctor can assign themselves to a user (if user has no doctor)
+        (isApprovedDoctor() && 
+         resource.data.role != 'admin' && 
+         resource.data.role != 'doctor' &&
+         (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null)
         )
       );
     }
 
-    // --- 2. غرف الدردشة (Chat Rooms) ---
+    // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      allow read, create: if isSignedIn();
-      // الحذف لصاحب الغرفة أو الأدمن فقط
-      allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      // Read: Logic for Private Doctor Rooms
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        // Public Room
+        resource.data.isDoctorRoom == false ||
+        // Doctor's Own Room
+        (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
+        // Patient assigned to this Doctor
+        (resource.data.isDoctorRoom == true && getUserData().patientData.assignedDoctorId == resource.data.doctorId)
+      );
+
+      // Create: Admin or Approved Doctor
+      allow create: if isAdmin() || isApprovedDoctor();
+
+      // Update/Delete: Creator or Admin
+      allow update, delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
       
+      // Messages Sub-collection
       match /messages/{msgId} {
-        allow read, create: if isSignedIn();
+        allow read: if isSignedIn(); // Parent room read rule handles access implicitly usually, but explicit check good
+        allow create: if isSignedIn();
       }
     }
 
-    // --- 3. نظام إدارة المحتوى (Articles) ---
+    // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
-      // الجميع يقرأ المقالات المنشورة
-      allow read: if isSignedIn();
-      // الأدمن فقط ينشئ ويعدل ويحذف
-      allow create, update, delete: if isAdmin();
+      // Everyone can read published articles
+      allow read: if isSignedIn() && resource.data.isPublished == true;
+      
+      // Admin or Approved Doctor can write
+      allow create: if isAdmin() || isApprovedDoctor();
+      allow update, delete: if isAdmin() || (isApprovedDoctor() && resource.data.authorId == request.auth.uid);
     }
 
-    // --- 4. نظام الدعم الفني (Support Tickets) ---
+    // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      // المستخدم يرى تذاكره فقط، الأدمن يرى الكل
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      // المستخدم ينشئ تذكرة
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
       allow create: if isSignedIn();
-      // التعديل (مثل الرد أو تغيير الحالة) متاح للطرفين
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
     }
 
-    // --- 5. سجلات التدقيق (Audit Logs) ---
+    // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
-      // الأدمن فقط يقرأ ويكتب السجلات
-      allow read, create: if isAdmin();
-      // لا يسمح بالحذف أو التعديل لضمان نزاهة السجلات
+      allow read: if isAdmin();
+      allow create: if isSignedIn(); // Allow system to log actions
       allow update, delete: if false;
     }
   }

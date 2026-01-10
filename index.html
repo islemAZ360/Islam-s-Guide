@@ -6,13 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
     <title>Islam's Guide - رفيق التعافي الذكي</title>
-    <meta name="description" content="نظام ذكي للتعافي التدريجي الآمن، مدعوم بالخوارزميات وعلم الأعصاب.">
+    <meta name="description" content="نظام ذكي للتعافي التدريجي الآمن، يجمع بين الخوارزميات والإشراف الطبي.">
     <meta name="theme-color" content="#020617">
 
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
+    <!-- Tailwind CSS (CDN for quick prototyping/fallback, though build uses PostCSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
@@ -22,6 +24,7 @@
         font-family: 'Tajawal', sans-serif;
         overflow-x: hidden;
       }
+      /* Custom Scrollbar Globally */
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: #0f172a; }
       ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -30,7 +33,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- التعديل هنا: الإشارة للملف في المجلد الحالي مباشرة -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

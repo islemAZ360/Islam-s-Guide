@@ -2,8 +2,10 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
+// --- إعدادات الاتصال ---
+// يجب استبدال هذه القيم بالقيم الخاصة بمشروعك من Firebase Console
 const firebaseConfig = {
-  apiKey: "AIzaSyB9_8yeOazYKhzHiHvyzBaIoDQiNduMnS0",
+  apiKey: "AIzaSyB9_8yeOazYKhzHiHvyzBaIoDQiNduMnS0", // Placeholder Key
   authDomain: "islam-s-guide.firebaseapp.com",
   projectId: "islam-s-guide",
   storageBucket: "islam-s-guide.firebasestorage.app",
@@ -12,19 +14,26 @@ const firebaseConfig = {
   measurementId: "G-VNVJGFXLN4"
 };
 
-// تهيئة Firebase (مع معالجة الأخطاء في حال عدم وجود الإنترنت)
+// تهيئة المتغيرات
 let app;
 let auth: Auth | undefined;
 let db: Firestore; 
 const googleProvider = new GoogleAuthProvider();
 
 try {
+  // محاولة تهيئة التطبيق
   app = initializeApp(firebaseConfig);
+  
+  // تهيئة خدمات المصادقة وقاعدة البيانات
   auth = getAuth(app);
   db = getFirestore(app);
+  
+  console.log("Firebase initialized successfully.");
 } catch (error) {
-  console.warn("Firebase initialization failed or pending network connection.", error);
-  // يمكن إضافة منطق هنا للعمل بوضع عدم الاتصال (Offline Mode)
+  console.error("Firebase initialization failed:", error);
+  // في حالة فشل الاتصال، يمكن هنا تفعيل "وضع عدم الاتصال" أو إظهار رسالة خطأ
+  // لكن بما أن التطبيق يعتمد كلياً على البيانات السحابية الآن، سنكتفي بتسجيل الخطأ
 }
 
+// تصدير الخدمات لاستخدامها في باقي الملفات
 export { auth, db, googleProvider };

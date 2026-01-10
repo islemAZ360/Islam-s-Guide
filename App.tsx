@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Lock, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore'; 
@@ -20,6 +20,8 @@ import { AdminView } from './views/AdminView';
 import { CommunityView } from './views/CommunityView';
 import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
+import { DoctorDashboardView } from './views/DoctorDashboardView'; 
+import { DoctorPatientsView } from './views/DoctorPatientsView'; 
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -43,7 +45,7 @@ function AppContent() {
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [logs, setLogs] = useState<DailyLog[]>([]);
   
-  // New: Speed Modifier State (1.0 = Normal, 0.8 = Slow/Extend, 1.2 = Fast)
+  // Speed Modifier
   const [speedModifier, setSpeedModifier] = useState<number>(1.0);
   
   // Navigation
@@ -66,7 +68,7 @@ function AppContent() {
     const savedPlan = localStorage.getItem('taper_plan');
     const savedLogs = localStorage.getItem('taper_logs');
     const savedInventory = localStorage.getItem('taper_inventory');
-    const savedSpeed = localStorage.getItem('taper_speed'); // Load Speed
+    const savedSpeed = localStorage.getItem('taper_speed'); 
     
     if (savedProfile) setUserProfile(JSON.parse(savedProfile));
     if (savedPlan) setPlan(JSON.parse(savedPlan));
@@ -88,12 +90,23 @@ function AppContent() {
           
           if (docSnap.exists()) {
             const data = docSnap.data();
-            if (data.userProfile) setUserProfile(data.userProfile);
+            
+            // دمج البيانات مع الحالة المحلية
+            const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
+            
+            // تصحيح هيكلية البيانات القديمة إذا وجدت
+            if (data.userProfile) {
+                Object.assign(fetchedProfile, data.userProfile);
+            }
+
+            setUserProfile(fetchedProfile);
+
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
-            if (data.speedModifier) setSpeedModifier(data.speedModifier); // Sync Speed
+            if (data.speedModifier) setSpeedModifier(data.speedModifier);
             
+            // التعامل مع الحظر
             if (data.isBanned) {
                alert(t('banned_msg'));
                handleLogout();
@@ -110,44 +123,59 @@ function AppContent() {
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
+    // 1. Local Storage Sync
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
-    
-    // Save Speed Logic
     localStorage.setItem('taper_speed', speedModifier.toString());
 
+    // 2. Cloud Sync (Smart)
     if (authUser && userProfile) {
+        // Capture variables locally
+        const currentUser = authUser;
+        const currentProfileData = { ...userProfile };
+        
+        // Extract primitive values HERE
+        const currentUid = currentUser.uid;
+        const currentEmail = currentUser.email || email || '';
+
         const syncToCloud = async () => {
             const totalDays = plan.length;
             const daysCompleted = logs.length;
             const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
             
             try {
-                await setDoc(doc(db, "users", authUser.uid), {
-                    userProfile,
-                    email: authUser.email || email,
-                    plan, 
-                    logs, 
-                    inventory, 
-                    speedModifier, // Push Speed to Cloud
+                // FIX: Put spread operator first to avoid overwriting specific fields
+                const updateData: any = {
+                    ...currentProfileData, // 1. Spread existing profile data first
+                    email: currentEmail,   // 2. Ensure email is set correctly (overwrites spread if needed)
                     lastActive: new Date().toISOString(),
-                    progress: progressPercentage,
-                    uid: authUser.uid,
-                    isAdmin: userProfile.isAdmin || false,
-                    isBanned: userProfile.isBanned || false,
-                    isFlagged: userProfile.isFlagged || false,
-                    doctorNotes: userProfile.doctorNotes || ""
-                }, { merge: true });
+                    uid: currentUid,       // 3. Ensure UID is set correctly
+                };
+
+                // Add specific data based on role
+                if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
+                    updateData.plan = plan;
+                    updateData.logs = logs;
+                    updateData.inventory = inventory;
+                    updateData.speedModifier = speedModifier;
+                    updateData.progress = progressPercentage;
+                }
+
+                if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
+                    updateData.doctorData = currentProfileData.doctorData;
+                }
+
+                await setDoc(doc(db, "users", currentUid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 2000);
+        const timeoutId = setTimeout(syncToCloud, 2000); // Debounce
         return () => clearTimeout(timeoutId);
     }
-  }, [userProfile, plan, logs, inventory, speedModifier, authUser]);
+  }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); 
 
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
@@ -161,11 +189,18 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      if (currentView !== AppView.DASHBOARD) setCurrentView(AppView.DASHBOARD);
+      // Default fallback based on role
+      if (userProfile?.role === 'doctor') {
+          if (currentView !== AppView.DOCTOR_DASHBOARD) setCurrentView(AppView.DOCTOR_DASHBOARD);
+      } else if (userProfile?.role === 'admin') {
+          if (currentView !== AppView.ADMIN) setCurrentView(AppView.ADMIN);
+      } else {
+          if (currentView !== AppView.DASHBOARD) setCurrentView(AppView.DASHBOARD);
+      }
     }
   };
 
-  // --- AUTHENTICATION HANDLERS (Login/Logout) ---
+  // --- AUTHENTICATION HANDLERS ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -177,28 +212,31 @@ function AppContent() {
         try {
             const cred = await signInWithEmailAndPassword(auth, email, password);
             setAuthUser(cred.user);
-            await setDoc(doc(db, "users", cred.user.uid), { email, name: 'System Admin', isAdmin: true, setupComplete: true }, { merge: true });
-            setUserProfile({ email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
+            
+            const adminProfile: UserProfile = { 
+                email, 
+                name: 'System Admin', 
+                role: 'admin', 
+                setupComplete: true, 
+                durationMonths: 0 
+            };
+            
+            await setDoc(doc(db, "users", cred.user.uid), adminProfile, { merge: true });
+            setUserProfile(adminProfile);
             setCurrentView(AppView.ADMIN);
         } catch (err: any) {
-            // If admin doesn't exist, create him
-            if (err.code === 'auth/user-not-found') {
-                try {
-                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                    setAuthUser(newCred.user);
-                    await setDoc(doc(db, "users", newCred.user.uid), { email, name: 'System Admin', isAdmin: true, setupComplete: true }, { merge: true });
-                    setUserProfile({ email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
-                    setCurrentView(AppView.ADMIN);
-                } catch (cErr: any) { setLoginError('Admin Setup Failed: ' + cErr.message); }
-            } else { setLoginError('Admin Login Error: ' + err.message); }
+             if (err.code === 'auth/user-not-found') {
+                const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                setAuthUser(newCred.user);
+                const adminProfile: UserProfile = { email, name: 'System Admin', role: 'admin', setupComplete: true, durationMonths: 0 };
+                await setDoc(doc(db, "users", newCred.user.uid), adminProfile, { merge: true });
+                setUserProfile(adminProfile);
+                setCurrentView(AppView.ADMIN);
+             } else {
+                setLoginError(err.message);
+             }
         }
         setLoading(false);
-        return;
-    }
-
-    // Hardcoded Demo Logic
-    if (email === 'islamaz@bomba.com' && password === 'bombaAZ360') {
-        setTimeout(() => { setIsDemoMode(true); setLoading(false); }, 800);
         return;
     }
 
@@ -242,18 +280,20 @@ function AppContent() {
   const startPlan = (customPlan: PlanDay[], speed: number = 1.0, planType: 'algorithm' | 'manual' = 'algorithm') => {
     setSpeedModifier(speed); 
     setPlan(customPlan);
-    const newProfile: UserProfile = {
-        uid: authUser?.uid,
-        email: authUser?.email || email || 'demo@user.com',
-        name: authUser?.displayName || 'User',
-        medType: userProfile?.medType || 'normal', 
-        medForm: userProfile?.medForm, 
-        medUnit: userProfile?.medUnit, 
-        durationMonths: 0,
-        setupComplete: true,
-        planType: planType 
-    };
-    setUserProfile(newProfile);
+    
+    if (userProfile) {
+        const newProfile: UserProfile = {
+            ...userProfile,
+            setupComplete: true,
+            planType: planType,
+            // If patient, assume doctor assigned it
+            patientData: userProfile.role === 'patient' && userProfile.patientData ? {
+                ...userProfile.patientData,
+                isPlanAssigned: true 
+            } : undefined
+        };
+        setUserProfile(newProfile);
+    }
   };
 
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
@@ -264,7 +304,6 @@ function AppContent() {
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
-    // Try to update boxes count smartly
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
         newInventory.loosePills = Math.round((newTotal % inventory.pillsPerBox) * 100) / 100;
@@ -281,13 +320,10 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Dynamic Adjustment (The "Smart" part)
-    if (userProfile?.planType !== 'manual') {
+    // 3. Dynamic Adjustment (Only for Algorithm users)
+    if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
-        // Estimate initial inventory to reconstruct logic
         const theoreticalInitial = newTotal + totalUsed;
-        
-        // Pass speedModifier to the engine
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier);
         setPlan(newPlan);
     }
@@ -310,7 +346,6 @@ function AppContent() {
       const newPlanDays: PlanDay[] = [];
       let currentDateStr = today;
       
-      // Add 3 freeze days
       for (let i = 0; i < 3; i++) {
           currentDateStr = addDaysSafe(currentDateStr, 1);
           newPlanDays.push({
@@ -320,7 +355,6 @@ function AppContent() {
           });
       }
       
-      // Shift future days
       future.forEach(day => {
           currentDateStr = addDaysSafe(currentDateStr, 1);
           newPlanDays.push({ ...day, date: currentDateStr });
@@ -333,9 +367,7 @@ function AppContent() {
   // --- SETTINGS: SPEED CONTROL ---
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
-      
-      if (userProfile?.planType !== 'manual') {
-          // Trigger immediate recalculation
+      if (userProfile?.planType === 'algorithm') {
           const currentInv = calculateTotalInventory(inventory);
           const totalUsed = logs.reduce((a, b) => a + b.doseTaken, 0);
           const theoreticalInitial = currentInv + totalUsed;
@@ -371,7 +403,6 @@ function AppContent() {
   const totalDays = plan.length;
   const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
   
-  // Warning Logic
   const recentLogs = logs.slice(-3);
   const badMoodCount = recentLogs.filter(l => l.mood === 'bad').length;
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
@@ -381,16 +412,27 @@ function AppContent() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
+  // 1. LOGIN SCREEN
   if (!authUser && !isDemoMode) {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
-  const needsOnboarding = !userProfile || !userProfile.setupComplete;
-
-  if (needsOnboarding && !userProfile?.isAdmin) {
-    return <OnboardingView userProfile={userProfile} setUserProfile={setUserProfile} inventory={inventory} setInventory={setInventory} currentDoseHabit={currentDoseHabit} setCurrentDoseHabit={setCurrentDoseHabit} startPlan={startPlan} email={authUser?.email || email} handleLogout={handleLogout} />;
+  // 2. ONBOARDING (If user exists but setup not complete)
+  if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
+    return <OnboardingView 
+        userProfile={userProfile} 
+        setUserProfile={setUserProfile} 
+        inventory={inventory} 
+        setInventory={setInventory} 
+        currentDoseHabit={currentDoseHabit} 
+        setCurrentDoseHabit={setCurrentDoseHabit} 
+        startPlan={startPlan} 
+        email={authUser?.email || email} 
+        handleLogout={handleLogout} 
+    />;
   }
 
+  // 3. MAIN APP ROUTING
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -399,17 +441,10 @@ function AppContent() {
           </div>
       )}
 
-      {/* Mobile Back Button */}
+      {/* Navigation Bars */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-          </button>
-      )}
-
-      {/* Desktop Back Button */}
-      {(viewHistory.length > 0 && currentView !== AppView.DASHBOARD) && (
-          <button onClick={goBack} className="hidden md:flex fixed top-8 left-8 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors">
-              {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
           </button>
       )}
 
@@ -418,89 +453,144 @@ function AppContent() {
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
         
-        {currentView === AppView.DASHBOARD && (
-            <DashboardView 
-                userProfile={userProfile}
-                plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
-                progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
-                showDoctorWarning={showDoctorWarning}
-                selectedDose={selectedDose} setSelectedDose={setSelectedDose}
-                selectedMood={selectedMood} setSelectedMood={setSelectedMood}
-                submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
-            />
-        )}
-        
-        {currentView === AppView.CALENDAR && (
-             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
-        )}
-        
-        {currentView === AppView.STATS && (
-             <StatsView logs={logs} plan={plan} userProfile={userProfile} />
-        )} 
-        
-        {currentView === AppView.COMMUNITY && userProfile && (
-             <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
-        )}
-        
-        {currentView === AppView.SUPPORT && userProfile && (
-             <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
-        )}
-        
-        {currentView === AppView.ARTICLES && <ArticlesView />}
-        
-        {currentView === AppView.ADMIN && userProfile?.isAdmin && <AdminView />}
-        
-        {/* SETTINGS VIEW with SPEED CONTROL */}
-        {currentView === AppView.SETTINGS && userProfile && (
-            <LayoutContainer>
-                <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
-                <Card className="bg-slate-900 border-white/5">
-                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
-                    <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
-                    
-                    {userProfile?.planType === 'manual' ? (
-                         <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
-                             <ShieldCheck size={40} className="text-slate-700" />
-                             <p>خطط الطبيب اليدوية لا تقبل التعديل التلقائي.</p>
-                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <button 
-                                onClick={() => updateSpeedSettings(0.8)} 
-                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                            >
-                                <Clock size={32} className="mx-auto mb-4" />
-                                <span className="block font-bold mb-1">{t('pace_slow')}</span>
-                                <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
-                            </button>
-                            
-                            <button 
-                                onClick={() => updateSpeedSettings(1.0)} 
-                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                            >
-                                <ShieldCheck size={32} className="mx-auto mb-4" />
-                                <span className="block font-bold mb-1">{t('pace_balanced')}</span>
-                                <span className="text-[10px] opacity-70">الوضع القياسي</span>
-                            </button>
-                            
-                            <button 
-                                onClick={() => updateSpeedSettings(1.2)} 
-                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                            >
-                                <Zap size={32} className="mx-auto mb-4" />
-                                <span className="block font-bold mb-1">{t('pace_fast')}</span>
-                                <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
-                            </button>
-                        </div>
-                    )}
-                </Card>
+        {/* --- DOCTOR WAITING SCREEN --- */}
+        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                    <Clock size={48} className="text-amber-500 animate-pulse" />
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
+                <p className="text-slate-400 max-w-lg leading-relaxed">
+                    شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
+                </p>
+                <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
+                    Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
+                </div>
+            </div>
+        ) : 
 
-                {/* Account Actions */}
-                <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
-                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
-                    <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
-                </Card>
-            </LayoutContainer>
+        /* --- PATIENT WAITING SCREEN --- */
+        userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                    <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-2">بانتظار خطة الطبيب</h1>
+                <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                    لقد تم إرسال ملفك إلى الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
+                    يرجى الانتظار حتى يقوم الطبيب بمراجعة حالتك ووضع الجدول العلاجي المناسب.
+                </p>
+                <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
+                     دخول المجتمع مؤقتاً
+                </Button>
+            </div>
+        ) : 
+
+        /* --- APPROVED VIEWS --- */
+        (
+            <>
+                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
+                {(userProfile?.role === 'normal_user' || (userProfile?.role === 'patient' && userProfile?.patientData?.isPlanAssigned)) && (
+                    <>
+                        {currentView === AppView.DASHBOARD && (
+                            <DashboardView 
+                                userProfile={userProfile!} 
+                                plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
+                                progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
+                                showDoctorWarning={showDoctorWarning}
+                                selectedDose={selectedDose} setSelectedDose={setSelectedDose}
+                                selectedMood={selectedMood} setSelectedMood={setSelectedMood}
+                                submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                            />
+                        )}
+                        
+                        {currentView === AppView.CALENDAR && (
+                             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile!} />
+                        )}
+                        
+                        {currentView === AppView.STATS && (
+                             <StatsView logs={logs} plan={plan} userProfile={userProfile!} />
+                        )} 
+                    </>
+                )}
+
+                {/* --- DOCTOR VIEWS --- */}
+                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
+                     <>
+                        {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
+                        {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
+                     </>
+                )}
+
+                {/* --- SHARED VIEWS --- */}
+                {currentView === AppView.COMMUNITY && userProfile && (
+                     <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
+                )}
+                
+                {currentView === AppView.SUPPORT && userProfile && (
+                     <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
+                )}
+                
+                {/* FIX: Ensure userProfile is passed with valid data */}
+                {currentView === AppView.ARTICLES && (
+                    <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
+                )}
+                
+                {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
+                
+                {/* SETTINGS VIEW */}
+                {currentView === AppView.SETTINGS && userProfile && (
+                    <LayoutContainer>
+                        <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
+                        <Card className="bg-slate-900 border-white/5">
+                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
+                            <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
+                            
+                            {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
+                                 <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
+                                     <ShieldCheck size={40} className="text-slate-700" />
+                                     <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي غير متاح.</p>
+                                 </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <button 
+                                        onClick={() => updateSpeedSettings(0.8)} 
+                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <Clock size={32} className="mx-auto mb-4" />
+                                        <span className="block font-bold mb-1">{t('pace_slow')}</span>
+                                        <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => updateSpeedSettings(1.0)} 
+                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <ShieldCheck size={32} className="mx-auto mb-4" />
+                                        <span className="block font-bold mb-1">{t('pace_balanced')}</span>
+                                        <span className="text-[10px] opacity-70">الوضع القياسي</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => updateSpeedSettings(1.2)} 
+                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <Zap size={32} className="mx-auto mb-4" />
+                                        <span className="block font-bold mb-1">{t('pace_fast')}</span>
+                                        <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
+                                    </button>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Account Actions */}
+                        <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
+                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
+                            <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
+                        </Card>
+                    </LayoutContainer>
+                )}
+            </>
         )}
       </div>
     </div>

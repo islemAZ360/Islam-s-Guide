@@ -6,6 +6,7 @@
   body {
     @apply bg-[#020617] text-slate-200 antialiased;
     /* تحسين عرض الخطوط العربية */
+    font-family: 'Tajawal', 'Inter', sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
     -webkit-font-smoothing: antialiased;
   }
@@ -23,19 +24,19 @@
 
   /* شريط تمرير مخصص ونحيف للقوائم الجانبية والدردشة */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-slate-900/50 rounded-full;
+    @apply bg-slate-900/30 rounded-full;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full hover:bg-slate-600 transition-colors;
+    @apply bg-slate-700/50 rounded-full hover:bg-slate-600 transition-colors border-2 border-transparent bg-clip-content;
   }
 }
 
-/* === مكتبة الرسوم المتحركة (Polyfill for tailwind-animate) === */
-/* هذه التعريفات ضرورية لكي تعمل التأثيرات الحركية في المكونات السابقة */
+/* === مكتبة الرسوم المتحركة (Custom Animations) === */
+/* هذه التعريفات تحاكي مكتبة tailwindcss-animate لضمان عمل التأثيرات */
 
 @keyframes enter {
   from {
@@ -48,6 +49,13 @@
   to {
     opacity: var(--tw-exit-opacity, 1);
     transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1) rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+@keyframes ping-slow {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
   }
 }
 
@@ -70,30 +78,36 @@
 }
 
 /* اتجاهات الحركة */
+.slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
 .slide-in-from-top-4 {
   --tw-enter-translate-y: -1rem;
 }
 
+.slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
 .slide-in-from-bottom-4 {
   --tw-enter-translate-y: 1rem;
 }
-
 .slide-in-from-bottom-8 {
   --tw-enter-translate-y: 2rem;
 }
-
 .slide-in-from-bottom-20 {
   --tw-enter-translate-y: 5rem;
-}
-
-.slide-in-from-right-4 {
-  --tw-enter-translate-x: 1rem;
 }
 
 .slide-in-from-left-4 {
   --tw-enter-translate-x: -1rem;
 }
 
+.slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+.slide-in-from-right-4 {
+  --tw-enter-translate-x: 1rem;
+}
 .slide-in-from-right-8 {
   --tw-enter-translate-x: 2rem;
 }
@@ -108,3 +122,11 @@
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
+
+/* تنسيقات الطباعة */
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+}

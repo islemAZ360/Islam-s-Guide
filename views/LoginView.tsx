@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Chrome } from 'lucide-react';
+import { Activity, Chrome, LogIn } from 'lucide-react';
 import { Button, Card, LanguageSwitcher } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -14,7 +14,9 @@ interface LoginViewProps {
   setDemoCreds: () => void;
 }
 
-export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds }: LoginViewProps) => {
+export const LoginView = ({ 
+  handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds 
+}: LoginViewProps) => {
   const { t, dir } = useLanguage();
 
   return (
@@ -41,6 +43,7 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
         </div>
 
         <div className="space-y-6">
+            {/* Google Login */}
             <Button 
                 onClick={handleGoogleLogin}
                 className="w-full py-4 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3 font-bold"
@@ -55,6 +58,7 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
                 <div className="h-px bg-slate-800 flex-1"></div>
             </div>
 
+            {/* Email/Password Login */}
             <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-4">
                     <div className="group relative">
@@ -83,10 +87,13 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
                     </div>
                 )}
                 
-                <Button className="w-full py-5 text-lg shadow-indigo-500/25" type="submit">{t('login_email')}</Button>
+                <Button className="w-full py-5 text-lg shadow-indigo-500/25" type="submit">
+                    {t('login_email')} <LogIn size={18} className="ml-2"/>
+                </Button>
             </form>
         </div>
           
+          {/* Demo Mode Link */}
           <div className="mt-8 pt-6 border-t border-white/5 text-center space-y-4">
              <p 
                 onClick={setDemoCreds}

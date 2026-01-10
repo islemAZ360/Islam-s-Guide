@@ -1,6 +1,7 @@
 import React from 'react';
-import { Card, PageHeader, LayoutContainer } from '../components/UI';
+import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
 import { PlanDay, DailyLog, UserProfile } from '../types';
+import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
 
 interface CalendarViewProps {
     plan: PlanDay[];
@@ -12,70 +13,118 @@ interface CalendarViewProps {
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
     // تحديد تاريخ البداية لحساب الفراغات في التقويم
     const startDate = new Date(plan[0]?.date || new Date());
-    const startDayIndex = (startDate.getDay() + 1) % 7; // ضبط الترتيب ليبدأ من السبت أو الأحد حسب Locale، هنا فرضنا السبت كبداية للأسبوع في العرض
+    const startDayIndex = (startDate.getDay() + 1) % 7; // ضبط الترتيب ليبدأ من السبت
     const blanks = Array.from({ length: startDayIndex });
 
-    // تحديد الوحدة بناءً على الملف الشخصي (mg افتراضياً)
+    // تحديد الوحدة بناءً على الملف الشخصي
     const unitLabel = userProfile?.medUnit || 'mg';
+    
+    // هل الخطة طبية أم خوارزمية؟
+    const isDoctorPlan = userProfile?.planType === 'manual';
 
     return (
       <LayoutContainer>
         <PageHeader 
-            title="الجدول الزمني الشامل"
-            subtitle="نظرة عامة على رحلتك العلاجية بالكامل، من اليوم الأول حتى التعافي."
+            title="الجدول الزمني"
+            subtitle="خارطة الطريق نحو التعافي."
+            action={
+                <div className="flex gap-2">
+                    {isDoctorPlan ? (
+                        <Badge color="indigo" className="!text-sm !py-2 !px-4">
+                            <Stethoscope size={16} className="mr-2" /> خطة الطبيب المعالج
+                        </Badge>
+                    ) : (
+                        <Badge color="emerald" className="!text-sm !py-2 !px-4">
+                            <BrainCircuit size={16} className="mr-2" /> الخوارزمية الذكية
+                        </Badge>
+                    )}
+                </div>
+            }
         />
         
-        <Card className="overflow-hidden bg-transparent shadow-none !p-0 border-0" noPadding>
+        <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-6">
+          {/* Legend / مفتاح الخريطة */}
+          <div className="flex flex-wrap gap-4 mb-6 text-xs text-slate-400 border-b border-white/5 pb-4">
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-600"></div> اليوم الحالي</div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> تم الالتزام</div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500"></div> لم يتم الالتزام</div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> القادم</div>
+          </div>
+
           {/* ترويسة أيام الأسبوع */}
           <div className="grid grid-cols-7 gap-2 md:gap-4 mb-3">
             {['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'].map(d => (
-              <div key={d} className="bg-slate-900/40 p-2 md:p-4 text-center text-[10px] md:text-xs font-black text-slate-500 uppercase rounded-2xl border border-white/5">{d}</div>
+              <div key={d} className="bg-slate-950/50 p-2 md:p-3 text-center text-[10px] md:text-xs font-bold text-slate-500 rounded-xl">{d}</div>
             ))}
           </div>
 
           <div className="grid grid-cols-7 gap-2 md:gap-4">
             {/* الأيام الفارغة في بداية الشهر/الجدول */}
-            {blanks.map((_, i) => <div key={`blank-${i}`} />)}
+            {blanks.map((_, i) => <div key={`blank-${i}`} className="min-h-[80px]" />)}
 
             {plan.map((day, idx) => {
               const isToday = day.date === todayDate;
               const log = logs.find(l => l.date === day.date);
+              const isPast = day.date < todayDate;
               
-              // تحديد تنسيق الخلية بناءً على الحالة
+              // منطق الألوان
               let bgClass = "bg-slate-900/40 border-white/5";
+              let textClass = "text-slate-500";
+              let borderClass = "border-white/5";
+
               if (isToday) {
-                  bgClass = "bg-indigo-600 border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.3)] transform scale-105 z-10";
-              } else if (day.isPast) {
-                  bgClass = "bg-slate-950/80 border-slate-900 opacity-40 grayscale";
+                  bgClass = "bg-indigo-600/10";
+                  borderClass = "border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
+                  textClass = "text-white";
+              } else if (log) {
+                  // إذا تم تسجيل اليوم
+                  if (log.doseTaken <= day.plannedDose) { // التزام جيد
+                      bgClass = "bg-emerald-900/10";
+                      borderClass = "border-emerald-500/30";
+                  } else { // تجاوز الجرعة
+                      bgClass = "bg-rose-900/10";
+                      borderClass = "border-rose-500/30";
+                  }
+              } else if (isPast) {
+                  // يوم ماضي بدون تسجيل
+                  bgClass = "bg-slate-950/30";
+                  textClass = "text-slate-600";
+                  borderClass = "border-dashed border-slate-700";
               }
 
               return (
-                <div key={idx} className={`${bgClass} border rounded-2xl md:rounded-3xl p-1 md:p-5 min-h-[90px] md:min-h-[130px] flex flex-col justify-between transition-all duration-300 hover:border-indigo-500/30 relative overflow-hidden group hover:bg-slate-900`}>
-                   {/* مؤشر اليوم الحالي */}
-                   {isToday && <div className="absolute top-0 right-0 w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full m-2 md:m-3 animate-ping"></div>}
-                   
-                   {/* مؤشر الحالة المزاجية (شريط ملون في الأسفل) */}
-                   {log && <div className={`absolute bottom-0 left-0 right-0 h-1 md:h-1.5 ${log.mood === 'good' ? 'bg-emerald-500' : log.mood === 'bad' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>}
+                <div key={idx} className={`${bgClass} border ${borderClass} rounded-2xl p-2 md:p-3 min-h-[80px] md:min-h-[110px] flex flex-col justify-between transition-all duration-300 relative group`}>
+                   {/* Header: Day & Status Icon */}
+                   <div className="flex justify-between items-start">
+                        <span className={`text-[10px] md:text-xs font-bold ${textClass}`}>
+                            {day.date.slice(8)}
+                        </span>
+                        
+                        {log && (
+                            <span className={log.doseTaken <= day.plannedDose ? "text-emerald-400" : "text-rose-400"}>
+                                {log.doseTaken <= day.plannedDose ? <Check size={14} /> : <X size={14} />}
+                            </span>
+                        )}
+                        {isToday && !log && <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+                   </div>
                   
-                  {/* رأس الخلية: التاريخ والأيقونة */}
-                  <div className="flex justify-between items-start z-10 px-1 md:px-0">
-                    <span className={`text-[8px] md:text-xs font-bold ${isToday ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>
-                      {day.date.slice(8)} {/* إظهار اليوم فقط */}
-                    </span>
-                    {log && (
-                      <span className="text-sm md:text-2xl animate-in zoom-in">{log.mood === 'good' ? '🤩' : log.mood === 'bad' ? '😖' : '😐'}</span>
-                    )}
-                  </div>
-                  
-                  {/* محتوى الخلية: الجرعة */}
-                  <div className="text-center z-10 mt-1 md:mt-2">
-                    <span className={`text-lg md:text-3xl font-black ${isToday ? 'text-white' : 'text-slate-300'}`}>
+                  {/* Content: Dose */}
+                  <div className="text-center mt-1">
+                    <span className={`text-lg md:text-2xl font-black ${isToday ? 'text-white' : isPast && !log ? 'text-slate-600' : 'text-slate-300'}`}>
                       {day.plannedDose}
                     </span>
-                    <span className={`text-[7px] md:text-[10px] block uppercase tracking-wider font-bold ${isToday ? 'text-indigo-200' : 'text-slate-600'} mt-0.5`}>
+                    <span className="text-[8px] md:text-[10px] block uppercase text-slate-600 font-bold">
                         {unitLabel}
                     </span>
                   </div>
+
+                  {/* Mood Indicator (Bottom Bar) */}
+                  {log && (
+                      <div className={`h-1 w-full rounded-full mt-2 ${
+                          log.mood === 'good' ? 'bg-emerald-500' : 
+                          log.mood === 'bad' ? 'bg-rose-500' : 'bg-amber-500'
+                      }`}></div>
+                  )}
                 </div>
               );
             })}

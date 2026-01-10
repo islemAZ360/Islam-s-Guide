@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { 
   ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText, PauseCircle,
-  FlaskConical, Pill, Edit3
+  FlaskConical, Pill, Edit3, Stethoscope, Info
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Button, Card, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal, LanguageSwitcher } from '../components/UI';
+import { Button, Card, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal, LanguageSwitcher, Badge } from '../components/UI';
 import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -46,6 +46,11 @@ export const DashboardView = ({
   // Derived Values
   const unitLabel = userProfile?.medUnit || 'mg';
   const isLiquid = userProfile?.medForm === 'liquid';
+  
+  // هل المستخدم يتبع طبيباً؟
+  const isPatient = userProfile?.role === 'patient';
+  const isManualPlan = userProfile?.planType === 'manual';
+  const doctorName = userProfile?.patientData?.assignedDoctorName;
 
   const toggleSymptom = (sym: string) => {
       if (selectedSymptoms.includes(sym)) {
@@ -65,17 +70,17 @@ export const DashboardView = ({
   ];
 
   // Generate dose options smart based on current plan
-  const target = todayPlan?.plannedDose || 1;
-  const baseStep = isLiquid ? 0.1 : 0.5; // Smaller steps for liquid
+  const target = todayPlan?.plannedDose || 0;
+  
+  const baseStep = isLiquid ? 0.1 : 0.5; 
   
   // Create a range of options around the target dose
   const doseOptions = Array.from({ length: 7 }, (_, i) => {
       const val = target - (3 * baseStep) + (i * baseStep);
       return Math.max(0, parseFloat(val.toFixed(2))); 
-  }).filter((v, i, a) => a.indexOf(v) === i && v > 0); // Unique and positive only
+  }).filter((v, i, a) => a.indexOf(v) === i && v >= 0); 
 
-  // Ensure target is included if filtered out
-  if (!doseOptions.includes(target) && target > 0) doseOptions.push(target);
+  if (!doseOptions.includes(target)) doseOptions.push(target);
   doseOptions.sort((a,b) => a - b);
 
   return (
@@ -105,8 +110,31 @@ export const DashboardView = ({
         }
       />
 
+      {/* Patient Specific Banner - يظهر فقط للمرضى التابعين لطبيب */}
+      {isPatient && (
+          <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 p-4 rounded-2xl flex items-center justify-between mb-6 backdrop-blur-md animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 ring-1 ring-indigo-500/40">
+                      <Stethoscope size={24} />
+                  </div>
+                  <div>
+                      <p className="text-xs text-indigo-300 font-bold uppercase mb-1">تحت إشراف طبي</p>
+                      <p className="text-white font-bold text-lg flex items-center gap-2">
+                          د. {doctorName}
+                          <Badge color="blue" className="!text-[10px] !py-0">معتمد</Badge>
+                      </p>
+                  </div>
+              </div>
+              <div className="text-left hidden md:block">
+                  <span className="text-[10px] text-slate-400 block">نوع الخطة</span>
+                  <span className="text-xs font-bold text-white">جدول طبي مخصص</span>
+              </div>
+          </div>
+      )}
+
       {/* Safety Warning & Freeze Option */}
-      {showDoctorWarning && (
+      {/* يظهر فقط لمستخدمي الخوارزمية، لأن المريض يجب أن يراجع طبيبه في حالات الخطر */}
+      {showDoctorWarning && !isManualPlan && (
         <div className="bg-rose-500/5 border border-rose-500/20 p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md animate-in zoom-in duration-500 mb-6">
           <div className="flex items-center gap-4">
             <div className="bg-rose-500/20 p-4 rounded-full ring-1 ring-rose-500/30"><AlertTriangle className="text-rose-500 w-6 h-6" /></div>
@@ -123,7 +151,7 @@ export const DashboardView = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Action Card */}
-        <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-8 md:!p-10 border-indigo-500/10">
+        <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-8 md:!p-10 border-indigo-500/10 shadow-2xl">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
           
           <div className="relative z-10 h-full flex flex-col justify-between">
@@ -306,15 +334,30 @@ export const DashboardView = ({
                         <Clock className="w-8 h-8 text-indigo-400" />
                      )}
                  </div>
-                 <h3 className="text-white font-bold text-lg mb-1">{t('algo_active')}</h3>
-                 <p className="text-slate-500 text-xs px-4 leading-relaxed">
-                   {t('algo_desc')}
-                 </p>
+                 
+                 {isPatient ? (
+                     <>
+                        <h3 className="text-white font-bold text-lg mb-1">الخطة العلاجية الحالية</h3>
+                        <p className="text-slate-500 text-xs px-4 leading-relaxed mb-3">
+                            هذه الخطة تم وضعها بواسطة <strong>د. {doctorName}</strong>. أي تغيير في الجرعات يجب أن يتم بعد استشارته.
+                        </p>
+                        <Badge color="indigo" className="mx-auto">Fixed Plan</Badge>
+                     </>
+                 ) : (
+                     <>
+                        <h3 className="text-white font-bold text-lg mb-1">{t('algo_active')}</h3>
+                        <p className="text-slate-500 text-xs px-4 leading-relaxed">
+                          {t('algo_desc')}
+                        </p>
+                     </>
+                 )}
             </Card>
 
             <Card className="min-h-[250px] relative overflow-hidden bg-indigo-950/10" noPadding>
                 <div className="p-6 pb-0 relative z-10">
-                   <h2 className="text-base font-bold text-white mb-1">{t('recovery_path')}</h2>
+                   <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+                       {t('recovery_path')} <Info size={12} className="text-slate-500"/>
+                   </h2>
                    <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">Projection</p>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 top-16 opacity-60 hover:opacity-100 transition-opacity duration-500">

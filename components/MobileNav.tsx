@@ -1,36 +1,71 @@
 import React from 'react';
 import { 
   LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, Users, 
-  LifeBuoy, BookOpen 
+  LifeBuoy, BookOpen, ShieldAlert, MessageSquare 
 } from 'lucide-react';
-import { AppView } from '../types';
+import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface MobileNavProps {
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
+  userProfile?: UserProfile | null;
 }
 
-export const MobileNav = ({ currentView, setCurrentView }: MobileNavProps) => {
+export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNavProps) => {
   const { t } = useLanguage();
 
-  const menuItems = [
-    { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-    { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
-    { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
-    { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+  const getMenuItems = () => {
+    const role = userProfile?.role;
+    const items = [];
+
+    // 1. ADMIN MENU
+    if (role === 'admin') {
+       items.push(
+        { id: AppView.ADMIN, icon: ShieldAlert, label: 'Admin' },
+        { id: AppView.COMMUNITY, icon: Users, label: 'Users' },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'Tickets' },
+       );
+    } 
+    // 2. DOCTOR MENU
+    else if (role === 'doctor') {
+        items.push(
+            { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
+            { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
+            { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
+            // Articles & Support can be accessed via sidebar or specific pages linked internally
+        );
+    } 
+    // 3. PATIENT / NORMAL USER MENU
+    else {
+        // Patient Waiting for Plan
+        if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
+             items.push(
+                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+                { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+             );
+        } else {
+             // Standard User
+             items.push(
+                { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+                { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
+                { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+             );
+        }
+    }
     
-    // الأقسام الجديدة
-    { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
-    { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+    // Common settings icon at the end
+    items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     
-    { id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') },
-  ];
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
       
-      {/* حاوية قابلة للتمرير الأفقي مع إخفاء شريط التمرير */}
       <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;

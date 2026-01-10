@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, LogOut, 
-  Users, ShieldAlert, User as UserIcon, LifeBuoy, BookOpen 
+  Users, ShieldAlert, User as UserIcon, LifeBuoy, BookOpen, Stethoscope, 
+  MessageSquare
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -17,22 +18,60 @@ interface SidebarProps {
 export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
   const { t } = useLanguage();
 
-  const menuItems = [
-    { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-    { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
-    { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
-    { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-    
-    // New Sections
-    { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
-    { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-    
-    { id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') },
-  ];
+  // تحديد القوائم بناءً على الدور
+  const getMenuItems = () => {
+    const role = userProfile?.role;
+    const items = [];
 
-  if (userProfile?.isAdmin) {
-      menuItems.push({ id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') });
-  }
+    // 1. ADMIN MENU
+    if (role === 'admin') {
+      items.push(
+        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, // الرئيسية للأدمن
+        { id: AppView.COMMUNITY, icon: Users, label: 'إدارة المجتمع' },
+        { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
+      );
+    }
+    
+    // 2. DOCTOR MENU
+    else if (role === 'doctor') {
+      items.push(
+        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'لوحة القيادة' },
+        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'ملفات المرضى' },
+        { id: AppView.ARTICLES, icon: BookOpen, label: 'نشر مقال' },
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
+      );
+    }
+
+    // 3. PATIENT / NORMAL USER MENU
+    else {
+      // إذا كان مريضاً وينتظر الخطة، نعرض له المجتمع والدعم فقط
+      if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
+         items.push(
+            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+         );
+      } else {
+         // القائمة القياسية للمستخدم العادي والمريض المعتمد
+         items.push(
+            { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+            { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
+            { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+            { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+         );
+      }
+    }
+
+    // Settings is common for everyone
+    items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
+
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <div className="hidden md:flex flex-col w-80 bg-slate-950/80 backdrop-blur-2xl border-l border-white/5 h-screen fixed right-0 top-0 overflow-y-auto z-50 shadow-2xl transition-all">
@@ -46,9 +85,24 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
           </div>
           Islam's Guide
         </h2>
-        <span className="text-[10px] text-slate-500 mr-[3.25rem] block mt-2 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
-            Smart Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        </span>
+        
+        <div className="mr-[3.25rem] mt-2">
+            {userProfile?.role === 'doctor' && (
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    نسخة الأطباء
+                </span>
+            )}
+            {userProfile?.role === 'admin' && (
+                <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    لوحة الإدارة
+                </span>
+            )}
+            {(userProfile?.role === 'patient' || userProfile?.role === 'normal_user') && (
+                <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
+                    Smart Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </span>
+            )}
+        </div>
       </div>
       
       {/* Menu */}
@@ -82,11 +136,11 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         
         <div className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex items-center gap-3 group hover:border-indigo-500/30 transition-all">
             <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30">
-                {userProfile?.name?.charAt(0).toUpperCase() || <UserIcon size={18} />}
+                {userProfile?.role === 'doctor' ? <Stethoscope size={18} /> : (userProfile?.name?.charAt(0).toUpperCase() || <UserIcon size={18} />)}
             </div>
             <div className="flex-1 overflow-hidden">
                 <p className="text-sm font-bold text-white truncate">{userProfile?.name || 'Guest'}</p>
-                <p className="text-[10px] text-slate-500 truncate">{userProfile?.email}</p>
+                <p className="text-[10px] text-slate-500 truncate">{userProfile?.role?.toUpperCase()}</p>
             </div>
             <button 
                 onClick={handleLogout} 

@@ -1,36 +1,81 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
-import { Article } from '../types';
+import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
+import { Article, UserProfile, ArticleCategory } from '../types';
 import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool } from 'lucide-react';
 
-export const ArticlesView = () => {
+interface ArticlesViewProps {
+    userProfile?: UserProfile | null; // نحتاج البروفايل لمعرفة الصلاحيات
+}
+
+export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
     const [articles, setArticles] = useState<Article[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<'all' | 'tip' | 'medical' | 'motivation'>('all');
+    const [selectedCategory, setSelectedCategory] = useState<'all' | ArticleCategory>('all');
     const [readingArticle, setReadingArticle] = useState<Article | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // -- Create Mode State --
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
+
+    // -- Fetch Articles --
+    const fetchArticles = async () => {
+        setLoading(true);
+        try {
+            const q = query(
+                collection(db, "articles"), 
+                where("isPublished", "==", true),
+                orderBy("createdAt", "desc")
+            );
+            const snapshot = await getDocs(q);
+            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article));
+            setArticles(fetched);
+        } catch (e) {
+            console.error("Error fetching articles", e);
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchArticles = async () => {
-            try {
-                // جلب المقالات المنشورة فقط
-                const q = query(
-                    collection(db, "articles"), 
-                    where("isPublished", "==", true),
-                    orderBy("createdAt", "desc")
-                );
-                const snapshot = await getDocs(q);
-                const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article));
-                setArticles(fetched);
-            } catch (e) {
-                console.error("Error fetching articles", e);
-            }
-            setLoading(false);
-        };
         fetchArticles();
     }, []);
 
+    // -- Publish Action --
+    const handlePublish = async () => {
+        // FIX: Use optional chaining (?.) for auth
+        const currentUser = auth?.currentUser;
+
+        // التحقق من المتغير المحلي
+        if (!currentUser || !userProfile) return;
+        
+        if (!newArticle.title.trim() || !newArticle.content.trim()) return;
+
+        try {
+            await addDoc(collection(db, "articles"), {
+                title: newArticle.title,
+                content: newArticle.content,
+                category: newArticle.category,
+                isPublished: true,
+                createdAt: Date.now(),
+                // استخدام المتغير المحلي الآمن
+                authorId: currentUser.uid, 
+                authorName: userProfile.name,
+                authorRole: userProfile.role 
+            });
+            
+            // Reset and Refresh
+            setShowCreateModal(false);
+            setNewArticle({ title: '', content: '', category: 'tip' });
+            fetchArticles();
+            alert("تم نشر المقال بنجاح!");
+        } catch (e) {
+            console.error("Error publishing article:", e);
+            alert("حدث خطأ أثناء النشر.");
+        }
+    };
+
+    // -- Helpers --
     const filteredArticles = selectedCategory === 'all' 
         ? articles 
         : articles.filter(a => a.category === selectedCategory);
@@ -51,11 +96,21 @@ export const ArticlesView = () => {
         }
     };
 
+    // هل المستخدم يملك صلاحية النشر؟
+    const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
+
     return (
         <LayoutContainer>
             <PageHeader 
                 title="مركز المعرفة" 
-                subtitle="مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي." 
+                subtitle="مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي."
+                action={
+                    canPublish && (
+                        <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
+                            <PenTool size={16} /> نشر مقال جديد
+                        </Button>
+                    )
+                }
             />
 
             {/* Category Filters */}
@@ -113,15 +168,85 @@ export const ArticlesView = () => {
                             </p>
                             
                             <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-                                <span className="text-[10px] text-slate-600 font-mono">
-                                    {new Date(article.createdAt).toLocaleDateString()}
-                                </span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-slate-400 font-bold">
+                                        {article.authorName} {article.authorRole === 'doctor' && '(Dr)'}
+                                    </span>
+                                    <span className="text-[9px] text-slate-600 font-mono">
+                                        {new Date(article.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
                                 <span className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
                                     قراءة <ArrowRight size={14} />
                                 </span>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Create Article Modal (For Admins & Doctors) */}
+            {showCreateModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative">
+                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
+                        
+                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <PenTool className="text-indigo-400"/> نشر مقال جديد
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">عنوان المقال</label>
+                                <input 
+                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500"
+                                    value={newArticle.title}
+                                    onChange={e => setNewArticle({...newArticle, title: e.target.value})}
+                                    placeholder="اكتب عنواناً جذاباً..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">التصنيف</label>
+                                <div className="flex gap-2">
+                                    {[
+                                        { id: 'medical', label: 'معلومة طبية' },
+                                        { id: 'motivation', label: 'دعم نفسي' },
+                                        { id: 'tip', label: 'نصيحة عملية' },
+                                    ].map(cat => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setNewArticle({...newArticle, category: cat.id as ArticleCategory})}
+                                            className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
+                                                newArticle.category === cat.id 
+                                                ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                                : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">المحتوى</label>
+                                <textarea 
+                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 h-40 resize-none"
+                                    value={newArticle.content}
+                                    onChange={e => setNewArticle({...newArticle, content: e.target.value})}
+                                    placeholder="اكتب محتوى المقال هنا..."
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>إلغاء</Button>
+                                <Button variant="success" onClick={handlePublish} disabled={!newArticle.title || !newArticle.content}>
+                                    نشر الآن
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
             )}
 
@@ -146,6 +271,8 @@ export const ArticlesView = () => {
                             </h2>
                             <div className="flex items-center gap-3 text-xs text-slate-500">
                                 <span>بقلم: {readingArticle.authorName}</span>
+                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">طبيب</Badge>}
+                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">أدمن</Badge>}
                                 <span>•</span>
                                 <span>{new Date(readingArticle.createdAt).toLocaleDateString()}</span>
                             </div>
