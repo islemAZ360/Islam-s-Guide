@@ -4,6 +4,7 @@ import {
   LifeBuoy, BookOpen 
 } from 'lucide-react';
 import { AppView } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface MobileNavProps {
   currentView: AppView;
@@ -11,31 +12,34 @@ interface MobileNavProps {
 }
 
 export const MobileNav = ({ currentView, setCurrentView }: MobileNavProps) => {
+  const { t } = useLanguage();
+
   const menuItems = [
-    { id: AppView.DASHBOARD, icon: LayoutDashboard, label: 'الرئيسية' },
-    { id: AppView.CALENDAR, icon: CalendarIcon, label: 'الجدول' },
-    { id: AppView.STATS, icon: Activity, label: 'تحليل' },
-    { id: AppView.COMMUNITY, icon: Users, label: 'المجتمع' },
-    // New Items
-    { id: AppView.ARTICLES, icon: BookOpen, label: 'المعرفة' },
-    { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم' },
+    { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+    { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
+    { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+    { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
     
-    { id: AppView.SETTINGS, icon: Settings, label: 'إعدادات' },
+    // New Items
+    { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+    { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+    
+    { id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') },
   ];
 
   return (
     <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
       
-      {/* Scrollable Container */}
-      <div className="flex items-center justify-between px-2 h-full overflow-x-auto scrollbar-hide pb-1">
+      {/* Scrollable Container with Hiding Scrollbar */}
+      <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setCurrentView(item.id)}
-              className={`flex-1 min-w-[70px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400 -translate-y-4' : 'text-slate-500 hover:text-slate-300'
+              className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
+                  isActive ? 'text-indigo-400 -translate-y-3' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               <div className={`p-3 rounded-full transition-all duration-300 ${
@@ -46,14 +50,14 @@ export const MobileNav = ({ currentView, setCurrentView }: MobileNavProps) => {
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               
-              <span className={`absolute -bottom-6 text-[10px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
+              <span className={`absolute -bottom-5 text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
                   isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 -translate-y-2 text-slate-500'
               }`}>
                   {item.label}
               </span>
               
               {isActive && (
-                  <span className="absolute -bottom-8 w-1 h-1 bg-indigo-500 rounded-full"></span>
+                  <span className="absolute -bottom-7 w-1 h-1 bg-indigo-500 rounded-full"></span>
               )}
             </button>
           );

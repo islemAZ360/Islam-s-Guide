@@ -22,7 +22,8 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
     { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
     { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-    // New Items
+    
+    // New Sections
     { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
     { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
     
@@ -37,7 +38,6 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     <div className="hidden md:flex flex-col w-80 bg-slate-950/80 backdrop-blur-2xl border-l border-white/5 h-screen fixed right-0 top-0 overflow-y-auto z-50 shadow-2xl transition-all">
       {/* Header */}
       <div className="p-10 border-b border-white/5 relative overflow-hidden shrink-0">
-        {/* Subtle decorative glow */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
         
         <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10">
@@ -69,7 +69,6 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
             <span className="font-bold text-lg tracking-wide">{item.label}</span>
             
-            {/* Simulation of "Activity" for Admin */}
             {item.id === AppView.ADMIN && (
                 <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
             )}
@@ -77,7 +76,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         ))}
       </nav>
       
-      {/* Footer / User Profile */}
+      {/* Footer */}
       <div className="p-6 border-t border-white/5 shrink-0 space-y-6">
         <LanguageSwitcher />
         

@@ -5,21 +5,22 @@
 @layer base {
   body {
     @apply bg-[#020617] text-slate-200 antialiased;
+    /* تحسين عرض الخطوط العربية */
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 }
 
 @layer utilities {
-  /* Hide Scrollbar but keep functionality */
+  /* Hide Scrollbar but keep functionality (Cross-browser) */
   .scrollbar-hide {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+    display: none; /* Chrome, Safari and Opera */
   }
 
-  /* Custom Slim Scrollbar */
+  /* Custom Slim Scrollbar for lists */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -49,7 +50,7 @@
 
 .animate-in {
   animation-name: enter;
-  animation-duration: 300ms; /* Default duration */
+  animation-duration: 300ms;
   --tw-enter-opacity: initial;
   --tw-enter-scale: initial;
   --tw-enter-rotate: initial;

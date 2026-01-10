@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Activity, CheckCircle, Pill, Calendar, AlertCircle, AlertTriangle, ArrowRight, ArrowLeft, 
-  Stethoscope, BrainCircuit, Plus, Trash2, Copy, Layers, Zap, Ban, Droplets, FlaskConical
+  Stethoscope, BrainCircuit, Plus, Trash2, Copy, Layers, Zap, Ban, Droplets, FlaskConical, Clock, ShieldCheck
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import { Button, Card, Badge, LanguageSwitcher } from '../components/UI';
@@ -42,15 +42,10 @@ export const OnboardingView = ({
   const [newPhaseDoseStr, setNewPhaseDoseStr] = useState<string>('');
   const [newPhaseDaysStr, setNewPhaseDaysStr] = useState<string>('7');
 
-  // Templates
-  const [templateDoseStr, setTemplateDoseStr] = useState<string>('');
-  const [templateDaysOff, setTemplateDaysOff] = useState<number>(1);
-  const [templateCycles, setTemplateCycles] = useState<number>(3);
-  
   // Preview
   const [showPreview, setShowPreview] = useState(false);
   const [previewPlan, setPreviewPlan] = useState<PlanDay[]>([]);
-  const [speedModifier, setSpeedModifier] = useState(1.0); 
+  const [speedModifier, setSpeedModifier] = useState(1.0); // Default Normal
 
   const totalInventory = calculateTotalInventory(inventory);
 
@@ -64,64 +59,31 @@ export const OnboardingView = ({
       </button>
   );
 
-  // --- Logic for Med Type Selection ---
+  // Logic for Med Type & Form Selection
   const handleMedTypeSelect = (type: 'narcotic' | 'psychiatric' | 'normal') => {
-      if (type === 'narcotic') {
-          setBlockedState(true);
-      } else if (type === 'psychiatric') {
-          setTempMedType(type);
-          setPsychWarning(true);
-      } else {
-          // Normal med
-          initializeProfile(type);
-      }
+      if (type === 'narcotic') { setBlockedState(true); } 
+      else if (type === 'psychiatric') { setTempMedType(type); setPsychWarning(true); } 
+      else { initializeProfile(type); }
   };
+  const confirmPsych = () => { if (tempMedType) initializeProfile(tempMedType); setPsychWarning(false); };
+  const initializeProfile = (type: any) => { setUserProfile({ email: email, name: t('guest'), medType: type, durationMonths: 0, setupComplete: false }); };
+  const confirmMedForm = () => { if (userProfile && medForm && medUnit) { setUserProfile({ ...userProfile, medForm: medForm, medUnit: medUnit }); } };
 
-  const confirmPsych = () => {
-      if (tempMedType) initializeProfile(tempMedType);
-      setPsychWarning(false);
-  };
-
-  const initializeProfile = (type: any) => {
-      setUserProfile({ 
-          email: email, 
-          name: t('guest'), 
-          medType: type, 
-          durationMonths: 0, 
-          setupComplete: false 
-      });
-  };
-
-  // --- Logic for Med Form Selection ---
-  const confirmMedForm = () => {
-      if (userProfile && medForm && medUnit) {
-          setUserProfile({
-              ...userProfile,
-              medForm: medForm,
-              medUnit: medUnit
-          });
-      }
-  };
-
-  // --- Manual Builder Logic ---
+  // Manual Builder Logic
   const addManualPhase = () => {
       const dose = parseFloat(newPhaseDoseStr);
       const days = parseInt(newPhaseDaysStr);
-      if (!isNaN(dose) && !isNaN(days) && days > 0) {
-          setManualPhases([...manualPhases, { dose, days }]);
-      }
+      if (!isNaN(dose) && !isNaN(days) && days > 0) { setManualPhases([...manualPhases, { dose, days }]); }
   };
 
-  const applyTemplate = () => {
-      const dose = parseFloat(templateDoseStr);
-      if (isNaN(dose) || templateCycles < 1) return;
-      const newPhases: ManualPhase[] = [];
-      for (let i = 0; i < templateCycles; i++) {
-          newPhases.push({ dose: dose, days: 1 });
-          newPhases.push({ dose: 0, days: templateDaysOff });
+  // Live Regeneration when Speed Changes in Preview
+  useEffect(() => {
+      if (showPreview && selectedPath === 'algorithm') {
+          // Re-generate plan based on new speed
+          const plan = generatePlan(totalInventory, currentDoseHabit, new Date().toISOString(), speedModifier);
+          setPreviewPlan(plan);
       }
-      setManualPhases([...manualPhases, ...newPhases]);
-  };
+  }, [speedModifier, showPreview, selectedPath, totalInventory, currentDoseHabit]);
 
   const generatePreview = () => {
       if (selectedPath === 'algorithm') {
@@ -134,7 +96,7 @@ export const OnboardingView = ({
       setShowPreview(true);
   };
 
-  // --- RENDER: PREVIEW SCREEN ---
+  // --- RENDER: PREVIEW SCREEN (Updated with Pace Control) ---
   if (showPreview) {
       const pillsNeeded = previewPlan.reduce((acc, day) => acc + day.plannedDose, 0);
       const isShortage = pillsNeeded > totalInventory;
@@ -143,18 +105,19 @@ export const OnboardingView = ({
       return (
         <div className="min-h-screen bg-[#020617] p-4 md:p-10 text-slate-200" dir={dir}>
             <NavBackBtn onClick={() => setShowPreview(false)} />
-            <div className="max-w-4xl mx-auto pt-4 md:pt-10">
+            <div className="max-w-5xl mx-auto pt-4 md:pt-10">
                 <header className="mb-8 text-center animate-in fade-in slide-in-from-top-4">
                     <h1 className="text-3xl md:text-5xl font-black text-white mb-2">معاينة الخطة العلاجية</h1>
                     <p className="text-slate-400">نظرة شاملة على مسار التعافي المقترح قبل البدء.</p>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
-                    <Card className="md:col-span-8 !p-0 bg-slate-900 border-indigo-500/20 overflow-hidden relative min-h-[300px] shadow-2xl">
+                    {/* CHART SECTION */}
+                    <Card className="md:col-span-8 !p-0 bg-slate-900 border-indigo-500/20 overflow-hidden relative min-h-[300px] shadow-2xl flex flex-col">
                         <div className="absolute top-6 right-6 z-10 flex gap-2">
                              <Badge color="indigo">{previewPlan.length} يوم</Badge>
                         </div>
-                        <div className="h-[350px] w-full pt-16 pr-2">
+                        <div className="h-[300px] w-full pt-16 pr-2 flex-1">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={previewPlan}>
                                     <defs>
@@ -170,13 +133,52 @@ export const OnboardingView = ({
                                         labelStyle={{display: 'none'}}
                                         formatter={(value: any) => [`${value}${unitLabel}`, 'الجرعة']}
                                     />
-                                    <Area type="step" dataKey="plannedDose" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorDosePreview)" />
+                                    <Area type="step" dataKey="plannedDose" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorDosePreview)" animationDuration={500} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
 
+                    {/* SIDEBAR STATS & CONTROLS */}
                     <div className="md:col-span-4 space-y-4">
+                        
+                        {/* Pace Control (Only for Algorithm) */}
+                        {selectedPath === 'algorithm' && (
+                            <Card className="bg-slate-900 border-white/5 !p-5">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                                    <Activity size={14} className="text-indigo-400"/> {t('pace_control')}
+                                </h3>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button 
+                                        onClick={() => setSpeedModifier(0.8)} 
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${speedModifier === 0.8 ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <Clock size={18} className="mb-1" />
+                                        <span className="text-[10px] font-bold">ممتدة</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => setSpeedModifier(1.0)} 
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${speedModifier === 1.0 ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <ShieldCheck size={18} className="mb-1" />
+                                        <span className="text-[10px] font-bold">متوازنة</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => setSpeedModifier(1.2)} 
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${speedModifier === 1.2 ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                                    >
+                                        <Zap size={18} className="mb-1" />
+                                        <span className="text-[10px] font-bold">مكثفة</span>
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-3 text-center">
+                                    {speedModifier === 0.8 ? "تخفيض بطيء جداً لتقليل الأعراض الانسحابية." : 
+                                     speedModifier === 1.0 ? "الخطة القياسية الموصى بها طبياً." : 
+                                     "تخفيض سريع للمستخدمين المستعجلين (أصعب)."}
+                                </p>
+                            </Card>
+                        )}
+
                         <Card className="text-center py-6 bg-slate-900 border-white/5">
                             <Calendar className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
                             <div className="text-sm text-slate-500 font-bold uppercase tracking-wider">المدة الكلية</div>
@@ -190,16 +192,20 @@ export const OnboardingView = ({
                                 <div className={`text-3xl font-black mt-1 ${isShortage ? 'text-rose-400' : 'text-emerald-400'}`}>
                                     {isShortage ? 'نقص' : 'متوفر'}
                                 </div>
-                                <div className="text-xs text-slate-500 mt-1">تحتاج {Math.ceil(pillsNeeded)} (لديك {totalInventory})</div>
+                                {isShortage && (
+                                    <div className="text-xs text-rose-300 mt-1 font-bold">
+                                        تحتاج {Math.ceil(pillsNeeded - totalInventory)} {unitLabel} إضافية
+                                    </div>
+                                )}
                             </Card>
                         )}
                     </div>
                 </div>
 
                 <div className="flex gap-4">
-                    <Button variant="secondary" onClick={() => setShowPreview(false)} className="flex-1">تعديل</Button>
+                    <Button variant="secondary" onClick={() => setShowPreview(false)} className="flex-1">تعديل البيانات</Button>
                     <Button variant="primary" onClick={() => startPlan(previewPlan, speedModifier, selectedPath || 'algorithm')} className="flex-[2]">
-                        بدء التعافي <ArrowRight size={20} />
+                        اعتماد وبدء الرحلة <ArrowRight size={20} />
                     </Button>
                 </div>
             </div>
@@ -249,9 +255,8 @@ export const OnboardingView = ({
       );
   }
 
-  // --- RENDER: MANUAL BUILDER (Step 2 - Doctor) ---
+  // --- RENDER: MANUAL BUILDER ---
   if (userProfile && selectedPath === 'manual') {
-      // (Manual builder code remains mostly same, just ensuring unit labels are correct)
       return (
         <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center pt-10 relative">
             <NavBackBtn onClick={() => { setSelectedPath(null); setUserProfile(null); }} />
@@ -271,7 +276,6 @@ export const OnboardingView = ({
                         </div>
                         <Button onClick={addManualPhase} className="h-[58px] !p-0 rounded-xl bg-indigo-600 w-16 flex items-center justify-center"><Plus /></Button>
                     </div>
-                    {/* (Template section omitted for brevity, same as before) */}
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                         {manualPhases.map((phase, idx) => (
                             <div key={idx} className="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-white/5">
@@ -287,15 +291,11 @@ export const OnboardingView = ({
       );
   }
 
-  // --- RENDER: ALGORITHM FLOW ---
-
-  // 1. BLOCK SCREEN (Narcotics)
+  // --- RENDER: BLOCKED & WARNING ---
   if (blockedState) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center">
-              <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce">
-                  <Ban size={48} className="text-white" />
-              </div>
+              <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><Ban size={48} className="text-white" /></div>
               <h1 className="text-4xl font-black text-white mb-4">الدخول محظور</h1>
               <p className="text-red-200 text-xl max-w-lg mb-8">{t('narcotic_block_msg')}</p>
               <Button onClick={() => setBlockedState(false)} variant="secondary">عودة</Button>
@@ -303,14 +303,11 @@ export const OnboardingView = ({
       );
   }
 
-  // 2. WARNING SCREEN (Psych)
   if (psychWarning) {
       return (
           <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6">
               <Card className="max-w-md border-amber-500/30 bg-slate-900">
-                  <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
-                      <AlertTriangle size={32} className="text-amber-500" />
-                  </div>
+                  <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto"><AlertTriangle size={32} className="text-amber-500" /></div>
                   <h2 className="text-2xl font-bold text-white text-center mb-4">تنبيه طبي هام</h2>
                   <p className="text-slate-300 text-center mb-6 leading-relaxed">{t('psych_warning_msg')}</p>
                   <div className="flex gap-4">
@@ -322,32 +319,24 @@ export const OnboardingView = ({
       );
   }
 
-  // 3. MED TYPE SELECTOR
+  // --- RENDER: MED TYPE SELECTOR ---
   if (!userProfile) {
       return (
         <div className="min-h-screen bg-[#020617] p-6 pt-20">
             <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
             <NavBackBtn onClick={() => setSelectedPath(null)} />
-            
             <header className="text-center mb-12">
                 <h1 className="text-4xl font-black text-white mb-4">{t('build_protocol')}</h1>
                 <p className="text-slate-400">{t('algo_desc')}</p>
             </header>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 {[
                   { type: 'narcotic', label: t('med_narcotic'), icon: Ban, color: 'rose', desc: t('med_desc_doc') },
                   { type: 'psychiatric', label: t('med_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_desc_std') },
                   { type: 'normal', label: t('med_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_desc_safe') }
                 ].map((item: any) => (
-                  <button 
-                    key={item.type}
-                    onClick={() => handleMedTypeSelect(item.type)}
-                    className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}
-                  >
-                    <div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
-                       <item.icon className={`w-10 h-10 text-${item.color}-500`} />
-                    </div>
+                  <button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}>
+                    <div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div>
                     <h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3>
                     <p className="text-sm text-slate-500 font-bold">{item.desc}</p>
                   </button>
@@ -357,53 +346,34 @@ export const OnboardingView = ({
       );
   }
 
-  // 4. FORM & UNIT SELECTOR (New Step)
+  // --- RENDER: FORM & UNIT ---
   if (userProfile && !userProfile.medForm) {
       return (
           <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center">
               <NavBackBtn onClick={() => setUserProfile(null)} />
               <div className="max-w-2xl w-full">
                   <h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_label')}</h1>
-                  
-                  {/* Form Selection */}
                   <div className="grid grid-cols-2 gap-4 mb-8">
-                      <button onClick={() => setMedForm('tablet')} className={`p-6 rounded-2xl border ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-white/10 text-slate-400'}`}>
-                          <Pill className="mx-auto mb-2" size={32} />
-                          <span className="block text-center font-bold">{t('med_form_tablet')}</span>
-                      </button>
-                      <button onClick={() => setMedForm('liquid')} className={`p-6 rounded-2xl border ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-white/10 text-slate-400'}`}>
-                          <FlaskConical className="mx-auto mb-2" size={32} />
-                          <span className="block text-center font-bold">{t('med_form_liquid')}</span>
-                      </button>
+                      <button onClick={() => setMedForm('tablet')} className={`p-6 rounded-2xl border ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-white/10 text-slate-400'}`}><Pill className="mx-auto mb-2" size={32} /><span className="block text-center font-bold">{t('med_form_tablet')}</span></button>
+                      <button onClick={() => setMedForm('liquid')} className={`p-6 rounded-2xl border ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-white/10 text-slate-400'}`}><FlaskConical className="mx-auto mb-2" size={32} /><span className="block text-center font-bold">{t('med_form_liquid')}</span></button>
                   </div>
-
-                  {/* Unit Selection (Dynamic) */}
                   {medForm && (
                       <div className="animate-in fade-in">
                           <h2 className="text-xl font-bold text-white text-center mb-4">{t('med_unit_label')}</h2>
                           <div className="flex justify-center gap-4 mb-8">
                               {(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (
-                                  <button 
-                                    key={u} 
-                                    onClick={() => setMedUnit(u as MedUnit)}
-                                    className={`px-6 py-3 rounded-xl font-bold text-lg border ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900 border-white/10 text-slate-500'}`}
-                                  >
-                                      {u}
-                                  </button>
+                                  <button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900 border-white/10 text-slate-500'}`}>{u}</button>
                               ))}
                           </div>
                       </div>
                   )}
-
-                  <Button variant="success" className="w-full py-4 text-xl" disabled={!medForm || !medUnit} onClick={confirmMedForm}>
-                      متابعة <ArrowRight />
-                  </Button>
+                  <Button variant="success" className="w-full py-4 text-xl" disabled={!medForm || !medUnit} onClick={confirmMedForm}>متابعة <ArrowRight /></Button>
               </div>
           </div>
       );
   }
 
-  // 5. INVENTORY SETUP
+  // --- RENDER: INVENTORY SETUP ---
   if (userProfile && !userProfile.setupComplete) {
       const unitLabel = userProfile.medUnit || 'mg';
       const formLabel = userProfile.medForm === 'liquid' ? 'Bottles' : 'Boxes';
@@ -444,12 +414,7 @@ export const OnboardingView = ({
                         {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
                             <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-white/10 text-slate-500'}`}>{dose}</button>
                         ))}
-                        <input 
-                            type="number" 
-                            placeholder="Custom" 
-                            className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none"
-                            onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))}
-                        />
+                        <input type="number" placeholder="Custom" className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} />
                     </div>
                 </Card>
 

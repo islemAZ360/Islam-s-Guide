@@ -3,7 +3,7 @@ import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, Ar
 import { auth, googleProvider, db } from './services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore'; 
-import { generatePlan, calculateTotalInventory, adjustPlan } from './services/taperingEngine';
+import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
@@ -21,6 +21,13 @@ import { CommunityView } from './views/CommunityView';
 import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
 
+// Helper to add days safely
+const addDaysSafe = (dateStr: string, days: number): string => {
+  const date = new Date(dateStr);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().split('T')[0];
+};
+
 function AppContent() {
   // -- State --
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -37,22 +44,21 @@ function AppContent() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [speedModifier, setSpeedModifier] = useState<number>(1.0);
   
-  // Navigation History State
+  // Navigation
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [viewHistory, setViewHistory] = useState<AppView[]>([]);
-
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Dashboard Interaction State
+  // Dashboard Interaction
   const [selectedDose, setSelectedDose] = useState<number | null>(null);
   const [selectedMood, setSelectedMood] = useState<'bad' | 'normal' | 'good' | null>(null);
 
-  // Login Form
+  // Login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // -- Load Local Data on Mount --
+  // -- Load Local --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
     const savedPlan = localStorage.getItem('taper_plan');
@@ -69,7 +75,7 @@ function AppContent() {
     setLoading(false); 
   }, []);
 
-  // -- 1. FETCH DATA FROM FIREBASE ON LOGIN --
+  // -- 1. FETCH DATA --
   useEffect(() => {
     if (authUser) {
       const fetchUserData = async () => {
@@ -80,7 +86,6 @@ function AppContent() {
           
           if (docSnap.exists()) {
             const data = docSnap.data();
-            // Load Cloud Data
             if (data.userProfile) setUserProfile(data.userProfile);
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
@@ -101,7 +106,7 @@ function AppContent() {
     }
   }, [authUser]);
 
-  // -- 2. SYNC DATA TO FIREBASE & LOCAL STORAGE --
+  // -- 2. SYNC DATA --
   useEffect(() => {
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
@@ -140,8 +145,6 @@ function AppContent() {
     }
   }, [userProfile, plan, logs, speedModifier, authUser, inventory]);
 
-
-  // -- Navigation Logic --
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
     setViewHistory(prev => [...prev, currentView]);
@@ -154,47 +157,38 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      if (currentView !== AppView.DASHBOARD) {
-        setCurrentView(AppView.DASHBOARD);
-      }
+      if (currentView !== AppView.DASHBOARD) setCurrentView(AppView.DASHBOARD);
     }
   };
 
-  // -- Handlers --
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     setLoading(true);
 
-    // ADMIN LOGIN
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
             const cred = await signInWithEmailAndPassword(auth, email, password);
             setAuthUser(cred.user);
-            await setDoc(doc(db, "users", cred.user.uid), {
-                email: email, name: 'System Admin', isAdmin: true, setupComplete: true
-            }, { merge: true });
-            setUserProfile({ email: email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
+            await setDoc(doc(db, "users", cred.user.uid), { email, name: 'System Admin', isAdmin: true, setupComplete: true }, { merge: true });
+            setUserProfile({ email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
             setCurrentView(AppView.ADMIN);
         } catch (err: any) {
             if (err.code === 'auth/user-not-found') {
                 try {
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
-                    await setDoc(doc(db, "users", newCred.user.uid), {
-                        email: email, name: 'System Admin', isAdmin: true, setupComplete: true
-                    }, { merge: true });
-                    setUserProfile({ email: email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
+                    await setDoc(doc(db, "users", newCred.user.uid), { email, name: 'System Admin', isAdmin: true, setupComplete: true }, { merge: true });
+                    setUserProfile({ email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
                     setCurrentView(AppView.ADMIN);
-                } catch (createErr: any) { setLoginError('Admin Setup Failed: ' + createErr.message); }
+                } catch (cErr: any) { setLoginError('Admin Setup Failed: ' + cErr.message); }
             } else { setLoginError('Admin Login Error: ' + err.message); }
         }
         setLoading(false);
         return;
     }
 
-    // Demo Mode
     if (email === 'islamaz@bomba.com' && password === 'bombaAZ360') {
         setTimeout(() => { setIsDemoMode(true); setLoading(false); }, 800);
         return;
@@ -243,8 +237,8 @@ function AppContent() {
         email: authUser?.email || email || 'demo@user.com',
         name: authUser?.displayName || 'User',
         medType: userProfile?.medType || 'normal', 
-        medForm: userProfile?.medForm, // Preserve form
-        medUnit: userProfile?.medUnit, // Preserve unit
+        medForm: userProfile?.medForm, 
+        medUnit: userProfile?.medUnit, 
         durationMonths: 0,
         setupComplete: true,
         planType: planType 
@@ -255,9 +249,7 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    // 1. Inventory Logic
     const currentTotal = calculateTotalInventory(inventory);
-    // Use float calculation for liquid precision
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
@@ -269,27 +261,16 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // 2. Log Logic
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
-        date: today, 
-        doseTaken: selectedDose, 
-        mood: selectedMood,
-        sleepHours: sleepHours, 
-        symptoms: symptoms 
+        date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
     };
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Plan Adjustment
     if (userProfile?.planType !== 'manual') {
-        // We pass the "Pre-dose" inventory + what was taken to reconstruct Total Initial for the algorithm
-        // Actually, better: calculate what total SHOULD be to feed the algorithm logic
-        // The engine now expects (InitialTotal) to do (Initial - Used).
-        // Since we know Current = Initial - Used -> Initial = Current + Used.
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
-        
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier);
         setPlan(newPlan);
     }
@@ -309,30 +290,25 @@ function AppContent() {
       const future = plan.filter(p => p.date > today);
       
       const newPlanDays: PlanDay[] = [];
-      let currentDateObj = new Date(today);
+      let currentDateStr = today;
       
       for (let i = 0; i < 3; i++) {
-          currentDateObj.setDate(currentDateObj.getDate() + 1);
+          currentDateStr = addDaysSafe(currentDateStr, 1);
           newPlanDays.push({
-              date: currentDateObj.toISOString().split('T')[0],
+              date: currentDateStr,
               plannedDose: freezeDose,
               isPast: false
           });
       }
       
       future.forEach(day => {
-          currentDateObj.setDate(currentDateObj.getDate() + 1);
-          newPlanDays.push({ ...day, date: currentDateObj.toISOString().split('T')[0] });
+          currentDateStr = addDaysSafe(currentDateStr, 1);
+          newPlanDays.push({ ...day, date: currentDateStr });
       });
       
       setPlan([...history, ...newPlanDays]);
       showToast(t('toast_freeze_success'));
   };
-
-  const showToast = (msg: string) => {
-      setToastMessage(msg);
-      setTimeout(() => setToastMessage(null), 3000);
-  }
 
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
@@ -340,12 +316,13 @@ function AppContent() {
           const currentInv = calculateTotalInventory(inventory);
           const totalUsed = logs.reduce((a, b) => a + b.doseTaken, 0);
           const theoreticalInitial = currentInv + totalUsed;
-          
           const newPlan = adjustPlan(plan, logs, theoreticalInitial, newSpeed);
           setPlan(newPlan);
           showToast(t('toast_speed_updated'));
       }
   };
+
+  const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); }
 
   const resetAllData = async () => {
     if (confirm('Are you sure? This will wipe everything.')) {
@@ -365,52 +342,26 @@ function AppContent() {
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
+  const daysCompleted = logs.length;
+  const totalDays = plan.length;
+  const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+  
+  // Calculate warning
   const recentLogs = logs.slice(-3);
   const badMoodCount = recentLogs.filter(l => l.mood === 'bad').length;
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
-  
-  const totalDays = plan.length;
-  const daysCompleted = logs.length;
-  const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
 
-  if (loading) return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">
-          LOADING SYSTEM...
-      </div>
-  );
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
   if (!authUser && !isDemoMode) {
-    return (
-        <LoginView 
-            handleLogin={handleLogin}
-            handleGoogleLogin={handleGoogleLogin}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            loginError={loginError}
-            setDemoCreds={setDemoCreds}
-        />
-    );
+    return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
   const needsOnboarding = !userProfile || !userProfile.setupComplete;
 
   if (needsOnboarding && !userProfile?.isAdmin) {
-    return (
-        <OnboardingView 
-            userProfile={userProfile}
-            setUserProfile={setUserProfile}
-            inventory={inventory}
-            setInventory={setInventory}
-            currentDoseHabit={currentDoseHabit}
-            setCurrentDoseHabit={setCurrentDoseHabit}
-            startPlan={startPlan}
-            email={authUser?.email || email}
-            handleLogout={handleLogout}
-        />
-    );
+    return <OnboardingView userProfile={userProfile} setUserProfile={setUserProfile} inventory={inventory} setInventory={setInventory} currentDoseHabit={currentDoseHabit} setCurrentDoseHabit={setCurrentDoseHabit} startPlan={startPlan} email={authUser?.email || email} handleLogout={handleLogout} />;
   }
 
   return (
@@ -421,14 +372,12 @@ function AppContent() {
           </div>
       )}
 
-      {/* Mobile Back Button */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
           </button>
       )}
 
-      {/* Desktop Back Button */}
       {(viewHistory.length > 0 && currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="hidden md:flex fixed top-8 left-8 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors">
               {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
@@ -450,31 +399,21 @@ function AppContent() {
                 submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
             />
         )}
-        {currentView === AppView.CALENDAR && (
-            <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
-        )}
-        {currentView === AppView.STATS && (
-            <StatsView logs={logs} plan={plan} userProfile={userProfile} />
-        )} 
-        {currentView === AppView.COMMUNITY && userProfile && (
-            <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
-        )}
-        {currentView === AppView.SUPPORT && userProfile && (
-            <SupportView user={{...userProfile, uid: authUser?.uid}} />
-        )}
-        {currentView === AppView.ARTICLES && (
-            <ArticlesView />
-        )}
-        {currentView === AppView.ADMIN && userProfile?.isAdmin && (
-            <AdminView />
-        )}
-        {currentView === AppView.SETTINGS && (
+        {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
+        {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
+        {currentView === AppView.COMMUNITY && userProfile && <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />}
+        {/* Pass user object carefully constructing it to ensure no nulls */}
+        {currentView === AppView.SUPPORT && userProfile && authUser && <SupportView user={{...userProfile, uid: authUser.uid}} />}
+        {currentView === AppView.ARTICLES && <ArticlesView />}
+        {currentView === AppView.ADMIN && userProfile?.isAdmin && <AdminView />}
+        {currentView === AppView.SETTINGS && userProfile && (
             <LayoutContainer>
                 <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
                 <Card className="bg-slate-900 border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
                     <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
-                    {userProfile.planType === 'manual' ? (
+                    {/* Fixed: Optional Chaining to prevent crash if profile is loading/null */}
+                    {userProfile?.planType === 'manual' ? (
                          <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4"><ShieldCheck size={40} className="text-slate-700" /><p>Manual Plan Active</p></div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

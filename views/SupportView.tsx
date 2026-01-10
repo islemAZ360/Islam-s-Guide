@@ -6,7 +6,7 @@ import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
 import { PageHeader, LayoutContainer, Card, Button, Badge } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Clock, Lock, X } from 'lucide-react';
+import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical } from 'lucide-react';
 
 interface SupportViewProps {
     user: UserProfile;
@@ -42,7 +42,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
-            // Update active ticket if it exists (for real-time chat)
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -52,7 +51,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
         return () => unsubscribe();
     }, [user.uid, activeTicket?.id]);
 
-    // Scroll to bottom of chat
+    // Scroll to bottom
     useEffect(() => {
         if (activeTicket) {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,7 +107,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             await updateDoc(ticketRef, {
                 messages: [...currentMessages, newMsg],
                 lastUpdate: Date.now(),
-                status: 'open' // Re-open if it was pending user response
+                status: 'open' 
             });
             setNewMessage("");
         } catch (e) {
@@ -116,7 +115,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     };
 
-    // -- Render --
     return (
         <LayoutContainer>
             <PageHeader 
@@ -129,8 +127,23 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 }
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[500px]">
-                {/* LIST OF TICKETS */}
+            {/* Context Banner */}
+            <div className="mb-6 bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
+                        {user.medForm === 'liquid' ? <FlaskConical size={20} /> : <Pill size={20} />}
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase font-bold">ملفك الطبي الحالي</p>
+                        <p className="text-white font-bold text-sm">
+                            {user.medType || 'غير محدد'} • {user.medForm === 'liquid' ? 'سائل' : 'حبوب'} ({user.medUnit || 'mg'})
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
+                {/* LIST */}
                 <Card className={`md:col-span-4 flex flex-col overflow-hidden ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     <div className="mb-4 flex items-center justify-between">
                         <h3 className="font-bold text-white">تذاكري</h3>
@@ -170,7 +183,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                     </div>
                 </Card>
 
-                {/* CHAT AREA */}
+                {/* CHAT */}
                 <Card className={`md:col-span-8 flex flex-col overflow-hidden bg-slate-900 border-white/5 relative ${!activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     {!activeTicket ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
@@ -179,33 +192,23 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         </div>
                     ) : (
                         <>
-                            {/* Chat Header */}
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
                                 <div>
-                                    <button onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2">
-                                        رجوع للقائمة
-                                    </button>
+                                    <button onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2">رجوع</button>
                                     <h3 className="font-bold text-white flex items-center gap-2">
                                         <Lock size={14} className="text-emerald-500"/> {activeTicket.subject}
                                     </h3>
-                                    <p className="text-[10px] text-slate-500">Ticket ID: {activeTicket.id}</p>
+                                    <p className="text-[10px] text-slate-500">ID: {activeTicket.id}</p>
                                 </div>
-                                {activeTicket.status === 'resolved' && (
-                                    <Badge color="green"><CheckCircle size={12} /> تم الحل</Badge>
-                                )}
+                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> تم الحل</Badge>}
                             </div>
 
-                            {/* Chat Messages */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                                 {activeTicket.messages?.map((msg, idx) => {
-                                    const isMe = !msg.isAdmin; // In User View, user is me
+                                    const isMe = !msg.isAdmin; 
                                     return (
                                         <div key={idx} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}>
-                                            <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                                                isMe 
-                                                ? 'bg-slate-800 text-slate-200 rounded-tl-none' 
-                                                : 'bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-500/20'
-                                            }`}>
+                                            <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${isMe ? 'bg-slate-800 text-slate-200 rounded-tl-none' : 'bg-indigo-600 text-white rounded-tr-none shadow-lg'}`}>
                                                 {msg.text}
                                             </div>
                                             <span className="text-[10px] text-slate-600 mt-1 px-1">
@@ -217,60 +220,46 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Input */}
                             <div className="p-4 border-t border-white/5 bg-slate-950/30">
                                 {activeTicket.status === 'resolved' ? (
                                     <div className="text-center text-xs text-emerald-500 font-bold bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                                        تم إغلاق هذه التذكرة. لفتحها مجدداً، أرسل رسالة جديدة.
+                                        تم إغلاق هذه التذكرة.
                                     </div>
-                                ) : null}
-                                <div className="flex gap-2 mt-2">
-                                    <input 
-                                        className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none"
-                                        placeholder="اكتب ردك هنا..."
-                                        value={newMessage}
-                                        onChange={e => setNewMessage(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && sendReply()}
-                                    />
-                                    <Button onClick={sendReply} variant="primary" disabled={!newMessage.trim()} className="!rounded-xl">
-                                        <Send size={18} />
-                                    </Button>
-                                </div>
+                                ) : (
+                                    <div className="flex gap-2 mt-2">
+                                        <input 
+                                            className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none"
+                                            placeholder="اكتب ردك هنا..."
+                                            value={newMessage}
+                                            onChange={e => setNewMessage(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && sendReply()}
+                                        />
+                                        <Button onClick={sendReply} variant="primary" disabled={!newMessage.trim()} className="!rounded-xl">
+                                            <Send size={18} />
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
                 </Card>
             </div>
 
-            {/* CREATE TICKET MODAL */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
                     <Card className="w-full max-w-md bg-slate-900 border-white/10 relative">
                         <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
                         <h3 className="text-xl font-bold text-white mb-6">طلب مساعدة جديد</h3>
-                        
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">الموضوع</label>
-                                <input 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
-                                    placeholder="مثال: مشكلة في الجرعة، استفسار طبي..."
-                                    value={newSubject}
-                                    onChange={e => setNewSubject(e.target.value)}
-                                />
+                                <input className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none" value={newSubject} onChange={e => setNewSubject(e.target.value)} placeholder="عنوان المشكلة" />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">تفاصيل المشكلة</label>
-                                <textarea 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none"
-                                    placeholder="اشرح مشكلتك بالتفصيل..."
-                                    value={newMessage}
-                                    onChange={e => setNewMessage(e.target.value)}
-                                />
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">التفاصيل</label>
+                                <textarea className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="الشرح..." />
                             </div>
-                            <Button onClick={createTicket} variant="primary" className="w-full" disabled={!newSubject || !newMessage}>
-                                إرسال الطلب
-                            </Button>
+                            <Button onClick={createTicket} variant="primary" className="w-full" disabled={!newSubject || !newMessage}>إرسال الطلب</Button>
                         </div>
                     </Card>
                 </div>
