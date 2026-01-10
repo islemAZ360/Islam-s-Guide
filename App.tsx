@@ -96,23 +96,13 @@ function AppContent() {
             
             if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
-            // Auto-redirect logic based on Role status
+            // FIX: REMOVED THE AGGRESSIVE AUTO-REDIRECT LOGIC HERE
+            // The previous logic was forcing redirects because it used stale state.
+            // We only force redirect for Admin or if transitioning from pending.
+            
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
-            } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                const allowedDoctorViews = [
-                    AppView.DOCTOR_DASHBOARD, 
-                    AppView.DOCTOR_PATIENTS, 
-                    AppView.COMMUNITY,
-                    AppView.ARTICLES,
-                    AppView.SUPPORT,
-                    AppView.SETTINGS
-                ];
-                
-                if (!allowedDoctorViews.includes(currentView)) {
-                     setCurrentView(AppView.DOCTOR_DASHBOARD);
-                }
-            }
+            } 
             
             // If status changed back to pending (e.g. after resubmission), turn off resubmitting mode
             if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'pending') {
@@ -150,7 +140,7 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]);
+  }, [authUser]); // Removed currentView dependency to prevent loops
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
@@ -429,7 +419,6 @@ function AppContent() {
   }
 
   // 2. ONBOARDING & RESUBMISSION
-  // If (User not setup) OR (Doctor is in Resubmission Mode)
   if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
     return <OnboardingView 
         userProfile={userProfile!} 
@@ -453,7 +442,7 @@ function AppContent() {
           </div>
       )}
 
-      {/* DOCTOR REJECTION SCREEN - Full Screen Blocking View */}
+      {/* DOCTOR REJECTION SCREEN */}
       {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' ? (
           <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
