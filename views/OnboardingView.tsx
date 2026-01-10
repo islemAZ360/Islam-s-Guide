@@ -140,7 +140,7 @@ export const OnboardingView = ({
               recoveredCount: currentData?.recoveredCount || 0,
               doctorLevel: currentData?.doctorLevel || 1,
               // FIX: Ensure photoUrl is never undefined
-              photoUrl: currentData?.photoUrl || null,
+                photoUrl: currentData?.photoUrl || null,
               
               // Update Limits
               submissionCount: count + 1,

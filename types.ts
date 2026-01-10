@@ -15,13 +15,15 @@ export interface DoctorProfileData {
   clinicLocation?: string;  
   phoneNumber: string;      
   bio: string;              
-  photoUrl?: string;        
+  // FIX: Allow null for database compatibility
+  photoUrl?: string | null;        
   accountStatus: DoctorAccountStatus; 
   
-  // Rejection & Resubmission Logic (NEW)
-  rejectionReason?: string;       // سبب الرفض
-  submissionCount?: number;       // عدد مرات تقديم الطلب
-  lastSubmissionDate?: number;    // تاريخ آخر تقديم (للتحقق من الشهر)
+  // Rejection & Resubmission Logic
+  // FIX: Allow null here too
+  rejectionReason?: string | null;       
+  submissionCount?: number;       
+  lastSubmissionDate?: number;    
 
   // Stats
   totalPatients: number;
