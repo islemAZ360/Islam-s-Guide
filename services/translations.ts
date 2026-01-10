@@ -107,7 +107,7 @@ export const translations = {
     breathe_out: "زفير",
     close: "إنهاء",
 
-    // Settings
+    // Settings & Profile
     settings_title: "إعدادات النظام",
     settings_subtitle: "التحكم في الخوارزمية",
     pace_control: "وتيرة التعافي",
@@ -117,6 +117,12 @@ export const translations = {
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
     factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
+    // New Profile Translations
+    profile_title: "الملف الشخصي",
+    photo_url_label: "رابط الصورة الشخصية",
+    save_changes: "حفظ التغييرات",
+    rank_label: "التصنيف العالمي",
+    edit_profile: "تعديل الملف",
 
     // Onboarding & Roles
     onboard_title: "أهلاً بك في Islam's Guide",
@@ -190,6 +196,9 @@ export const translations = {
     approved_docs_list: "قائمة الأطباء المعتمدين",
     ban_user: "حظر",
     unban_user: "فك الحظر",
+    delete_user: "حذف نهائي", // NEW
+    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", // NEW
+    view_details: "عرض التفاصيل", // NEW
     search_user_placeholder: "بحث عن مستخدم...",
     
     // Patient Management
@@ -212,7 +221,7 @@ export const translations = {
     cat_tip: "نصائح",
     cancel_btn: "إلغاء",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
     new_ticket: "فتح تذكرة جديدة",
     new_ticket_title: "طلب مساعدة جديد",
@@ -331,6 +340,13 @@ export const translations = {
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
     factory_reset_btn: "Factory Reset",
+    // New Profile Translations
+    profile_title: "My Profile",
+    photo_url_label: "Profile Photo URL",
+    save_changes: "Save Changes",
+    rank_label: "Global Rank",
+    edit_profile: "Edit Profile",
+
     onboard_title: "Welcome to Islam's Guide",
     onboard_desc: "Before we start, please select how you'll use the system.",
     role_patient: "User / Patient",
@@ -390,6 +406,9 @@ export const translations = {
     approved_docs_list: "Approved Doctors List",
     ban_user: "Ban",
     unban_user: "Unban",
+    delete_user: "Delete User", // NEW
+    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", // NEW
+    view_details: "View Details", // NEW
     search_user_placeholder: "Search user...",
     manage_patients_title: "Patient Files Management",
     add_patient_btn: "Add New Patient",
@@ -408,7 +427,7 @@ export const translations = {
     cat_tip: "Tip",
     cancel_btn: "Cancel",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "Contact the support team directly.",
     new_ticket: "New Ticket",
     new_ticket_title: "New Support Request",
@@ -527,6 +546,13 @@ export const translations = {
     pace_fast: "Быстро",
     danger_zone: "Опасно",
     factory_reset_btn: "Сброс",
+    // New Profile Translations
+    profile_title: "Профиль",
+    photo_url_label: "URL фото",
+    save_changes: "Сохранить",
+    rank_label: "Рейтинг",
+    edit_profile: "Ред. профиль",
+
     onboard_title: "Добро пожаловать в Islam's Guide",
     onboard_desc: "Пожалуйста, выберите цель использования.",
     role_patient: "Пользователь / Пациент",
@@ -586,6 +612,9 @@ export const translations = {
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
+    delete_user: "Удалить", // NEW
+    delete_confirm_msg: "Вы уверены? Это действие необратимо.", // NEW
+    view_details: "Подробнее", // NEW
     search_user_placeholder: "Поиск пользователя...",
     manage_patients_title: "Управление пациентами",
     add_patient_btn: "Добавить пациента",
@@ -604,7 +633,7 @@ export const translations = {
     cat_tip: "Советы",
     cancel_btn: "Отмена",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "Свяжитесь с командой поддержки напрямую.",
     new_ticket: "Новый тикет",
     new_ticket_title: "Новый запрос в поддержку",

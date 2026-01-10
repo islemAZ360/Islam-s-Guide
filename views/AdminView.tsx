@@ -6,7 +6,7 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
 import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle, Eye, X
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
@@ -28,14 +28,15 @@ export const AdminView = () => {
     const [showArticleModal, setShowArticleModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
 
+    // -- Doctor View State --
+    const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
+
     // -- Search --
     const [searchTerm, setSearchTerm] = useState("");
 
-    // -- 1. REAL-TIME DATA FETCHING (UPDATED) --
+    // -- 1. REAL-TIME DATA FETCHING --
     useEffect(() => {
         setLoading(true);
-        // الاستماع المباشر للتغييرات في جدول المستخدمين
-        // هذا يضمن ظهور الطبيب فور تسجيله دون الحاجة لتحديث الصفحة
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -47,13 +48,11 @@ export const AdminView = () => {
             setLoading(false);
         });
 
-        // الاستماع للمقالات
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
         });
 
-        // تنظيف الاستماع عند الخروج
         return () => {
             unsubscribeUsers();
             unsubscribeArticles();
@@ -64,12 +63,11 @@ export const AdminView = () => {
     
     const approveDoctor = async (docUid: string) => {
         if (!confirm("Are you sure you want to approve this doctor?")) return;
-        
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "approved"
             });
-            // لا نحتاج لتحديث الحالة يدوياً هنا لأن onSnapshot سيقوم بذلك
+            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
@@ -79,6 +77,7 @@ export const AdminView = () => {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "rejected"
             });
+            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
@@ -90,7 +89,20 @@ export const AdminView = () => {
         if(confirm(newVal ? "Ban this user?" : "Unban this user?")) {
             await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
         }
-    }
+    };
+
+    // NEW: Delete User Permanently
+    const deleteUser = async (targetUid: string) => {
+        if (!confirm(t('delete_confirm_msg'))) return;
+        try {
+            await deleteDoc(doc(db, "users", targetUid));
+            // Note: This only deletes Firestore data. Auth account deletion requires Admin SDK or Cloud Functions.
+            // But without Firestore data, the app will treat them as non-existent or new.
+        } catch (e) {
+            console.error("Error deleting user:", e);
+            alert("Failed to delete user.");
+        }
+    };
 
     // -- CMS ACTIONS --
 
@@ -125,7 +137,6 @@ export const AdminView = () => {
     const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
     const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
 
-    // Stats for Overview
     const stats = useMemo(() => {
         return [
             { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
@@ -192,7 +203,6 @@ export const AdminView = () => {
                             </ResponsiveContainer>
                         </Card>
                         
-                        {/* Pending Approvals Quick View */}
                         <Card className="bg-slate-900 border-white/5">
                             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
                                 <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
@@ -223,7 +233,7 @@ export const AdminView = () => {
             {/* --- TAB: DOCTORS MANAGEMENT --- */}
             {activeTab === 'doctors' && (
                 <div className="animate-in fade-in space-y-8">
-                     {/* 1. Pending Approvals Section (Always Visible now to avoid confusion) */}
+                     {/* 1. Pending Approvals */}
                      <div className="space-y-4">
                          <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
                              <Lock className="text-amber-500" /> {t('pending_approvals')}
@@ -242,26 +252,20 @@ export const AdminView = () => {
                                         <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
                                         
                                         <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
+                                            {doc.doctorData?.photoUrl ? (
+                                                <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-full object-cover border border-white/10" />
+                                            ) : (
+                                                <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
+                                            )}
                                             <div>
                                                 <h3 className="font-bold text-white text-lg">{doc.name}</h3>
                                                 <p className="text-sm text-slate-400">{doc.doctorData?.specialty}</p>
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 space-y-2 mb-6">
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Email:</span> <span className="text-white select-all">{doc.email}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono select-all">{doc.doctorData?.licenseNumber}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono select-all">{doc.doctorData?.phoneNumber}</span></div>
-                                            <div className="flex justify-between"><span>Loc:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Button onClick={() => doc.uid && approveDoctor(doc.uid)} variant="success" className="flex-1 !py-2">
-                                                <CheckCircle size={16} className="mr-2"/> {t('approve_btn')}
-                                            </Button>
-                                            <Button onClick={() => doc.uid && rejectDoctor(doc.uid)} variant="danger" className="flex-1 !py-2">
-                                                <XCircle size={16} className="mr-2"/> {t('reject_btn')}
+                                        <div className="flex gap-2 mt-6">
+                                            <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="flex-1 !py-2">
+                                                <Eye size={16} className="mr-2"/> {t('view_details')}
                                             </Button>
                                         </div>
                                     </div>
@@ -270,7 +274,7 @@ export const AdminView = () => {
                          )}
                      </div>
 
-                     {/* 2. Active Doctors List & Stats */}
+                     {/* 2. Active Doctors List */}
                      <div>
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                              <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
@@ -283,9 +287,8 @@ export const AdminView = () => {
                                             <th className="p-4">Doctor</th>
                                             <th className="p-4">Specialty</th>
                                             <th className="p-4 text-center">Patients</th>
-                                            <th className="p-4 text-center">Recovered</th>
                                             <th className="p-4 text-center">Level</th>
-                                            <th className="p-4">Actions</th>
+                                            <th className="p-4 text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -299,17 +302,21 @@ export const AdminView = () => {
 
                                             return (
                                                 <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
-                                                    <td className="p-4 font-bold text-white">{doc.name}</td>
+                                                    <td className="p-4 font-bold text-white flex items-center gap-3">
+                                                        {doc.doctorData?.photoUrl ? (
+                                                            <img src={doc.doctorData.photoUrl} className="w-8 h-8 rounded-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">Dr</div>
+                                                        )}
+                                                        {doc.name}
+                                                    </td>
                                                     <td className="p-4">{doc.doctorData?.specialty}</td>
                                                     <td className="p-4 text-center text-indigo-400 font-bold">{patientCount}</td>
-                                                    <td className="p-4 text-center text-emerald-400 font-bold">{recoveredCount}</td>
-                                                    <td className="p-4 text-center">
-                                                        <Badge color="amber">LVL {level}</Badge>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <Button variant="danger" className="!py-1 !px-2 !text-xs" onClick={() => toggleBan(doc)}>
-                                                            {doc.isBanned ? t('unban_user') : t('ban_user')}
-                                                        </Button>
+                                                    <td className="p-4 text-center"><Badge color="amber">LVL {level}</Badge></td>
+                                                    <td className="p-4 text-center flex justify-center gap-2">
+                                                        <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded hover:bg-blue-500/20" title={t('view_details')}><Eye size={16}/></button>
+                                                        <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}><Ban size={16}/></button>
+                                                        <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded hover:bg-rose-500/20" title={t('delete_user')}><Trash2 size={16}/></button>
                                                     </td>
                                                 </tr>
                                             );
@@ -357,9 +364,10 @@ export const AdminView = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="secondary" className="!p-2 text-rose-500 hover:text-white hover:bg-rose-500" onClick={() => toggleBan(user)}>
-                                    <Ban size={16} />
-                                </Button>
+                                <div className="flex gap-2">
+                                    <button onClick={() => toggleBan(user)} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"><Ban size={16} /></button>
+                                    <button onClick={() => user.uid && deleteUser(user.uid)} className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"><Trash2 size={16} /></button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -433,6 +441,69 @@ export const AdminView = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* DOCTOR DETAILS MODAL */}
+            {selectedDoctor && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-lg bg-slate-900 border-white/10 shadow-2xl relative">
+                        <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
+                        
+                        <div className="text-center mb-6">
+                            {selectedDoctor.doctorData?.photoUrl ? (
+                                <img src={selectedDoctor.doctorData.photoUrl} alt="Dr" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-800 object-cover" />
+                            ) : (
+                                <div className="w-24 h-24 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-slate-500">Dr</div>
+                            )}
+                            <h2 className="text-2xl font-bold text-white">{selectedDoctor.name}</h2>
+                            <p className="text-indigo-400 font-medium">{selectedDoctor.doctorData?.specialty}</p>
+                        </div>
+
+                        <div className="space-y-4 bg-slate-950/50 p-4 rounded-xl border border-white/5 text-sm">
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Status</span>
+                                <Badge color={selectedDoctor.doctorData?.accountStatus === 'approved' ? 'green' : 'amber'}>
+                                    {selectedDoctor.doctorData?.accountStatus.toUpperCase()}
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">License</span>
+                                <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Email</span>
+                                <span className="text-white">{selectedDoctor.email}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Phone</span>
+                                <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Location</span>
+                                <span className="text-white">{selectedDoctor.doctorData?.clinicLocation}</span>
+                            </div>
+                        </div>
+
+                        {selectedDoctor.doctorData?.accountStatus === 'pending' && (
+                            <div className="flex gap-3 mt-6">
+                                <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1">
+                                    <CheckCircle size={18} className="mr-2"/> {t('approve_btn')}
+                                </Button>
+                                <Button onClick={() => selectedDoctor.uid && rejectDoctor(selectedDoctor.uid)} variant="danger" className="flex-1">
+                                    <XCircle size={18} className="mr-2"/> {t('reject_btn')}
+                                </Button>
+                            </div>
+                        )}
+                        
+                        {selectedDoctor.doctorData?.accountStatus === 'approved' && (
+                             <div className="mt-6 flex justify-center">
+                                 <Button onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} variant="danger" className="w-full">
+                                     <Trash2 size={18} className="mr-2"/> {t('delete_user')}
+                                 </Button>
+                             </div>
+                        )}
+                    </Card>
                 </div>
             )}
         </LayoutContainer>

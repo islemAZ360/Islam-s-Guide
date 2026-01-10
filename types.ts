@@ -4,34 +4,34 @@ export type MedForm = 'tablet' | 'liquid';
 export type MedUnit = 'mg' | 'g' | 'ml' | 'l';
 
 // --- ROLES & PERMISSIONS ---
-// تم فصل "مستخدم عادي" عن "مريض" بناءً على طلبك
 export type UserRole = 'admin' | 'doctor' | 'normal_user' | 'patient';
 
 // --- DOCTOR SPECIFIC TYPES ---
 export type DoctorAccountStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DoctorProfileData {
-  specialty: string;        // التخصص (نفسي، إدمان، عام...)
-  licenseNumber: string;    // رقم الترخيص الطبي (للاعتماد)
+  specialty: string;        // التخصص
+  licenseNumber: string;    // رقم الترخيص
   clinicLocation?: string;  // مكان العيادة
   phoneNumber: string;      // رقم الهاتف
-  bio: string;              // نبذة تظهر للمرضى
+  bio: string;              // نبذة
+  photoUrl?: string;        // <--- NEW: رابط صورة الطبيب
   accountStatus: DoctorAccountStatus; 
   
-  // Stats for Admin & Doctor Dashboard
+  // Stats
   totalPatients: number;
   activePatients: number;
   recoveredCount: number;
-  doctorLevel: number; // يزداد مع عدد المتعافين
+  doctorLevel: number; 
 }
 
-// --- PATIENT SPECIFIC TYPES (For those following a doctor) ---
+// --- PATIENT SPECIFIC TYPES ---
 export interface PatientProfileData {
   assignedDoctorId: string;
   assignedDoctorName: string;
-  isPlanAssigned: boolean; // هل قام الطبيب بوضع الخطة أم لا يزال المريض في الانتظار؟
-  isRecovered: boolean;    // هل قام الطبيب بإغلاق الملف (تشافى)؟
-  recoveryDate?: string;   // تاريخ التعافي (اختياري)
+  isPlanAssigned: boolean; 
+  isRecovered: boolean;    
+  recoveryDate?: string;   
 }
 
 // --- MAIN USER PROFILE ---
@@ -39,33 +39,28 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
-  role: UserRole; // المحدد الرئيسي لنوع الحساب
+  role: UserRole; 
   
-  // -- Optional Data Sections based on Role --
-  doctorData?: DoctorProfileData;   // موجود فقط إذا كان Role = doctor
-  patientData?: PatientProfileData; // موجود فقط إذا كان Role = patient
+  doctorData?: DoctorProfileData;   
+  patientData?: PatientProfileData; 
   
-  // -- Medical Data (For Normal Users & Patients) --
   medType?: MedType;
   medForm?: MedForm;
   medUnit?: MedUnit;
   durationMonths: number;
-  setupComplete: boolean; // للمستخدم العادي: هل أدخل الجرعات؟ للطبيب: هل أدخل بياناته؟
+  setupComplete: boolean; 
   
-  // -- Smart System Config --
-  planType?: 'algorithm' | 'manual'; // algorithm للمستخدم العادي، manual للمريض (خطة طبيب)
+  planType?: 'algorithm' | 'manual'; 
   speedModifier?: number; 
   
-  // -- General System Flags --
   isBanned?: boolean;
   lastActive?: string; 
   progress?: number;   
   streak?: number;     
   
-  doctorNotes?: string; // ملاحظات سرية (سواء كتبها الطبيب للمريض أو الأدمن للمستخدم)
+  doctorNotes?: string; 
   isFlagged?: boolean; 
   
-  // For Logging/Charts (Optional in profile, mostly strictly in collections)
   logs?: DailyLog[];
   plan?: PlanDay[];
   inventory?: Inventory;
@@ -101,19 +96,19 @@ export interface PlanDay {
   log?: DailyLog;
 }
 
-// --- CONTENT & CMS (Admin & Doctor) ---
+// --- CONTENT & CMS ---
 export type ArticleCategory = 'medical' | 'motivation' | 'tip' | 'news' | 'announcement';
 
 export interface Article {
   id?: string;
   title: string;
   content: string;
-  category: ArticleCategory; // تصنيف المحتوى
+  category: ArticleCategory; 
   isPublished: boolean;
   createdAt: number;
   authorName: string;
   authorId: string;
-  authorRole: 'admin' | 'doctor'; // لمعرفة مصدر المحتوى
+  authorRole: 'admin' | 'doctor'; 
 }
 
 // --- CHAT & COMMUNITY ---
@@ -124,10 +119,8 @@ export interface ChatRoom {
   creatorName: string;
   createdAt: number;
   language?: string;
-  
-  // New: Private Doctor Rooms
-  isDoctorRoom?: boolean; // هل هي غرفة خاصة بمرضى طبيب معين؟
-  doctorId?: string;      // معرف الطبيب مالك الغرفة
+  isDoctorRoom?: boolean; 
+  doctorId?: string;      
 }
 
 export interface ChatMessage {
@@ -136,10 +129,7 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   timestamp: number;
-  
-  // Flags to distinguish sender type in UI
   role: UserRole; 
-  // FIX: Added optional flags to prevent TS errors in CommunityView
   isDoctor?: boolean;
   isAdmin?: boolean;
 }
@@ -166,7 +156,7 @@ export interface TicketMessage {
   isAdmin: boolean;
 }
 
-// --- AUDIT LOGS (Admin) ---
+// --- AUDIT LOGS ---
 export interface AuditLog {
   id?: string;
   adminId: string;
@@ -179,26 +169,21 @@ export interface AuditLog {
 
 // --- APP NAVIGATION VIEWS ---
 export enum AppView {
-  // Common
   DASHBOARD = 'DASHBOARD',
   SETTINGS = 'SETTINGS',
   ARTICLES = 'ARTICLES',
   
-  // Normal User / Patient Views
   CALENDAR = 'CALENDAR',
   STATS = 'STATS',
   COMMUNITY = 'COMMUNITY',
   SUPPORT = 'SUPPORT',
   
-  // Doctor Views
-  DOCTOR_DASHBOARD = 'DOCTOR_DASHBOARD', // الرئيسية للطبيب (احصائيات)
-  DOCTOR_PATIENTS = 'DOCTOR_PATIENTS',   // إدارة المرضى
-  DOCTOR_MESSAGES = 'DOCTOR_MESSAGES',   // رسائل المرضى
+  DOCTOR_DASHBOARD = 'DOCTOR_DASHBOARD', 
+  DOCTOR_PATIENTS = 'DOCTOR_PATIENTS',   
+  DOCTOR_MESSAGES = 'DOCTOR_MESSAGES',   
   
-  // Admin Views
   ADMIN = 'ADMIN',
   
-  // System States
-  WAITING_APPROVAL = 'WAITING_APPROVAL', // للطبيب الذي ينتظر موافقة الأدمن
-  WAITING_PLAN = 'WAITING_PLAN'          // للمريض الذي ينتظر خطة الطبيب
+  WAITING_APPROVAL = 'WAITING_APPROVAL', 
+  WAITING_PLAN = 'WAITING_PLAN'          
 }

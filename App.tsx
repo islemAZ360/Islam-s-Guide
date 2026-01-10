@@ -21,7 +21,8 @@ import { CommunityView } from './views/CommunityView';
 import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
 import { DoctorDashboardView } from './views/DoctorDashboardView'; 
-import { DoctorPatientsView } from './views/DoctorPatientsView'; 
+import { DoctorPatientsView } from './views/DoctorPatientsView';
+import { SettingsView } from './views/SettingsView'; // <--- تم إضافة استيراد صفحة الإعدادات الجديدة
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -96,7 +97,6 @@ function AppContent() {
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
             } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                // FIX: Added all allowed views for doctors to prevent navigation loop
                 const allowedDoctorViews = [
                     AppView.DOCTOR_DASHBOARD, 
                     AppView.DOCTOR_PATIENTS, 
@@ -142,7 +142,7 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]); // Removed currentView dependency to avoid loops
+  }, [authUser]);
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
@@ -156,6 +156,7 @@ function AppContent() {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
+        // Safety Guard
         if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
             console.warn("Sync blocked: Local doctor data is incomplete.");
             return;
@@ -541,57 +542,13 @@ function AppContent() {
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
-                {/* SETTINGS VIEW */}
+                {/* SETTINGS VIEW (UPDATED TO USE NEW COMPONENT) */}
                 {currentView === AppView.SETTINGS && userProfile && (
-                    <LayoutContainer>
-                        <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
-                        <Card className="bg-slate-900 border-white/5">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
-                            <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
-                            
-                            {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
-                                 <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
-                                     <ShieldCheck size={40} className="text-slate-700" />
-                                     <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي غير متاح.</p>
-                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <button 
-                                        onClick={() => updateSpeedSettings(0.8)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <Clock size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_slow')}</span>
-                                        <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={() => updateSpeedSettings(1.0)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <ShieldCheck size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_balanced')}</span>
-                                        <span className="text-[10px] opacity-70">الوضع القياسي</span>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={() => updateSpeedSettings(1.2)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <Zap size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_fast')}</span>
-                                        <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
-                                    </button>
-                                </div>
-                            )}
-                        </Card>
-
-                        {/* Account Actions */}
-                        <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
-                            <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
-                        </Card>
-                    </LayoutContainer>
+                    <SettingsView 
+                        userProfile={userProfile}
+                        resetAllData={resetAllData}
+                        updateSpeedSettings={updateSpeedSettings}
+                    />
                 )}
             </>
         )}
