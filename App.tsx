@@ -79,49 +79,32 @@ function AppContent() {
     return () => unsubscribe();
   }, [isDemoMode]);
 
-  // -- Load Local Data (Fallback) --
-  useEffect(() => {
-    const savedProfile = localStorage.getItem('taper_profile');
-    const savedPlan = localStorage.getItem('taper_plan');
-    const savedLogs = localStorage.getItem('taper_logs');
-    const savedInventory = localStorage.getItem('taper_inventory');
-    const savedSpeed = localStorage.getItem('taper_speed'); 
-    
-    if (savedProfile) setUserProfile(JSON.parse(savedProfile));
-    if (savedPlan) setPlan(JSON.parse(savedPlan));
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
-    if (savedInventory) setInventory(JSON.parse(savedInventory));
-    if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
-  }, []);
-
   // -- 1. FETCH CLOUD DATA (REAL-TIME LISTENER) --
   useEffect(() => {
     if (authUser) {
       setLoading(true);
       const docRef = doc(db, "users", authUser.uid);
       
-      // استخدام onSnapshot بدلاً من getDoc للتحديث اللحظي
-      // هذا يسمح للطبيب بمعرفة أنه تم قبوله فوراً دون تحديث الصفحة
       const unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
-            // Merge data
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
+            
+            // Merge nested userProfile if exists (legacy support)
             if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
-            // Logic to switch view based on Role changes (e.g. pending -> approved)
+            // Auto-redirect logic based on Role status
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
             } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                if (currentView !== AppView.DOCTOR_DASHBOARD && currentView !== AppView.DOCTOR_PATIENTS && currentView !== AppView.COMMUNITY) {
+                // If doctor is approved, move them to dashboard if they aren't there
+                if (![AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, AppView.COMMUNITY].includes(currentView)) {
                      setCurrentView(AppView.DOCTOR_DASHBOARD);
                 }
             }
             
             setUserProfile(fetchedProfile);
 
-            // Load other data if exists
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
@@ -132,7 +115,7 @@ function AppContent() {
                handleLogout();
             }
         } else {
-            // New User Setup
+            // New User - Skeleton
             const skeletonProfile: UserProfile = {
                 uid: authUser.uid,
                 email: authUser.email || '',
@@ -151,23 +134,30 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]); // Removed currentView dependency to avoid loops
+  }, [authUser]);
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
-    // Save to LocalStorage always
+    // Local Storage Sync
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
-    // Sync to Firestore (Debounced)
-    // Only sync if user is fully setup to avoid overwriting onboarding data
+    // Cloud Sync (With Safety Guard)
     if (authUser && userProfile && userProfile.setupComplete) {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
+        // === SAFETY GUARD ===
+        // If local state says 'doctor' but implies incomplete data (missing doctorData),
+        // STOP sync immediately to prevent overwriting the DB with empty data.
+        if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
+            console.warn("Sync blocked: Local doctor data is incomplete.");
+            return;
+        }
+
         const syncToCloud = async () => {
             try {
                 const totalDays = plan.length;
@@ -175,13 +165,14 @@ function AppContent() {
                 const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
 
                 const updateData: any = {
-                    ...currentProfileData, 
                     email: currentUser.email || email,   
                     uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
+                    // Update name only if present
+                    ...(currentProfileData.name ? { name: currentProfileData.name } : {})
                 };
 
-                // Only sync medical data for patients/users
+                // Sync Medical Data ONLY for Patients/Users
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -190,17 +181,15 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
-                // Important: Don't overwrite critical doctor data if it's missing in local state
-                if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
-                    updateData.doctorData = currentProfileData.doctorData;
-                }
+                // Never overwrite 'doctorData' via this automatic sync
+                // Doctor data is critical and should only be updated via dedicated forms (Onboarding/Settings)
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 3000); // 3 seconds debounce
+        const timeoutId = setTimeout(syncToCloud, 5000); // 5s debounce to be safe
         return () => clearTimeout(timeoutId);
     }
   }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
@@ -217,7 +206,6 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-        // Fallback default views
       if (userProfile?.role === 'doctor') {
           setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
@@ -234,16 +222,14 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Backdoor (For testing/recovery)
+    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
-            // Try to login if user exists
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
                 setAuthUser(cred.user);
             } catch (err: any) {
-                 // Create admin if not exists
                  if (err.code === 'auth/user-not-found') {
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
@@ -252,7 +238,6 @@ function AppContent() {
                  }
             }
             
-            // Force Admin Profile in Firestore
             if (auth.currentUser) {
                 const adminProfile: UserProfile = { 
                     uid: auth.currentUser.uid,
@@ -273,11 +258,9 @@ function AppContent() {
         return;
     }
 
-    // Normal Login
     if (auth) {
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle the rest
       } catch (err: any) { setLoginError('Login Error: ' + err.message); setLoading(false); }
     }
   };
