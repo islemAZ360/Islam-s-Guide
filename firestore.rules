@@ -12,13 +12,11 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // Fetch the requesting user's profile
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // --- CORE FIX: Super Admin Identification ---
-    // هذه الدالة تمنح صلاحيات الأدمن إذا كان الدور مسجلاً في القاعدة "أو" إذا كان البريد هو بريد الأدمن الرئيسي
+    // Admin check: checks role OR hardcoded email for safety
     function isAdmin() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
@@ -34,7 +32,11 @@ service cloud.firestore {
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // Read: Admin sees ALL. Owner sees self. Doctors see approved profiles or their patients.
+      // Read: 
+      // 1. Owner sees themselves.
+      // 2. Admin sees everyone.
+      // 3. ANY signed-in user can see doctors who are 'approved' (Vital for Patient Selection).
+      // 4. Doctors can see their assigned patients.
       allow read: if isSignedIn() && (
         isOwner(userId) || 
         isAdmin() || 
@@ -43,34 +45,26 @@ service cloud.firestore {
         (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
       );
 
-      // Create: Anyone can sign up.
+      // Create: Anyone
       allow create: if isSignedIn() && isOwner(userId);
 
-      // Update: Logic to allow role changes securely
+      // Update:
       allow update: if isSignedIn() && (
-        // 1. Admin can do ANYTHING (Ban, Approve, Edit Roles)
         isAdmin() || 
-        
-        // 2. Normal User updating their own profile
         (isOwner(userId) && 
-         // Allow updating basic fields
-         // CRITICAL FIX: Allow Doctor Registration (switching from normal -> doctor)
-         // But prevent switching TO admin unless you are already the Super Admin
          request.resource.data.role != 'admin' &&
-         // Prevent unbanning self
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
-        
-        // 3. Doctor updating their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        
-        // 4. Doctor claiming a new patient
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
          resource.data.role != 'doctor' &&
          (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null)
         )
       );
+
+      // DELETE: Only Admin can delete users/doctors
+      allow delete: if isAdmin();
     }
 
     // --- 2. Chat Rooms ---
@@ -100,7 +94,7 @@ service cloud.firestore {
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); // Admin sees all tickets
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }

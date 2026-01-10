@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Loader2, XCircle } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore'; 
@@ -22,7 +22,7 @@ import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
 import { DoctorDashboardView } from './views/DoctorDashboardView'; 
 import { DoctorPatientsView } from './views/DoctorPatientsView';
-import { SettingsView } from './views/SettingsView'; // <--- تم إضافة استيراد صفحة الإعدادات الجديدة
+import { SettingsView } from './views/SettingsView';
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -36,6 +36,9 @@ function AppContent() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // New State for Resubmission Flow
+  const [isResubmitting, setIsResubmitting] = useState(false);
 
   const { dir, t } = useLanguage();
 
@@ -111,6 +114,11 @@ function AppContent() {
                 }
             }
             
+            // If status changed back to pending (e.g. after resubmission), turn off resubmitting mode
+            if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'pending') {
+                setIsResubmitting(false);
+            }
+
             setUserProfile(fetchedProfile);
 
             if (data.plan) setPlan(data.plan);
@@ -156,9 +164,8 @@ function AppContent() {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Safety Guard
+        // Safety Guard: Don't sync incomplete doctor data
         if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
-            console.warn("Sync blocked: Local doctor data is incomplete.");
             return;
         }
 
@@ -279,6 +286,7 @@ function AppContent() {
     setAuthUser(null);
     setIsDemoMode(false);
     setUserProfile(null);
+    setIsResubmitting(false); // Reset Resubmission state
     setPlan([]);
     setLogs([]);
     setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
@@ -420,10 +428,11 @@ function AppContent() {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
-  // 2. ONBOARDING
-  if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
+  // 2. ONBOARDING & RESUBMISSION
+  // If (User not setup) OR (Doctor is in Resubmission Mode)
+  if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
     return <OnboardingView 
-        userProfile={userProfile} 
+        userProfile={userProfile!} 
         setUserProfile={setUserProfile} 
         inventory={inventory} 
         setInventory={setInventory} 
@@ -444,115 +453,142 @@ function AppContent() {
           </div>
       )}
 
-      {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
-          <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
-              {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-          </button>
-      )}
+      {/* DOCTOR REJECTION SCREEN - Full Screen Blocking View */}
+      {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' ? (
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
+                  <XCircle size={48} className="text-rose-500 animate-pulse" />
+              </div>
+              <h1 className="text-4xl font-black text-white mb-4">نأسف، تم رفض طلبك</h1>
+              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8">
+                  <h3 className="text-rose-400 font-bold mb-2 flex items-center justify-center gap-2">
+                      <AlertTriangle size={18}/> سبب الرفض من الإدارة
+                  </h3>
+                  <p className="text-rose-200 leading-relaxed">
+                      {userProfile.doctorData.rejectionReason || "لم يتم تحديد سبب. يرجى مراجعة البيانات."}
+                  </p>
+              </div>
+              
+              <div className="flex gap-4">
+                  <Button variant="secondary" onClick={handleLogout}>تسجيل خروج</Button>
+                  <Button variant="primary" onClick={() => setIsResubmitting(true)}>
+                      تعديل الطلب وإعادة الإرسال
+                  </Button>
+              </div>
+              <p className="mt-4 text-xs text-slate-500">
+                  محاولات هذا الشهر: {userProfile.doctorData.submissionCount || 1} / 10
+              </p>
+          </div>
+      ) : (
+          /* Normal App Layout */
+          <>
+              {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
+                  <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
+                      {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+                  </button>
+              )}
 
-      <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={handleLogout} userProfile={userProfile} />
-      <MobileNav currentView={currentView} setCurrentView={navigateTo} />
-      
-      <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
-        
-        {/* --- DOCTOR WAITING SCREEN --- */}
-        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-                    <Clock size={48} className="text-amber-500 animate-pulse" />
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
-                <p className="text-slate-400 max-w-lg leading-relaxed">
-                    شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
-                    <br/><br/>
-                    <span className="text-xs text-slate-500">سيتم توجيهك تلقائياً فور الاعتماد.</span>
-                </p>
-                <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
-                    Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
-                </div>
-                <Button variant="secondary" onClick={handleLogout} className="mt-6 !px-6">تسجيل خروج</Button>
-            </div>
-        ) : 
+              <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={handleLogout} userProfile={userProfile} />
+              <MobileNav currentView={currentView} setCurrentView={navigateTo} />
+              
+              <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
+                
+                {/* DOCTOR PENDING SCREEN */}
+                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Clock size={48} className="text-amber-500 animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed">
+                            شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
+                            <br/><br/>
+                            <span className="text-xs text-slate-500">سيتم توجيهك تلقائياً فور الاعتماد.</span>
+                        </p>
+                        <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
+                            Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
+                        </div>
+                        <Button variant="secondary" onClick={handleLogout} className="mt-6 !px-6">تسجيل خروج</Button>
+                    </div>
+                ) : 
 
-        /* --- PATIENT WAITING SCREEN --- */
-        userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                    <Loader2 size={48} className="text-indigo-500 animate-spin" />
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">بانتظار خطة الطبيب</h1>
-                <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                    لقد تم إرسال ملفك إلى الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
-                    يرجى الانتظار حتى يقوم الطبيب بمراجعة حالتك ووضع الجدول العلاجي المناسب.
-                </p>
-                <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
-                     دخول المجتمع مؤقتاً
-                </Button>
-            </div>
-        ) : 
+                /* PATIENT WAITING SCREEN */
+                userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">بانتظار خطة الطبيب</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                            لقد تم إرسال ملفك إلى الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
+                            يرجى الانتظار حتى يقوم الطبيب بمراجعة حالتك ووضع الجدول العلاجي المناسب.
+                        </p>
+                        <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
+                            دخول المجتمع مؤقتاً
+                        </Button>
+                    </div>
+                ) : 
 
-        /* --- APPROVED VIEWS --- */
-        (
-            <>
-                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
-                {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
+                /* MAIN DASHBOARDS */
+                (
                     <>
-                        {currentView === AppView.DASHBOARD && (
-                            <DashboardView 
+                        {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
+                            <>
+                                {currentView === AppView.DASHBOARD && (
+                                    <DashboardView 
+                                        userProfile={userProfile}
+                                        plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
+                                        progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
+                                        showDoctorWarning={showDoctorWarning}
+                                        selectedDose={selectedDose} setSelectedDose={setSelectedDose}
+                                        selectedMood={selectedMood} setSelectedMood={setSelectedMood}
+                                        submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                                    />
+                                )}
+                                
+                                {currentView === AppView.CALENDAR && (
+                                    <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
+                                )}
+                                
+                                {currentView === AppView.STATS && (
+                                    <StatsView logs={logs} plan={plan} userProfile={userProfile} />
+                                )} 
+                            </>
+                        )}
+
+                        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
+                            <>
+                                {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
+                                {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
+                            </>
+                        )}
+
+                        {currentView === AppView.COMMUNITY && userProfile && (
+                            <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
+                        )}
+                        
+                        {currentView === AppView.SUPPORT && userProfile && (
+                            <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
+                        )}
+                        
+                        {currentView === AppView.ARTICLES && (
+                            <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
+                        )}
+                        
+                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
+                        
+                        {currentView === AppView.SETTINGS && userProfile && (
+                            <SettingsView 
                                 userProfile={userProfile}
-                                plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
-                                progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
-                                showDoctorWarning={showDoctorWarning}
-                                selectedDose={selectedDose} setSelectedDose={setSelectedDose}
-                                selectedMood={selectedMood} setSelectedMood={setSelectedMood}
-                                submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                                resetAllData={resetAllData}
+                                updateSpeedSettings={updateSpeedSettings}
                             />
                         )}
-                        
-                        {currentView === AppView.CALENDAR && (
-                             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
-                        )}
-                        
-                        {currentView === AppView.STATS && (
-                             <StatsView logs={logs} plan={plan} userProfile={userProfile} />
-                        )} 
                     </>
                 )}
-
-                {/* --- DOCTOR VIEWS --- */}
-                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
-                     <>
-                        {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
-                        {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
-                     </>
-                )}
-
-                {/* --- SHARED VIEWS --- */}
-                {currentView === AppView.COMMUNITY && userProfile && (
-                     <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
-                )}
-                
-                {currentView === AppView.SUPPORT && userProfile && (
-                     <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
-                )}
-                
-                {currentView === AppView.ARTICLES && (
-                    <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
-                )}
-                
-                {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
-                
-                {/* SETTINGS VIEW (UPDATED TO USE NEW COMPONENT) */}
-                {currentView === AppView.SETTINGS && userProfile && (
-                    <SettingsView 
-                        userProfile={userProfile}
-                        resetAllData={resetAllData}
-                        updateSpeedSettings={updateSpeedSettings}
-                    />
-                )}
-            </>
-        )}
-      </div>
+              </div>
+          </>
+      )}
     </div>
   );
 }

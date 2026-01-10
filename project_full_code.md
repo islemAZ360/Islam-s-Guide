@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 10/1/2026, 21:51:11
+Generated: 10/1/2026, 23:05:42
 
 ## 🌳 Project Structure
 ```text
@@ -25,6 +25,7 @@ Generated: 10/1/2026, 21:51:11
   ├── DoctorPatientsView.tsx
   ├── LoginView.tsx
   ├── OnboardingView.tsx
+  ├── SettingsView.tsx
   ├── StatsView.tsx
   └── SupportView.tsx
 ├── App.tsx
@@ -173,7 +174,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // تحديد القوائم بناءً على الدور
   const getMenuItems = () => {
@@ -183,22 +184,21 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     // 1. ADMIN MENU
     if (role === 'admin') {
       items.push(
-        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, // الرئيسية للأدمن
-        { id: AppView.COMMUNITY, icon: Users, label: 'إدارة المجتمع' },
-        { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
+        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
+        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') }, // استخدام مفاتيح الترجمة
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
-      // ملاحظة: تم إزالة الإعدادات للأدمن كما طلبت
     }
     
     // 2. DOCTOR MENU
     else if (role === 'doctor') {
       items.push(
-        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'لوحة القيادة' },
-        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'ملفات المرضى' },
-        { id: AppView.ARTICLES, icon: BookOpen, label: 'نشر مقال' },
-        { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
+        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, // "Patient Files Management"
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, // "Chat Rooms"
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
       // الإعدادات للطبيب
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
@@ -248,12 +248,12 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         <div className="mr-[3.25rem] mt-2">
             {userProfile?.role === 'doctor' && (
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    نسخة الأطباء
+                    {language === 'ar' ? 'نسخة الأطباء' : 'Doctor Edition'}
                 </span>
             )}
             {userProfile?.role === 'admin' && (
                 <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    لوحة الإدارة
+                    {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
                 </span>
             )}
             {(userProfile?.role === 'patient' || userProfile?.role === 'normal_user') && (
@@ -280,7 +280,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
               <div className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_indigo]"></div>
             )}
             <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
-            <span className="font-bold text-lg tracking-wide">{item.label}</span>
+            <span className="font-bold text-lg tracking-wide truncate">{item.label}</span>
             
             {item.id === AppView.ADMIN && (
                 <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
@@ -1257,7 +1257,7 @@ export const translations = {
     breathe_out: "زفير",
     close: "إنهاء",
 
-    // Settings
+    // Settings & Profile
     settings_title: "إعدادات النظام",
     settings_subtitle: "التحكم في الخوارزمية",
     pace_control: "وتيرة التعافي",
@@ -1267,6 +1267,12 @@ export const translations = {
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
     factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
+    // New Profile Translations
+    profile_title: "الملف الشخصي",
+    photo_url_label: "رابط الصورة الشخصية",
+    save_changes: "حفظ التغييرات",
+    rank_label: "التصنيف العالمي",
+    edit_profile: "تعديل الملف",
 
     // Onboarding & Roles
     onboard_title: "أهلاً بك في Islam's Guide",
@@ -1340,6 +1346,9 @@ export const translations = {
     approved_docs_list: "قائمة الأطباء المعتمدين",
     ban_user: "حظر",
     unban_user: "فك الحظر",
+    delete_user: "حذف نهائي", // NEW
+    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", // NEW
+    view_details: "عرض التفاصيل", // NEW
     search_user_placeholder: "بحث عن مستخدم...",
     
     // Patient Management
@@ -1362,7 +1371,7 @@ export const translations = {
     cat_tip: "نصائح",
     cancel_btn: "إلغاء",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
     new_ticket: "فتح تذكرة جديدة",
     new_ticket_title: "طلب مساعدة جديد",
@@ -1481,6 +1490,13 @@ export const translations = {
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
     factory_reset_btn: "Factory Reset",
+    // New Profile Translations
+    profile_title: "My Profile",
+    photo_url_label: "Profile Photo URL",
+    save_changes: "Save Changes",
+    rank_label: "Global Rank",
+    edit_profile: "Edit Profile",
+
     onboard_title: "Welcome to Islam's Guide",
     onboard_desc: "Before we start, please select how you'll use the system.",
     role_patient: "User / Patient",
@@ -1540,6 +1556,9 @@ export const translations = {
     approved_docs_list: "Approved Doctors List",
     ban_user: "Ban",
     unban_user: "Unban",
+    delete_user: "Delete User", // NEW
+    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", // NEW
+    view_details: "View Details", // NEW
     search_user_placeholder: "Search user...",
     manage_patients_title: "Patient Files Management",
     add_patient_btn: "Add New Patient",
@@ -1558,7 +1577,7 @@ export const translations = {
     cat_tip: "Tip",
     cancel_btn: "Cancel",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "Contact the support team directly.",
     new_ticket: "New Ticket",
     new_ticket_title: "New Support Request",
@@ -1677,6 +1696,13 @@ export const translations = {
     pace_fast: "Быстро",
     danger_zone: "Опасно",
     factory_reset_btn: "Сброс",
+    // New Profile Translations
+    profile_title: "Профиль",
+    photo_url_label: "URL фото",
+    save_changes: "Сохранить",
+    rank_label: "Рейтинг",
+    edit_profile: "Ред. профиль",
+
     onboard_title: "Добро пожаловать в Islam's Guide",
     onboard_desc: "Пожалуйста, выберите цель использования.",
     role_patient: "Пользователь / Пациент",
@@ -1736,6 +1762,9 @@ export const translations = {
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
+    delete_user: "Удалить", // NEW
+    delete_confirm_msg: "Вы уверены? Это действие необратимо.", // NEW
+    view_details: "Подробнее", // NEW
     search_user_placeholder: "Поиск пользователя...",
     manage_patients_title: "Управление пациентами",
     add_patient_btn: "Добавить пациента",
@@ -1754,7 +1783,7 @@ export const translations = {
     cat_tip: "Советы",
     cancel_btn: "Отмена",
 
-    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    // Support & Tickets
     support_desc: "Свяжитесь с командой поддержки напрямую.",
     new_ticket: "Новый тикет",
     new_ticket_title: "Новый запрос в поддержку",
@@ -1788,7 +1817,7 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
 import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle, Eye, X
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
@@ -1810,14 +1839,15 @@ export const AdminView = () => {
     const [showArticleModal, setShowArticleModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
 
+    // -- Doctor View State --
+    const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
+
     // -- Search --
     const [searchTerm, setSearchTerm] = useState("");
 
-    // -- 1. REAL-TIME DATA FETCHING (UPDATED) --
+    // -- 1. REAL-TIME DATA FETCHING --
     useEffect(() => {
         setLoading(true);
-        // الاستماع المباشر للتغييرات في جدول المستخدمين
-        // هذا يضمن ظهور الطبيب فور تسجيله دون الحاجة لتحديث الصفحة
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -1829,13 +1859,11 @@ export const AdminView = () => {
             setLoading(false);
         });
 
-        // الاستماع للمقالات
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
         });
 
-        // تنظيف الاستماع عند الخروج
         return () => {
             unsubscribeUsers();
             unsubscribeArticles();
@@ -1846,12 +1874,11 @@ export const AdminView = () => {
     
     const approveDoctor = async (docUid: string) => {
         if (!confirm("Are you sure you want to approve this doctor?")) return;
-        
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "approved"
             });
-            // لا نحتاج لتحديث الحالة يدوياً هنا لأن onSnapshot سيقوم بذلك
+            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
@@ -1861,6 +1888,7 @@ export const AdminView = () => {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "rejected"
             });
+            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
@@ -1872,7 +1900,20 @@ export const AdminView = () => {
         if(confirm(newVal ? "Ban this user?" : "Unban this user?")) {
             await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
         }
-    }
+    };
+
+    // NEW: Delete User Permanently
+    const deleteUser = async (targetUid: string) => {
+        if (!confirm(t('delete_confirm_msg'))) return;
+        try {
+            await deleteDoc(doc(db, "users", targetUid));
+            // Note: This only deletes Firestore data. Auth account deletion requires Admin SDK or Cloud Functions.
+            // But without Firestore data, the app will treat them as non-existent or new.
+        } catch (e) {
+            console.error("Error deleting user:", e);
+            alert("Failed to delete user.");
+        }
+    };
 
     // -- CMS ACTIONS --
 
@@ -1907,7 +1948,6 @@ export const AdminView = () => {
     const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
     const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
 
-    // Stats for Overview
     const stats = useMemo(() => {
         return [
             { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
@@ -1974,7 +2014,6 @@ export const AdminView = () => {
                             </ResponsiveContainer>
                         </Card>
                         
-                        {/* Pending Approvals Quick View */}
                         <Card className="bg-slate-900 border-white/5">
                             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
                                 <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
@@ -2005,7 +2044,7 @@ export const AdminView = () => {
             {/* --- TAB: DOCTORS MANAGEMENT --- */}
             {activeTab === 'doctors' && (
                 <div className="animate-in fade-in space-y-8">
-                     {/* 1. Pending Approvals Section (Always Visible now to avoid confusion) */}
+                     {/* 1. Pending Approvals */}
                      <div className="space-y-4">
                          <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
                              <Lock className="text-amber-500" /> {t('pending_approvals')}
@@ -2024,26 +2063,20 @@ export const AdminView = () => {
                                         <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
                                         
                                         <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
+                                            {doc.doctorData?.photoUrl ? (
+                                                <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-full object-cover border border-white/10" />
+                                            ) : (
+                                                <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
+                                            )}
                                             <div>
                                                 <h3 className="font-bold text-white text-lg">{doc.name}</h3>
                                                 <p className="text-sm text-slate-400">{doc.doctorData?.specialty}</p>
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 space-y-2 mb-6">
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Email:</span> <span className="text-white select-all">{doc.email}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono select-all">{doc.doctorData?.licenseNumber}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono select-all">{doc.doctorData?.phoneNumber}</span></div>
-                                            <div className="flex justify-between"><span>Loc:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Button onClick={() => doc.uid && approveDoctor(doc.uid)} variant="success" className="flex-1 !py-2">
-                                                <CheckCircle size={16} className="mr-2"/> {t('approve_btn')}
-                                            </Button>
-                                            <Button onClick={() => doc.uid && rejectDoctor(doc.uid)} variant="danger" className="flex-1 !py-2">
-                                                <XCircle size={16} className="mr-2"/> {t('reject_btn')}
+                                        <div className="flex gap-2 mt-6">
+                                            <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="flex-1 !py-2">
+                                                <Eye size={16} className="mr-2"/> {t('view_details')}
                                             </Button>
                                         </div>
                                     </div>
@@ -2052,7 +2085,7 @@ export const AdminView = () => {
                          )}
                      </div>
 
-                     {/* 2. Active Doctors List & Stats */}
+                     {/* 2. Active Doctors List */}
                      <div>
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                              <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
@@ -2065,9 +2098,8 @@ export const AdminView = () => {
                                             <th className="p-4">Doctor</th>
                                             <th className="p-4">Specialty</th>
                                             <th className="p-4 text-center">Patients</th>
-                                            <th className="p-4 text-center">Recovered</th>
                                             <th className="p-4 text-center">Level</th>
-                                            <th className="p-4">Actions</th>
+                                            <th className="p-4 text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -2081,17 +2113,21 @@ export const AdminView = () => {
 
                                             return (
                                                 <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
-                                                    <td className="p-4 font-bold text-white">{doc.name}</td>
+                                                    <td className="p-4 font-bold text-white flex items-center gap-3">
+                                                        {doc.doctorData?.photoUrl ? (
+                                                            <img src={doc.doctorData.photoUrl} className="w-8 h-8 rounded-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">Dr</div>
+                                                        )}
+                                                        {doc.name}
+                                                    </td>
                                                     <td className="p-4">{doc.doctorData?.specialty}</td>
                                                     <td className="p-4 text-center text-indigo-400 font-bold">{patientCount}</td>
-                                                    <td className="p-4 text-center text-emerald-400 font-bold">{recoveredCount}</td>
-                                                    <td className="p-4 text-center">
-                                                        <Badge color="amber">LVL {level}</Badge>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <Button variant="danger" className="!py-1 !px-2 !text-xs" onClick={() => toggleBan(doc)}>
-                                                            {doc.isBanned ? t('unban_user') : t('ban_user')}
-                                                        </Button>
+                                                    <td className="p-4 text-center"><Badge color="amber">LVL {level}</Badge></td>
+                                                    <td className="p-4 text-center flex justify-center gap-2">
+                                                        <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded hover:bg-blue-500/20" title={t('view_details')}><Eye size={16}/></button>
+                                                        <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}><Ban size={16}/></button>
+                                                        <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded hover:bg-rose-500/20" title={t('delete_user')}><Trash2 size={16}/></button>
                                                     </td>
                                                 </tr>
                                             );
@@ -2139,9 +2175,10 @@ export const AdminView = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="secondary" className="!p-2 text-rose-500 hover:text-white hover:bg-rose-500" onClick={() => toggleBan(user)}>
-                                    <Ban size={16} />
-                                </Button>
+                                <div className="flex gap-2">
+                                    <button onClick={() => toggleBan(user)} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"><Ban size={16} /></button>
+                                    <button onClick={() => user.uid && deleteUser(user.uid)} className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"><Trash2 size={16} /></button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -2215,6 +2252,69 @@ export const AdminView = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* DOCTOR DETAILS MODAL */}
+            {selectedDoctor && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-lg bg-slate-900 border-white/10 shadow-2xl relative">
+                        <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
+                        
+                        <div className="text-center mb-6">
+                            {selectedDoctor.doctorData?.photoUrl ? (
+                                <img src={selectedDoctor.doctorData.photoUrl} alt="Dr" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-800 object-cover" />
+                            ) : (
+                                <div className="w-24 h-24 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-slate-500">Dr</div>
+                            )}
+                            <h2 className="text-2xl font-bold text-white">{selectedDoctor.name}</h2>
+                            <p className="text-indigo-400 font-medium">{selectedDoctor.doctorData?.specialty}</p>
+                        </div>
+
+                        <div className="space-y-4 bg-slate-950/50 p-4 rounded-xl border border-white/5 text-sm">
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Status</span>
+                                <Badge color={selectedDoctor.doctorData?.accountStatus === 'approved' ? 'green' : 'amber'}>
+                                    {selectedDoctor.doctorData?.accountStatus.toUpperCase()}
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">License</span>
+                                <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Email</span>
+                                <span className="text-white">{selectedDoctor.email}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-slate-500">Phone</span>
+                                <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Location</span>
+                                <span className="text-white">{selectedDoctor.doctorData?.clinicLocation}</span>
+                            </div>
+                        </div>
+
+                        {selectedDoctor.doctorData?.accountStatus === 'pending' && (
+                            <div className="flex gap-3 mt-6">
+                                <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1">
+                                    <CheckCircle size={18} className="mr-2"/> {t('approve_btn')}
+                                </Button>
+                                <Button onClick={() => selectedDoctor.uid && rejectDoctor(selectedDoctor.uid)} variant="danger" className="flex-1">
+                                    <XCircle size={18} className="mr-2"/> {t('reject_btn')}
+                                </Button>
+                            </div>
+                        )}
+                        
+                        {selectedDoctor.doctorData?.accountStatus === 'approved' && (
+                             <div className="mt-6 flex justify-center">
+                                 <Button onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} variant="danger" className="w-full">
+                                     <Trash2 size={18} className="mr-2"/> {t('delete_user')}
+                                 </Button>
+                             </div>
+                        )}
+                    </Card>
                 </div>
             )}
         </LayoutContainer>
@@ -4505,14 +4605,13 @@ import {
   Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore'; // تمت إضافة setDoc و doc
-import { db, auth } from '../services/firebase'; // إضافة auth
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
 import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// --- Types ---
 interface OnboardingViewProps {
   userProfile: UserProfile; 
   setUserProfile: (p: UserProfile | null) => void;
@@ -4541,21 +4640,17 @@ export const OnboardingView = ({
 }: OnboardingViewProps) => {
   const { t, dir } = useLanguage();
   
-  // -- Navigation State --
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
-  const [loading, setLoading] = useState(false); // إضافة حالة التحميل
+  const [loading, setLoading] = useState(false);
   
-  // -- Doctor Form State --
   const [doctorName, setDoctorName] = useState(userProfile.name || '');
   const [doctorForm, setDoctorForm] = useState<Partial<DoctorProfileData>>({
       specialty: '', licenseNumber: '', clinicLocation: '', phoneNumber: '', bio: ''
   });
 
-  // -- Patient Selection State --
   const [availableDoctors, setAvailableDoctors] = useState<UserProfile[]>([]);
   const [searchDoctor, setSearchDoctor] = useState('');
 
-  // -- Algo Setup State --
   const [medForm, setMedForm] = useState<MedForm | null>(null);
   const [medUnit, setMedUnit] = useState<MedUnit | null>(null);
   const [medType, setMedType] = useState<'narcotic' | 'psychiatric' | 'normal' | null>(null);
@@ -4563,7 +4658,6 @@ export const OnboardingView = ({
   const [psychWarning, setPsychWarning] = useState(false);
   const [previewPlan, setPreviewPlan] = useState<PlanDay[]>([]);
   
-  // Helpers
   const totalInventory = calculateTotalInventory(inventory);
   
   const NavBackBtn = ({ to }: { to?: OnboardingStep }) => (
@@ -4578,18 +4672,29 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application (Direct Save to Firestore)
+  // 1. Submit Doctor Application
   const handleDoctorSubmit = async () => {
-      if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) return;
-      if (!auth.currentUser) return;
+      // التحقق الصارم من وجود المستخدم
+      if (!auth || !auth.currentUser) {
+          alert("خطأ: لم يتم التعرف على جلسة المستخدم. يرجى إعادة تسجيل الدخول.");
+          return;
+      }
+      
+      if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) {
+          alert("يرجى ملء جميع الحقول المطلوبة (الاسم، التخصص، الترخيص، الهاتف).");
+          return;
+      }
 
       setLoading(true);
+      const currentUser = auth.currentUser;
       
+      // بناء كائن البيانات الجديد
       const newProfile: UserProfile = {
           ...userProfile,
+          uid: currentUser.uid, 
           name: doctorName,
           role: 'doctor',
-          setupComplete: true, 
+          setupComplete: true, // مهم جداً لإخبار النظام أن الإعداد اكتمل
           doctorData: {
               specialty: doctorForm.specialty!,
               licenseNumber: doctorForm.licenseNumber!,
@@ -4607,19 +4712,88 @@ export const OnboardingView = ({
       };
 
       try {
-          // الحفظ المباشر في القاعدة لضمان وصول الطلب للأدمن فوراً
-          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+          // الحفظ المباشر في قاعدة البيانات
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
           
-          // تحديث الحالة المحلية للانتقال للشاشة التالية
-          setUserProfile(newProfile);
-      } catch (e) {
+          // لا نقوم بتحديث الحالة المحلية (setUserProfile) يدوياً هنا
+          // نترك App.tsx يكتشف التغيير عبر onSnapshot لتجنب التضارب
+          
+          alert("تم إرسال طلبك بنجاح! يرجى الانتظار حتى يتم تحويلك تلقائياً.");
+      } catch (e: any) {
           console.error("Error saving doctor profile:", e);
-          alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى.");
+          if (e.code === 'permission-denied') {
+              alert("خطأ في الصلاحيات: تأكد من أن ملف firestore.rules محدث ليسمح بتعديل الدور.");
+          } else {
+              alert(`حدث خطأ أثناء الحفظ: ${e.message}`);
+          }
       }
       setLoading(false);
   };
 
-  // 2. Fetch Doctors for Patient
+  // 2. Assign Patient to Doctor
+  const handleAssignDoctor = async (docProfile: UserProfile) => {
+      if (!auth || !auth.currentUser || !docProfile.uid) return;
+      
+      setLoading(true);
+      const currentUser = auth.currentUser;
+      
+      const newProfile: UserProfile = {
+          ...userProfile,
+          uid: currentUser.uid,
+          role: 'patient',
+          setupComplete: true,
+          patientData: {
+              assignedDoctorId: docProfile.uid,
+              assignedDoctorName: docProfile.name,
+              isPlanAssigned: false, 
+              isRecovered: false
+          },
+          medType: 'normal', 
+          durationMonths: 0
+      };
+
+      try {
+           await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
+           // نترك التحديث التلقائي يقوم بعمله
+      } catch(e: any) {
+           console.error("Error assigning doctor:", e);
+           alert(`حدث خطأ: ${e.message}`);
+      }
+      setLoading(false);
+  };
+
+  // 3. Confirm Algorithm Plan
+  const confirmAlgorithmPlan = async () => {
+      if (!auth || !auth.currentUser) return;
+      setLoading(true);
+      const currentUser = auth.currentUser;
+
+      // إعداد البروفايل الجديد
+      const newProfile: UserProfile = {
+          ...userProfile,
+          uid: currentUser.uid,
+          role: 'normal_user',
+          planType: 'algorithm',
+          medType: medType,
+          medForm: medForm!,
+          medUnit: medUnit!,
+          setupComplete: true
+      };
+
+      // بدء الخطة محلياً للحسابات
+      startPlan(previewPlan, 1.0, 'algorithm');
+      
+      try {
+          // حفظ البروفايل في القاعدة
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
+      } catch(e: any) {
+          console.error("Error saving algo plan:", e);
+          alert(`حدث خطأ: ${e.message}`);
+      }
+      setLoading(false);
+  };
+
+  // 4. Helper: Fetch Doctors List
   useEffect(() => {
       if (step === 'DOCTOR_SELECT') {
           const fetchDocs = async () => {
@@ -4636,44 +4810,11 @@ export const OnboardingView = ({
       }
   }, [step]);
 
-  // 3. Assign Patient to Doctor (Direct Save)
-  const handleAssignDoctor = async (docProfile: UserProfile) => {
-      if (!docProfile.uid || !auth.currentUser) return;
-      setLoading(true);
-      
-      const newProfile: UserProfile = {
-          ...userProfile,
-          role: 'patient',
-          setupComplete: true,
-          patientData: {
-              assignedDoctorId: docProfile.uid,
-              assignedDoctorName: docProfile.name,
-              isPlanAssigned: false, 
-              isRecovered: false
-          },
-          medType: 'normal', 
-          durationMonths: 0
-      };
-
-      try {
-           await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
-           setUserProfile(newProfile);
-      } catch(e) {
-           console.error("Error assigning doctor:", e);
-      }
-      setLoading(false);
-  };
-
-  // 4. Algorithm Flow Handlers
+  // Handle Logic
   const handleMedTypeSelect = (type: 'narcotic' | 'psychiatric' | 'normal') => {
       if (type === 'narcotic') setBlockedState(true);
-      else if (type === 'psychiatric') { 
-          setMedType(type); 
-          setPsychWarning(true); 
-      } else { 
-          setMedType(type); 
-          setStep('ALGO_SETUP_FORM'); 
-      }
+      else if (type === 'psychiatric') { setMedType(type); setPsychWarning(true); } 
+      else { setMedType(type); setStep('ALGO_SETUP_FORM'); }
   };
 
   const generatePreview = () => {
@@ -4682,66 +4823,25 @@ export const OnboardingView = ({
       setStep('ALGO_PREVIEW');
   };
 
-  const confirmAlgorithmPlan = async () => {
-      if (!auth.currentUser) return;
-      setLoading(true);
-
-      const newProfile: UserProfile = {
-          ...userProfile,
-          role: 'normal_user',
-          planType: 'algorithm',
-          medType: medType,
-          medForm: medForm!,
-          medUnit: medUnit!,
-          setupComplete: true
-      };
-
-      // نبدأ الخطة محلياً
-      startPlan(previewPlan, 1.0, 'algorithm');
-      
-      // نحفظ في القاعدة فوراً
-      try {
-          // ملاحظة: نقوم بحفظ البروفايل هنا، أما الخطة (plan) والسجلات (logs) فسيتم حفظها عبر App.tsx لاحقاً
-          // لكن تحديث userProfile.role مهم جداً ليعرف App.tsx كيفية المزامنة
-          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
-          
-          setUserProfile(newProfile);
-      } catch(e) {
-          console.error("Error saving algo plan:", e);
-      }
-      setLoading(false);
-  };
-
-
   // --- RENDERS ---
 
-  // SCREEN 1: ROLE SELECTION (Doctor vs User)
   if (step === 'ROLE_SELECT') {
       return (
         <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center relative">
              <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
              {handleLogout && <NavBackBtn />}
-             
              <header className="mb-12 text-center animate-in slide-in-from-top-4">
                 <h1 className="text-4xl font-black text-white mb-4">{t('onboard_title')}</h1>
                 <p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p>
              </header>
-
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-                 <button 
-                    onClick={() => setStep('USER_PATH_SELECT')}
-                    className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"
-                 >
+                 <button onClick={() => setStep('USER_PATH_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden">
                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <UserPlus size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/>
                      <h3 className="text-2xl font-bold text-white mb-2">{t('role_patient')}</h3>
                      <p className="text-slate-500 leading-relaxed">{t('role_patient_desc')}</p>
                  </button>
-
-                 <button 
-                    onClick={() => setStep('DOCTOR_FORM')}
-                    className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"
-                 >
+                 <button onClick={() => setStep('DOCTOR_FORM')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden">
                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <Stethoscope size={40} className="text-emerald-400 mb-6 group-hover:scale-110 transition-transform"/>
                      <h3 className="text-2xl font-bold text-white mb-2">{t('role_doctor')}</h3>
@@ -4752,7 +4852,6 @@ export const OnboardingView = ({
       );
   }
 
-  // SCREEN 2: DOCTOR REGISTRATION FORM
   if (step === 'DOCTOR_FORM') {
       return (
           <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
@@ -4762,91 +4861,50 @@ export const OnboardingView = ({
                       <h1 className="text-3xl font-black text-white mb-2">{t('doc_req_title')}</h1>
                       <p className="text-slate-400">{t('doc_req_desc')}</p>
                   </header>
-                  
                   <Card className="bg-slate-900 border-white/5 space-y-6">
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_fullname')}</label>
                           <div className="relative">
                               <User className="absolute top-3 right-3 text-slate-500" size={18} />
-                              <input 
-                                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                  placeholder={t('doc_fullname')}
-                                  value={doctorName}
-                                  onChange={e => setDoctorName(e.target.value)}
-                              />
+                              <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_fullname')} value={doctorName} onChange={e => setDoctorName(e.target.value)}/>
                           </div>
                       </div>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                               <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_specialty')}</label>
                               <div className="relative">
                                   <Award className="absolute top-3 right-3 text-slate-500" size={18} />
-                                  <input 
-                                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                      placeholder={t('doc_specialty')}
-                                      value={doctorForm.specialty}
-                                      onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}
-                                  />
+                                  <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_specialty')} value={doctorForm.specialty} onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}/>
                               </div>
                           </div>
                           <div>
                               <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_license')}</label>
                               <div className="relative">
                                   <FileText className="absolute top-3 right-3 text-slate-500" size={18} />
-                                  <input 
-                                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                      placeholder={t('doc_license')}
-                                      value={doctorForm.licenseNumber}
-                                      onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}
-                                  />
+                                  <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_license')} value={doctorForm.licenseNumber} onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}/>
                               </div>
                           </div>
                       </div>
-
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_location')}</label>
                           <div className="relative">
                               <MapPin className="absolute top-3 right-3 text-slate-500" size={18} />
-                              <input 
-                                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                  placeholder={t('doc_location')}
-                                  value={doctorForm.clinicLocation}
-                                  onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}
-                              />
+                              <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_location')} value={doctorForm.clinicLocation} onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}/>
                           </div>
                       </div>
-
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_phone')}</label>
                           <div className="relative">
                               <Phone className="absolute top-3 right-3 text-slate-500" size={18} />
-                              <input 
-                                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                  placeholder="+966..."
-                                  value={doctorForm.phoneNumber}
-                                  onChange={e => setDoctorForm({...doctorForm, phoneNumber: e.target.value})}
-                              />
+                              <input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder="+966..." value={doctorForm.phoneNumber} onChange={e => setDoctorForm({...doctorForm, phoneNumber: e.target.value})}/>
                           </div>
                       </div>
-
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_bio')}</label>
-                          <textarea 
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none h-24 resize-none" 
-                              placeholder={t('doc_bio')}
-                              value={doctorForm.bio}
-                              onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}
-                          />
+                          <textarea className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none h-24 resize-none" placeholder={t('doc_bio')} value={doctorForm.bio} onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}/>
                       </div>
-
-                      <Button 
-                          variant="success" 
-                          className="w-full py-4 text-lg" 
-                          onClick={handleDoctorSubmit}
-                          disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}
-                      >
-                          {loading ? 'Sending...' : t('doc_submit')}
+                      <Button variant="success" className="w-full py-4 text-lg" onClick={handleDoctorSubmit} disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}>
+                          {loading ? 'جاري الإرسال...' : t('doc_submit')}
                       </Button>
                   </Card>
               </div>
@@ -4854,275 +4912,278 @@ export const OnboardingView = ({
       );
   }
 
-  // SCREEN 3: USER PATH SELECTION
-  if (step === 'USER_PATH_SELECT') {
-      return (
-        <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
-            <NavBackBtn to="ROLE_SELECT" />
-            
-            <header className="mb-12 text-center animate-in slide-in-from-top-4">
-                <h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1>
-                <p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-                 <button 
-                    onClick={() => {
-                        setMedType(null);
-                        setStep('ALGO_SETUP_MED');
-                    }}
-                    className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"
-                 >
-                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3>
-                     <p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p>
-                 </button>
-
-                 <button 
-                    onClick={() => setStep('DOCTOR_SELECT')}
-                    className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"
-                 >
-                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3>
-                     <p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p>
-                 </button>
-            </div>
-        </div>
-      );
-  }
-
-  // SCREEN 4: DOCTOR SELECTION LIST
-  if (step === 'DOCTOR_SELECT') {
-      const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase()));
-
-      return (
-          <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
-              <NavBackBtn to="USER_PATH_SELECT" />
-              <div className="max-w-4xl w-full animate-in fade-in">
-                  <header className="mb-8 text-center">
-                      <h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1>
-                      <p className="text-slate-400">{t('path_doctor_desc')}</p>
-                  </header>
-
-                  <div className="relative mb-6">
-                      <Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/>
-                      <input 
-                         className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500"
-                         placeholder={t('doc_search_placeholder')}
-                         value={searchDoctor}
-                         onChange={e => setSearchDoctor(e.target.value)}
-                      />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredDocs.length === 0 ? (
-                          <div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800">
-                              <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
-                              <p className="text-slate-500">{availableDoctors.length === 0 ? 'No doctors available.' : 'No results found.'}</p>
-                          </div>
-                      ) : (
-                        filteredDocs.map(doc => (
-                              <div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full">
-                                  <div className="flex justify-between items-start mb-4">
-                                      <div className="flex items-center gap-4">
-                                          <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">
-                                              Dr
-                                          </div>
-                                          <div>
-                                              <h3 className="font-bold text-white text-lg">{doc.name}</h3>
-                                              <Badge color="blue">{doc.doctorData?.specialty}</Badge>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  
-                                  <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">
-                                      {doc.doctorData?.bio || "No bio available."}
-                                  </p>
-                                  
-                                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
-                                      <MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}
-                                  </div>
-
-                                  <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>
-                                      {loading ? 'Processing...' : t('doc_select_btn')}
-                                  </Button>
-                              </div>
-                          ))
-                      )}
-                  </div>
-              </div>
-          </div>
-      );
-  }
-
-  // SCREEN 5: ALGO SETUP - MED TYPE
-  if (step === 'ALGO_SETUP_MED') {
-        if (blockedState) {
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in">
-                    <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div>
-                    <h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1>
-                    <p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p>
-                    <Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button>
-                </div>
-            );
-        }
-        
-        if (psychWarning) {
-            return (
-                <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in">
-                    <Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
-                        <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div>
-                        <h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2>
-                        <p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p>
-                        <div className="flex gap-4">
-                            <Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button>
-                            <Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button>
-                        </div>
-                    </Card>
-                </div>
-            );
-        }
-
-        return (
-            <div className="min-h-screen bg-[#020617] p-6 pt-20">
-                <NavBackBtn to="USER_PATH_SELECT" />
-                <header className="text-center mb-12 animate-in slide-in-from-top-4">
-                    <h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1>
-                </header>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    {[
-                      { type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') },
-                      { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') },
-                      { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }
-                    ].map((item: any) => (
-                      <button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}>
-                        <div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div>
-                        <h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3>
-                        <p className="text-sm text-slate-500 font-bold">{item.desc}</p>
-                      </button>
-                    ))}
-                </div>
-            </div>
-        );
-  }
-
-  // SCREEN 6: ALGO SETUP - FORM & UNIT
-  if (step === 'ALGO_SETUP_FORM') {
-        return (
-            <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center pt-20">
-                <NavBackBtn to="ALGO_SETUP_MED" /> 
-                <div className="max-w-2xl w-full animate-in zoom-in">
-                    <h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_title')}</h1>
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        <button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
-                            <Pill className="mx-auto mb-4" size={40} />
-                            <span className="block text-center font-bold text-lg">{t('form_tablet')}</span>
-                        </button>
-                        <button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
-                            <FlaskConical className="mx-auto mb-4" size={40} />
-                            <span className="block text-center font-bold text-lg">{t('form_liquid')}</span>
-                        </button>
-                    </div>
-                    {medForm && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold text-white text-center mb-4">{t('unit_title')}</h2>
-                            <div className="flex justify-center gap-4 mb-8">
-                                {(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (
-                                    <button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-500 hover:text-white'}`}>{u}</button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    <Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>Next <ArrowRight /></Button>
-                </div>
-            </div>
-        );
-  }
-
-  // SCREEN 7: ALGO SETUP - INVENTORY
-  if (step === 'ALGO_SETUP_INV') {
-      const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes';
-      const unitLabel = medUnit || 'mg';
-
-      return (
-        <div className="min-h-screen bg-[#020617] p-4 md:p-10 pt-20">
-            <NavBackBtn to="ALGO_SETUP_FORM" />
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in">
-                <Card className="border-white/5 bg-slate-900">
-                    <h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4">
-                        <span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>
-                        {t('inventory_title')}
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label>
-                            <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label>
-                            <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label>
-                            <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} />
-                        </div>
-                    </div>
-                    <div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center">
-                        <span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span>
-                        <span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span>
-                    </div>
-                </Card>
-
-                <Card className="bg-slate-900 border-white/5">
-                    <h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2>
-                    <div className="flex flex-wrap gap-4">
-                        {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
-                            <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>
-                        ))}
-                        <input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} />
-                    </div>
-                </Card>
-
-                <Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>
-                    {t('analyze_plan')}
-                </Button>
-            </div>
-        </div>
-      );
-  }
-
-  // SCREEN 8: PREVIEW
-  if (step === 'ALGO_PREVIEW') {
-      return (
-         <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
-             <NavBackBtn to="ALGO_SETUP_INV" />
-             <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in">
-                 <h1 className="text-4xl font-black text-white">Plan Ready!</h1>
-                 <p className="text-slate-400">Calculated duration: {previewPlan.length} days.</p>
-                 
-                 <div className="grid grid-cols-2 gap-4">
-                     <Card className="bg-slate-900 text-center">
-                         <div className="text-xs text-slate-500 uppercase">{t('duration_days')}</div>
-                         <div className="text-3xl font-bold text-white">{previewPlan.length}</div>
-                     </Card>
-                     <Card className="bg-slate-900 text-center">
-                         <div className="text-xs text-slate-500 uppercase">Coverage</div>
-                         <div className="text-3xl font-bold text-emerald-400">100%</div>
-                     </Card>
-                 </div>
-
-                 <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>
-                     {loading ? 'Setting up...' : t('confirm_log')}
-                 </Button>
-             </div>
-         </div>
-      );
-  }
+  if (step === 'USER_PATH_SELECT') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ROLE_SELECT" /><header className="mb-12 text-center animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1><p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p></header><div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full"><button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3><p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p></button><button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3><p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p></button></div></div>); }
+  if (step === 'DOCTOR_SELECT') { const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="USER_PATH_SELECT" /><div className="max-w-4xl w-full animate-in fade-in"><header className="mb-8 text-center"><h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1><p className="text-slate-400">{t('path_doctor_desc')}</p></header><div className="relative mb-6"><Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/><input className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filteredDocs.length === 0 ? (<div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800"><Stethoscope className="mx-auto mb-4 text-slate-700" size={48} /><p className="text-slate-500">{availableDoctors.length === 0 ? 'No doctors available.' : 'No results found.'}</p></div>) : (filteredDocs.map(doc => (<div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div><div><h3 className="font-bold text-white text-lg">{doc.name}</h3><Badge color="blue">{doc.doctorData?.specialty}</Badge></div></div></div><p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p><div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div><Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>{loading ? 'Processing...' : t('doc_select_btn')}</Button></div>)))}</div></div></div>); }
+  if (step === 'ALGO_SETUP_MED') { if (blockedState) return (<div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in"><div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div><h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1><p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p><Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button></div>); if (psychWarning) return (<div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in"><Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]"><div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div><h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2><p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p><div className="flex gap-4"><Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button><Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button></div></Card></div>); return (<div className="min-h-screen bg-[#020617] p-6 pt-20"><NavBackBtn to="USER_PATH_SELECT" /><header className="text-center mb-12 animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1></header><div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">{[{ type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }].map((item: any) => (<button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}><div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div><h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3><p className="text-sm text-slate-500 font-bold">{item.desc}</p></button>))}</div></div>); }
+  if (step === 'ALGO_SETUP_FORM') { return (<div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center pt-20"><NavBackBtn to="ALGO_SETUP_MED" /><div className="max-w-2xl w-full animate-in zoom-in"><h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_title')}</h1><div className="grid grid-cols-2 gap-4 mb-8"><button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><Pill className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_tablet')}</span></button><button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><FlaskConical className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_liquid')}</span></button></div>{medForm && (<div className="animate-in fade-in slide-in-from-bottom-4"><h2 className="text-xl font-bold text-white text-center mb-4">{t('unit_title')}</h2><div className="flex justify-center gap-4 mb-8">{(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (<button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-500 hover:text-white'}`}>{u}</button>))}</div></div>)}<Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>Next <ArrowRight /></Button></div></div>); }
+  if (step === 'ALGO_SETUP_INV') { const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes'; const unitLabel = medUnit || 'mg'; return (<div className="min-h-screen bg-[#020617] p-4 md:p-10 pt-20"><NavBackBtn to="ALGO_SETUP_FORM" /><div className="max-w-4xl mx-auto space-y-8 animate-in fade-in"><Card className="border-white/5 bg-slate-900"><h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4"><span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>{t('inventory_title')}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8"><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} /></div></div><div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center"><span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span><span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span></div></Card><Card className="bg-slate-900 border-white/5"><h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2><div className="flex flex-wrap gap-4">{[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (<button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>))}<input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} /></div></Card><Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>{t('analyze_plan')}</Button></div></div>); }
+  if (step === 'ALGO_PREVIEW') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ALGO_SETUP_INV" /><div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in"><h1 className="text-4xl font-black text-white">Plan Ready!</h1><p className="text-slate-400">Calculated duration: {previewPlan.length} days.</p><div className="grid grid-cols-2 gap-4"><Card className="bg-slate-900 text-center"><div className="text-xs text-slate-500 uppercase">{t('duration_days')}</div><div className="text-3xl font-bold text-white">{previewPlan.length}</div></Card><Card className="bg-slate-900 text-center"><div className="text-xs text-slate-500 uppercase">Coverage</div><div className="text-3xl font-bold text-emerald-400">100%</div></Card></div><Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>{loading ? 'Setting up...' : t('confirm_log')}</Button></div></div>); }
 
   return null;
+};
+```
+---
+
+### File: `views\SettingsView.tsx`
+```tsx
+import React, { useState, useEffect } from 'react';
+import { 
+    Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
+    FileText, User, Award, Clock
+} from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { UserProfile } from '../types';
+import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
+import { useLanguage } from '../contexts/LanguageContext';
+
+interface SettingsViewProps {
+    userProfile: UserProfile;
+    resetAllData: () => void;
+    updateSpeedSettings: (speed: number) => void;
+}
+
+export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }: SettingsViewProps) => {
+    const { t } = useLanguage();
+    const [loading, setLoading] = useState(false);
+
+    // -- Doctor Form State --
+    const [formData, setFormData] = useState({
+        photoUrl: '',
+        bio: '',
+        phoneNumber: '',
+        clinicLocation: '',
+        name: ''
+    });
+
+    // Load initial data
+    useEffect(() => {
+        if (userProfile.role === 'doctor' && userProfile.doctorData) {
+            setFormData({
+                photoUrl: userProfile.doctorData.photoUrl || '',
+                bio: userProfile.doctorData.bio || '',
+                phoneNumber: userProfile.doctorData.phoneNumber || '',
+                clinicLocation: userProfile.doctorData.clinicLocation || '',
+                name: userProfile.name || ''
+            });
+        }
+    }, [userProfile]);
+
+    // -- Save Profile Changes --
+    const handleSaveProfile = async () => {
+        if (!userProfile.uid) return;
+        setLoading(true);
+        try {
+            await updateDoc(doc(db, "users", userProfile.uid), {
+                name: formData.name,
+                "doctorData.photoUrl": formData.photoUrl,
+                "doctorData.bio": formData.bio,
+                "doctorData.phoneNumber": formData.phoneNumber,
+                "doctorData.clinicLocation": formData.clinicLocation
+            });
+            alert("Profile updated successfully!");
+        } catch (e) {
+            console.error("Error updating profile:", e);
+            alert("Failed to update profile.");
+        }
+        setLoading(false);
+    };
+
+    // --- DOCTOR PROFILE VIEW ---
+    if (userProfile.role === 'doctor') {
+        const level = userProfile.doctorData?.doctorLevel || 1;
+        const recovered = userProfile.doctorData?.recoveredCount || 0;
+        const active = userProfile.doctorData?.activePatients || 0;
+
+        return (
+            <LayoutContainer>
+                <PageHeader title={t('profile_title')} subtitle={t('nav_settings')} />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column: ID Card & Stats */}
+                    <div className="space-y-6">
+                        <Card className="bg-slate-900 border-white/5 text-center relative overflow-hidden group">
+                            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+                            
+                            <div className="relative z-10">
+                                <div className="w-32 h-32 mx-auto bg-slate-950 rounded-full border-4 border-slate-800 flex items-center justify-center mb-4 overflow-hidden shadow-2xl relative group-hover:border-indigo-500/50 transition-colors">
+                                    {formData.photoUrl ? (
+                                        <img src={formData.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User size={48} className="text-slate-600" />
+                                    )}
+                                </div>
+                                
+                                <h2 className="text-2xl font-black text-white mb-1">{formData.name}</h2>
+                                <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mb-4">
+                                    {userProfile.doctorData?.specialty}
+                                </p>
+                                
+                                <div className="flex justify-center gap-2 mb-6">
+                                    <Badge color="amber">LVL {level}</Badge>
+                                    <Badge color={userProfile.doctorData?.accountStatus === 'approved' ? 'green' : 'red'}>
+                                        {userProfile.doctorData?.accountStatus.toUpperCase()}
+                                    </Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6">
+                                    <div>
+                                        <span className="block text-2xl font-black text-white">{active}</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold">Active Patients</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-2xl font-black text-emerald-400">{recovered}</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold">Recovered</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Rank Badge */}
+                        <div className="bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 p-6 rounded-[2rem] flex items-center gap-4">
+                            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500">
+                                <Award size={32} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-amber-500 text-lg">{t('rank_label')}</h3>
+                                <p className="text-xs text-amber-200/60">Top 10% of Doctors</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Edit Form */}
+                    <div className="lg:col-span-2">
+                        <Card className="bg-slate-900 border-white/5 h-full">
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <User className="text-indigo-400" /> {t('edit_profile')}
+                            </h3>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_fullname')}</label>
+                                    <input 
+                                        className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                        value={formData.name}
+                                        onChange={e => setFormData({...formData, name: e.target.value})}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('photo_url_label')}</label>
+                                    <div className="relative">
+                                        <Camera className="absolute top-3 right-3 text-slate-600" size={18} />
+                                        <input 
+                                            className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
+                                            placeholder="https://example.com/photo.jpg"
+                                            value={formData.photoUrl}
+                                            onChange={e => setFormData({...formData, photoUrl: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_phone')}</label>
+                                        <div className="relative">
+                                            <Phone className="absolute top-3 right-3 text-slate-600" size={18} />
+                                            <input 
+                                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
+                                                value={formData.phoneNumber}
+                                                onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_location')}</label>
+                                        <div className="relative">
+                                            <MapPin className="absolute top-3 right-3 text-slate-600" size={18} />
+                                            <input 
+                                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
+                                                value={formData.clinicLocation}
+                                                onChange={e => setFormData({...formData, clinicLocation: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_bio')}</label>
+                                    <textarea 
+                                        className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none"
+                                        value={formData.bio}
+                                        onChange={e => setFormData({...formData, bio: e.target.value})}
+                                    />
+                                </div>
+
+                                <div className="pt-4 border-t border-white/5 flex justify-end">
+                                    <Button onClick={handleSaveProfile} variant="primary" disabled={loading}>
+                                        <Save size={18} className="mr-2" /> {loading ? 'Saving...' : t('save_changes')}
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            </LayoutContainer>
+        );
+    }
+
+    // --- PATIENT / USER SETTINGS VIEW ---
+    return (
+        <LayoutContainer>
+            <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
+            
+            {/* Algorithm Settings */}
+            <Card className="bg-slate-900 border-white/5">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                    <Activity className="text-indigo-400" /> {t('pace_control')}
+                </h2>
+                <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
+                
+                {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
+                        <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
+                            <ShieldCheck size={40} className="text-slate-700" />
+                            <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي غير متاح.</p>
+                        </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <button 
+                            onClick={() => updateSpeedSettings(0.8)} 
+                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                        >
+                            <Clock size={32} className="mx-auto mb-4" />
+                            <span className="block font-bold mb-1">{t('pace_slow')}</span>
+                            <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
+                        </button>
+                        
+                        <button 
+                            onClick={() => updateSpeedSettings(1.0)} 
+                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                        >
+                            <ShieldCheck size={32} className="mx-auto mb-4" />
+                            <span className="block font-bold mb-1">{t('pace_balanced')}</span>
+                            <span className="text-[10px] opacity-70">الوضع القياسي</span>
+                        </button>
+                        
+                        <button 
+                            onClick={() => updateSpeedSettings(1.2)} 
+                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                        >
+                            <Zap size={32} className="mx-auto mb-4" />
+                            <span className="block font-bold mb-1">{t('pace_fast')}</span>
+                            <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
+                        </button>
+                    </div>
+                )}
+            </Card>
+
+            {/* Account Actions */}
+            <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
+                <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
+            </Card>
+        </LayoutContainer>
+    );
 };
 ```
 ---
@@ -5732,7 +5793,8 @@ import { CommunityView } from './views/CommunityView';
 import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
 import { DoctorDashboardView } from './views/DoctorDashboardView'; 
-import { DoctorPatientsView } from './views/DoctorPatientsView'; 
+import { DoctorPatientsView } from './views/DoctorPatientsView';
+import { SettingsView } from './views/SettingsView'; // <--- تم إضافة استيراد صفحة الإعدادات الجديدة
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -5790,49 +5852,39 @@ function AppContent() {
     return () => unsubscribe();
   }, [isDemoMode]);
 
-  // -- Load Local Data (Fallback) --
-  useEffect(() => {
-    const savedProfile = localStorage.getItem('taper_profile');
-    const savedPlan = localStorage.getItem('taper_plan');
-    const savedLogs = localStorage.getItem('taper_logs');
-    const savedInventory = localStorage.getItem('taper_inventory');
-    const savedSpeed = localStorage.getItem('taper_speed'); 
-    
-    if (savedProfile) setUserProfile(JSON.parse(savedProfile));
-    if (savedPlan) setPlan(JSON.parse(savedPlan));
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
-    if (savedInventory) setInventory(JSON.parse(savedInventory));
-    if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
-  }, []);
-
   // -- 1. FETCH CLOUD DATA (REAL-TIME LISTENER) --
   useEffect(() => {
     if (authUser) {
       setLoading(true);
       const docRef = doc(db, "users", authUser.uid);
       
-      // استخدام onSnapshot بدلاً من getDoc للتحديث اللحظي
-      // هذا يسمح للطبيب بمعرفة أنه تم قبوله فوراً دون تحديث الصفحة
       const unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
-            // Merge data
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
+            
             if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
-            // Logic to switch view based on Role changes (e.g. pending -> approved)
+            // Auto-redirect logic based on Role status
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
             } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                if (currentView !== AppView.DOCTOR_DASHBOARD && currentView !== AppView.DOCTOR_PATIENTS && currentView !== AppView.COMMUNITY) {
+                const allowedDoctorViews = [
+                    AppView.DOCTOR_DASHBOARD, 
+                    AppView.DOCTOR_PATIENTS, 
+                    AppView.COMMUNITY,
+                    AppView.ARTICLES,
+                    AppView.SUPPORT,
+                    AppView.SETTINGS
+                ];
+                
+                if (!allowedDoctorViews.includes(currentView)) {
                      setCurrentView(AppView.DOCTOR_DASHBOARD);
                 }
             }
             
             setUserProfile(fetchedProfile);
 
-            // Load other data if exists
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
@@ -5843,7 +5895,7 @@ function AppContent() {
                handleLogout();
             }
         } else {
-            // New User Setup
+            // New User - Skeleton
             const skeletonProfile: UserProfile = {
                 uid: authUser.uid,
                 email: authUser.email || '',
@@ -5862,23 +5914,26 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]); // Removed currentView dependency to avoid loops
+  }, [authUser]);
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
-    // Save to LocalStorage always
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
-    // Sync to Firestore (Debounced)
-    // Only sync if user is fully setup to avoid overwriting onboarding data
     if (authUser && userProfile && userProfile.setupComplete) {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
+        // Safety Guard
+        if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
+            console.warn("Sync blocked: Local doctor data is incomplete.");
+            return;
+        }
+
         const syncToCloud = async () => {
             try {
                 const totalDays = plan.length;
@@ -5886,13 +5941,12 @@ function AppContent() {
                 const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
 
                 const updateData: any = {
-                    ...currentProfileData, 
                     email: currentUser.email || email,   
                     uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
+                    ...(currentProfileData.name ? { name: currentProfileData.name } : {})
                 };
 
-                // Only sync medical data for patients/users
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -5901,17 +5955,12 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
-                // Important: Don't overwrite critical doctor data if it's missing in local state
-                if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
-                    updateData.doctorData = currentProfileData.doctorData;
-                }
-
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 3000); // 3 seconds debounce
+        const timeoutId = setTimeout(syncToCloud, 5000); 
         return () => clearTimeout(timeoutId);
     }
   }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
@@ -5928,7 +5977,6 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-        // Fallback default views
       if (userProfile?.role === 'doctor') {
           setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
@@ -5945,16 +5993,13 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Backdoor (For testing/recovery)
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
-            // Try to login if user exists
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
                 setAuthUser(cred.user);
             } catch (err: any) {
-                 // Create admin if not exists
                  if (err.code === 'auth/user-not-found') {
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
                     setAuthUser(newCred.user);
@@ -5963,7 +6008,6 @@ function AppContent() {
                  }
             }
             
-            // Force Admin Profile in Firestore
             if (auth.currentUser) {
                 const adminProfile: UserProfile = { 
                     uid: auth.currentUser.uid,
@@ -5984,11 +6028,9 @@ function AppContent() {
         return;
     }
 
-    // Normal Login
     if (auth) {
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle the rest
       } catch (err: any) { setLoginError('Login Error: ' + err.message); setLoading(false); }
     }
   };
@@ -6272,57 +6314,13 @@ function AppContent() {
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
-                {/* SETTINGS VIEW */}
+                {/* SETTINGS VIEW (UPDATED TO USE NEW COMPONENT) */}
                 {currentView === AppView.SETTINGS && userProfile && (
-                    <LayoutContainer>
-                        <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
-                        <Card className="bg-slate-900 border-white/5">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
-                            <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
-                            
-                            {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
-                                 <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
-                                     <ShieldCheck size={40} className="text-slate-700" />
-                                     <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي غير متاح.</p>
-                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <button 
-                                        onClick={() => updateSpeedSettings(0.8)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <Clock size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_slow')}</span>
-                                        <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={() => updateSpeedSettings(1.0)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <ShieldCheck size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_balanced')}</span>
-                                        <span className="text-[10px] opacity-70">الوضع القياسي</span>
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={() => updateSpeedSettings(1.2)} 
-                                        className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
-                                    >
-                                        <Zap size={32} className="mx-auto mb-4" />
-                                        <span className="block font-bold mb-1">{t('pace_fast')}</span>
-                                        <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
-                                    </button>
-                                </div>
-                            )}
-                        </Card>
-
-                        {/* Account Actions */}
-                        <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
-                            <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
-                        </Card>
-                    </LayoutContainer>
+                    <SettingsView 
+                        userProfile={userProfile}
+                        resetAllData={resetAllData}
+                        updateSpeedSettings={updateSpeedSettings}
+                    />
                 )}
             </>
         )}
@@ -6362,9 +6360,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Check Roles
+    // --- CORE FIX: Super Admin Identification ---
+    // هذه الدالة تمنح صلاحيات الأدمن إذا كان الدور مسجلاً في القاعدة "أو" إذا كان البريد هو بريد الأدمن الرئيسي
     function isAdmin() {
-      return isSignedIn() && getUserData().role == 'admin';
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
+        request.auth.token.email == 'admin@islamguide.com' ||
+        request.auth.token.email == 'islamaz@bomba.com'
+      );
     }
     
     function isApprovedDoctor() {
@@ -6374,38 +6377,37 @@ service cloud.firestore {
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // Read: Owner, Admin, or Assigned Doctor
+      // Read: Admin sees ALL. Owner sees self. Doctors see approved profiles or their patients.
       allow read: if isSignedIn() && (
         isOwner(userId) || 
         isAdmin() || 
-        // Allow reading public doctor profiles (for selection list in onboarding)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        // Allow doctor to read their assigned patient's data
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Allow doctor to search for available users to add them
         (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
       );
 
-      // Create: Anyone (Registration)
+      // Create: Anyone can sign up.
       allow create: if isSignedIn() && isOwner(userId);
 
-      // Update: 
+      // Update: Logic to allow role changes securely
       allow update: if isSignedIn() && (
-        // 1. Admin can update anything
+        // 1. Admin can do ANYTHING (Ban, Approve, Edit Roles)
         isAdmin() || 
         
-        // 2. Owner can update own profile (Onboarding & Settings)
+        // 2. Normal User updating their own profile
         (isOwner(userId) && 
-         // Security Check: User cannot promote themselves to 'admin'
+         // Allow updating basic fields
+         // CRITICAL FIX: Allow Doctor Registration (switching from normal -> doctor)
+         // But prevent switching TO admin unless you are already the Super Admin
          request.resource.data.role != 'admin' &&
-         // Security Check: User cannot unban themselves if they are banned
+         // Prevent unbanning self
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
         
-        // 3. Doctor can update their patient's plan/status
+        // 3. Doctor updating their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
         
-        // 4. Doctor can assign themselves to a user (if user has no doctor)
+        // 4. Doctor claiming a new patient
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
          resource.data.role != 'doctor' &&
@@ -6416,24 +6418,16 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      // Read: Logic for Private Doctor Rooms
       allow read: if isSignedIn() && (
         isAdmin() ||
-        // Public Room
         resource.data.isDoctorRoom == false ||
-        // Doctor's Own Room
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
-        // Patient assigned to this Doctor
         (resource.data.isDoctorRoom == true && getUserData().patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      // Create: Admin or Approved Doctor
       allow create: if isAdmin() || isApprovedDoctor();
-
-      // Update/Delete: Creator or Admin
       allow update, delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
       
-      // Messages Sub-collection
       match /messages/{msgId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn();
@@ -6442,19 +6436,16 @@ service cloud.firestore {
 
     // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
-      // Everyone can read published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
-      
-      // Admin or Approved Doctor can write
       allow create: if isAdmin() || isApprovedDoctor();
       allow update, delete: if isAdmin() || (isApprovedDoctor() && resource.data.authorId == request.auth.uid);
     }
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); // Admin sees all tickets
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isApprovedDoctor());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // --- 5. Audit Logs ---
@@ -6831,34 +6822,34 @@ export type MedForm = 'tablet' | 'liquid';
 export type MedUnit = 'mg' | 'g' | 'ml' | 'l';
 
 // --- ROLES & PERMISSIONS ---
-// تم فصل "مستخدم عادي" عن "مريض" بناءً على طلبك
 export type UserRole = 'admin' | 'doctor' | 'normal_user' | 'patient';
 
 // --- DOCTOR SPECIFIC TYPES ---
 export type DoctorAccountStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DoctorProfileData {
-  specialty: string;        // التخصص (نفسي، إدمان، عام...)
-  licenseNumber: string;    // رقم الترخيص الطبي (للاعتماد)
+  specialty: string;        // التخصص
+  licenseNumber: string;    // رقم الترخيص
   clinicLocation?: string;  // مكان العيادة
   phoneNumber: string;      // رقم الهاتف
-  bio: string;              // نبذة تظهر للمرضى
+  bio: string;              // نبذة
+  photoUrl?: string;        // <--- NEW: رابط صورة الطبيب
   accountStatus: DoctorAccountStatus; 
   
-  // Stats for Admin & Doctor Dashboard
+  // Stats
   totalPatients: number;
   activePatients: number;
   recoveredCount: number;
-  doctorLevel: number; // يزداد مع عدد المتعافين
+  doctorLevel: number; 
 }
 
-// --- PATIENT SPECIFIC TYPES (For those following a doctor) ---
+// --- PATIENT SPECIFIC TYPES ---
 export interface PatientProfileData {
   assignedDoctorId: string;
   assignedDoctorName: string;
-  isPlanAssigned: boolean; // هل قام الطبيب بوضع الخطة أم لا يزال المريض في الانتظار؟
-  isRecovered: boolean;    // هل قام الطبيب بإغلاق الملف (تشافى)؟
-  recoveryDate?: string;   // تاريخ التعافي (اختياري)
+  isPlanAssigned: boolean; 
+  isRecovered: boolean;    
+  recoveryDate?: string;   
 }
 
 // --- MAIN USER PROFILE ---
@@ -6866,33 +6857,28 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
-  role: UserRole; // المحدد الرئيسي لنوع الحساب
+  role: UserRole; 
   
-  // -- Optional Data Sections based on Role --
-  doctorData?: DoctorProfileData;   // موجود فقط إذا كان Role = doctor
-  patientData?: PatientProfileData; // موجود فقط إذا كان Role = patient
+  doctorData?: DoctorProfileData;   
+  patientData?: PatientProfileData; 
   
-  // -- Medical Data (For Normal Users & Patients) --
   medType?: MedType;
   medForm?: MedForm;
   medUnit?: MedUnit;
   durationMonths: number;
-  setupComplete: boolean; // للمستخدم العادي: هل أدخل الجرعات؟ للطبيب: هل أدخل بياناته؟
+  setupComplete: boolean; 
   
-  // -- Smart System Config --
-  planType?: 'algorithm' | 'manual'; // algorithm للمستخدم العادي، manual للمريض (خطة طبيب)
+  planType?: 'algorithm' | 'manual'; 
   speedModifier?: number; 
   
-  // -- General System Flags --
   isBanned?: boolean;
   lastActive?: string; 
   progress?: number;   
   streak?: number;     
   
-  doctorNotes?: string; // ملاحظات سرية (سواء كتبها الطبيب للمريض أو الأدمن للمستخدم)
+  doctorNotes?: string; 
   isFlagged?: boolean; 
   
-  // For Logging/Charts (Optional in profile, mostly strictly in collections)
   logs?: DailyLog[];
   plan?: PlanDay[];
   inventory?: Inventory;
@@ -6928,19 +6914,19 @@ export interface PlanDay {
   log?: DailyLog;
 }
 
-// --- CONTENT & CMS (Admin & Doctor) ---
+// --- CONTENT & CMS ---
 export type ArticleCategory = 'medical' | 'motivation' | 'tip' | 'news' | 'announcement';
 
 export interface Article {
   id?: string;
   title: string;
   content: string;
-  category: ArticleCategory; // تصنيف المحتوى
+  category: ArticleCategory; 
   isPublished: boolean;
   createdAt: number;
   authorName: string;
   authorId: string;
-  authorRole: 'admin' | 'doctor'; // لمعرفة مصدر المحتوى
+  authorRole: 'admin' | 'doctor'; 
 }
 
 // --- CHAT & COMMUNITY ---
@@ -6951,10 +6937,8 @@ export interface ChatRoom {
   creatorName: string;
   createdAt: number;
   language?: string;
-  
-  // New: Private Doctor Rooms
-  isDoctorRoom?: boolean; // هل هي غرفة خاصة بمرضى طبيب معين؟
-  doctorId?: string;      // معرف الطبيب مالك الغرفة
+  isDoctorRoom?: boolean; 
+  doctorId?: string;      
 }
 
 export interface ChatMessage {
@@ -6963,10 +6947,7 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   timestamp: number;
-  
-  // Flags to distinguish sender type in UI
   role: UserRole; 
-  // FIX: Added optional flags to prevent TS errors in CommunityView
   isDoctor?: boolean;
   isAdmin?: boolean;
 }
@@ -6993,7 +6974,7 @@ export interface TicketMessage {
   isAdmin: boolean;
 }
 
-// --- AUDIT LOGS (Admin) ---
+// --- AUDIT LOGS ---
 export interface AuditLog {
   id?: string;
   adminId: string;
@@ -7006,28 +6987,23 @@ export interface AuditLog {
 
 // --- APP NAVIGATION VIEWS ---
 export enum AppView {
-  // Common
   DASHBOARD = 'DASHBOARD',
   SETTINGS = 'SETTINGS',
   ARTICLES = 'ARTICLES',
   
-  // Normal User / Patient Views
   CALENDAR = 'CALENDAR',
   STATS = 'STATS',
   COMMUNITY = 'COMMUNITY',
   SUPPORT = 'SUPPORT',
   
-  // Doctor Views
-  DOCTOR_DASHBOARD = 'DOCTOR_DASHBOARD', // الرئيسية للطبيب (احصائيات)
-  DOCTOR_PATIENTS = 'DOCTOR_PATIENTS',   // إدارة المرضى
-  DOCTOR_MESSAGES = 'DOCTOR_MESSAGES',   // رسائل المرضى
+  DOCTOR_DASHBOARD = 'DOCTOR_DASHBOARD', 
+  DOCTOR_PATIENTS = 'DOCTOR_PATIENTS',   
+  DOCTOR_MESSAGES = 'DOCTOR_MESSAGES',   
   
-  // Admin Views
   ADMIN = 'ADMIN',
   
-  // System States
-  WAITING_APPROVAL = 'WAITING_APPROVAL', // للطبيب الذي ينتظر موافقة الأدمن
-  WAITING_PLAN = 'WAITING_PLAN'          // للمريض الذي ينتظر خطة الطبيب
+  WAITING_APPROVAL = 'WAITING_APPROVAL', 
+  WAITING_PLAN = 'WAITING_PLAN'          
 }
 ```
 ---
@@ -7049,6 +7025,6 @@ export default defineConfig({
 ---
 
 ## 📊 Stats
-- Total Files: 34
-- Total Characters: 336650
-- Estimated Tokens: ~84.163 (GPT-4 Context)
+- Total Files: 35
+- Total Characters: 346008
+- Estimated Tokens: ~86.502 (GPT-4 Context)

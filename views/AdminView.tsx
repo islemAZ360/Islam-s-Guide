@@ -6,7 +6,7 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
 import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle, Eye, X
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle, Eye, X, MessageSquareWarning
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
@@ -28,8 +28,10 @@ export const AdminView = () => {
     const [showArticleModal, setShowArticleModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
 
-    // -- Doctor View State --
+    // -- Doctor View/Reject State --
     const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     // -- Search --
     const [searchTerm, setSearchTerm] = useState("");
@@ -65,19 +67,34 @@ export const AdminView = () => {
         if (!confirm("Are you sure you want to approve this doctor?")) return;
         try {
             await updateDoc(doc(db, "users", docUid), {
-                "doctorData.accountStatus": "approved"
+                "doctorData.accountStatus": "approved",
+                "doctorData.rejectionReason": null // Clear any previous rejection
             });
             if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
-    const rejectDoctor = async (docUid: string) => {
-        if (!confirm("Rejecting will prevent login. Continue?")) return;
+    // New: Handle Rejection with Reason
+    const handleRejectClick = (doctor: UserProfile) => {
+        setSelectedDoctor(doctor);
+        setShowRejectModal(true);
+        setRejectionReason("");
+    };
+
+    const confirmReject = async () => {
+        if (!selectedDoctor?.uid || !rejectionReason.trim()) {
+            alert("Please provide a reason for rejection.");
+            return;
+        }
+
         try {
-            await updateDoc(doc(db, "users", docUid), {
-                "doctorData.accountStatus": "rejected"
+            await updateDoc(doc(db, "users", selectedDoctor.uid), {
+                "doctorData.accountStatus": "rejected",
+                "doctorData.rejectionReason": rejectionReason
             });
-            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
+            setShowRejectModal(false);
+            setSelectedDoctor(null);
+            setRejectionReason("");
         } catch (e) { console.error(e); }
     };
 
@@ -91,13 +108,10 @@ export const AdminView = () => {
         }
     };
 
-    // NEW: Delete User Permanently
     const deleteUser = async (targetUid: string) => {
         if (!confirm(t('delete_confirm_msg'))) return;
         try {
             await deleteDoc(doc(db, "users", targetUid));
-            // Note: This only deletes Firestore data. Auth account deletion requires Admin SDK or Cloud Functions.
-            // But without Firestore data, the app will treat them as non-existent or new.
         } catch (e) {
             console.error("Error deleting user:", e);
             alert("Failed to delete user.");
@@ -297,8 +311,7 @@ export const AdminView = () => {
                                         )}
                                         {approvedDoctors.map(doc => {
                                             const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
-                                            const recoveredCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && u.patientData?.isRecovered).length;
-                                            const level = Math.floor(recoveredCount / 5) + 1;
+                                            const level = Math.floor((doc.doctorData?.recoveredCount || 0) / 5) + 1;
 
                                             return (
                                                 <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
@@ -445,7 +458,7 @@ export const AdminView = () => {
             )}
 
             {/* DOCTOR DETAILS MODAL */}
-            {selectedDoctor && (
+            {selectedDoctor && !showRejectModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-lg bg-slate-900 border-white/10 shadow-2xl relative">
                         <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
@@ -461,12 +474,6 @@ export const AdminView = () => {
                         </div>
 
                         <div className="space-y-4 bg-slate-950/50 p-4 rounded-xl border border-white/5 text-sm">
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-500">Status</span>
-                                <Badge color={selectedDoctor.doctorData?.accountStatus === 'approved' ? 'green' : 'amber'}>
-                                    {selectedDoctor.doctorData?.accountStatus.toUpperCase()}
-                                </Badge>
-                            </div>
                             <div className="flex justify-between border-b border-white/5 pb-2">
                                 <span className="text-slate-500">License</span>
                                 <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
@@ -490,7 +497,7 @@ export const AdminView = () => {
                                 <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1">
                                     <CheckCircle size={18} className="mr-2"/> {t('approve_btn')}
                                 </Button>
-                                <Button onClick={() => selectedDoctor.uid && rejectDoctor(selectedDoctor.uid)} variant="danger" className="flex-1">
+                                <Button onClick={() => handleRejectClick(selectedDoctor)} variant="danger" className="flex-1">
                                     <XCircle size={18} className="mr-2"/> {t('reject_btn')}
                                 </Button>
                             </div>
@@ -503,6 +510,30 @@ export const AdminView = () => {
                                  </Button>
                              </div>
                         )}
+                    </Card>
+                </div>
+            )}
+
+            {/* REJECTION REASON MODAL */}
+            {showRejectModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-md bg-slate-900 border-white/10 shadow-2xl relative">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <MessageSquareWarning className="text-rose-500" /> سبب الرفض
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-4">يرجى توضيح سبب رفض طلب الطبيب ليتمكن من تصحيحه.</p>
+                        
+                        <textarea 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-rose-500 outline-none h-32 resize-none"
+                            placeholder="مثال: رقم الترخيص غير واضح، البيانات ناقصة..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                        />
+                        
+                        <div className="flex gap-3 mt-6">
+                            <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">إلغاء</Button>
+                            <Button onClick={confirmReject} variant="danger" className="flex-1">تأكيد الرفض</Button>
+                        </div>
                     </Card>
                 </div>
             )}

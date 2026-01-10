@@ -58,6 +58,22 @@ export const OnboardingView = ({
   
   const totalInventory = calculateTotalInventory(inventory);
   
+  // -- NEW: Load existing data if resubmitting --
+  useEffect(() => {
+      // إذا كان المستخدم طبيباً ولديه بيانات (يعني أنه يعيد التقديم)، نملأ الحقول وننقله لصفحة النموذج مباشرة
+      if (userProfile.role === 'doctor' && userProfile.doctorData) {
+          setDoctorName(userProfile.name);
+          setDoctorForm({
+              specialty: userProfile.doctorData.specialty,
+              licenseNumber: userProfile.doctorData.licenseNumber,
+              clinicLocation: userProfile.doctorData.clinicLocation,
+              phoneNumber: userProfile.doctorData.phoneNumber,
+              bio: userProfile.doctorData.bio
+          });
+          setStep('DOCTOR_FORM');
+      }
+  }, [userProfile]);
+
   const NavBackBtn = ({ to }: { to?: OnboardingStep }) => (
       <button 
         onClick={() => to ? setStep(to) : handleLogout?.()}
@@ -70,57 +86,86 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application
+  // 1. Submit Doctor Application (Updated)
   const handleDoctorSubmit = async () => {
-      // التحقق الصارم من وجود المستخدم
       if (!auth || !auth.currentUser) {
           alert("خطأ: لم يتم التعرف على جلسة المستخدم. يرجى إعادة تسجيل الدخول.");
           return;
       }
       
       if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) {
-          alert("يرجى ملء جميع الحقول المطلوبة (الاسم، التخصص، الترخيص، الهاتف).");
+          alert("يرجى ملء جميع الحقول المطلوبة.");
+          return;
+      }
+
+      // --- CHECK SUBMISSION LIMITS ---
+      const currentData = userProfile.doctorData;
+      let count = currentData?.submissionCount || 0;
+      const lastDate = currentData?.lastSubmissionDate ? new Date(currentData.lastSubmissionDate) : new Date();
+      const now = new Date();
+
+      // تصفير العداد إذا مر شهر جديد
+      if (currentData?.lastSubmissionDate && lastDate.getMonth() !== now.getMonth()) {
+          count = 0;
+      }
+
+      if (count >= 10) {
+          alert("عذراً، لقد تجاوزت الحد الأقصى لمحاولات تقديم الطلب لهذا الشهر (10 مرات). يرجى التواصل مع الدعم الفني.");
           return;
       }
 
       setLoading(true);
       const currentUser = auth.currentUser;
       
-      // بناء كائن البيانات الجديد
       const newProfile: UserProfile = {
           ...userProfile,
           uid: currentUser.uid, 
           name: doctorName,
           role: 'doctor',
-          setupComplete: true, // مهم جداً لإخبار النظام أن الإعداد اكتمل
+          setupComplete: true, 
           doctorData: {
               specialty: doctorForm.specialty!,
               licenseNumber: doctorForm.licenseNumber!,
               clinicLocation: doctorForm.clinicLocation || '',
               phoneNumber: doctorForm.phoneNumber!,
               bio: doctorForm.bio || '',
+              
+              // Reset Status for Resubmission
               accountStatus: 'pending', 
-              totalPatients: 0,
-              activePatients: 0,
-              recoveredCount: 0,
-              doctorLevel: 1
+              rejectionReason: undefined, // Clear rejection reason (using undefined to delete field behavior or null)
+              
+              // Stats & Limits
+              totalPatients: currentData?.totalPatients || 0,
+              activePatients: currentData?.activePatients || 0,
+              recoveredCount: currentData?.recoveredCount || 0,
+              doctorLevel: currentData?.doctorLevel || 1,
+              photoUrl: currentData?.photoUrl,
+              
+              // Update Limits
+              submissionCount: count + 1,
+              lastSubmissionDate: Date.now()
           },
           durationMonths: 0,
           medType: null
       };
 
       try {
-          // الحفظ المباشر في قاعدة البيانات
-          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
+          // استخدام update لمسح rejectionReason عن طريق تعيينه إلى null (أو استبدال الكائن بالكامل)
+          // هنا نستخدم setDoc مع merge لاستبدال البيانات
+          const dataToSave = { ...newProfile };
+          // تأكد من مسح سبب الرفض في قاعدة البيانات
+          if (dataToSave.doctorData) {
+              // @ts-ignore
+              dataToSave.doctorData.rejectionReason = null; 
+          }
+
+          await setDoc(doc(db, "users", currentUser.uid), dataToSave, { merge: true });
           
-          // لا نقوم بتحديث الحالة المحلية (setUserProfile) يدوياً هنا
-          // نترك App.tsx يكتشف التغيير عبر onSnapshot لتجنب التضارب
-          
-          alert("تم إرسال طلبك بنجاح! يرجى الانتظار حتى يتم تحويلك تلقائياً.");
+          alert("تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة.");
       } catch (e: any) {
           console.error("Error saving doctor profile:", e);
           if (e.code === 'permission-denied') {
-              alert("خطأ في الصلاحيات: تأكد من أن ملف firestore.rules محدث ليسمح بتعديل الدور.");
+              alert("خطأ في الصلاحيات. يرجى المحاولة مرة أخرى.");
           } else {
               alert(`حدث خطأ أثناء الحفظ: ${e.message}`);
           }
@@ -152,7 +197,7 @@ export const OnboardingView = ({
 
       try {
            await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
-           // نترك التحديث التلقائي يقوم بعمله
+           alert("تم اختيار الطبيب بنجاح.");
       } catch(e: any) {
            console.error("Error assigning doctor:", e);
            alert(`حدث خطأ: ${e.message}`);
@@ -166,7 +211,6 @@ export const OnboardingView = ({
       setLoading(true);
       const currentUser = auth.currentUser;
 
-      // إعداد البروفايل الجديد
       const newProfile: UserProfile = {
           ...userProfile,
           uid: currentUser.uid,
@@ -178,11 +222,9 @@ export const OnboardingView = ({
           setupComplete: true
       };
 
-      // بدء الخطة محلياً للحسابات
       startPlan(previewPlan, 1.0, 'algorithm');
       
       try {
-          // حفظ البروفايل في القاعدة
           await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
       } catch(e: any) {
           console.error("Error saving algo plan:", e);
@@ -191,13 +233,14 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  // 4. Helper: Fetch Doctors List
+  // 4. Fetch Doctors
   useEffect(() => {
       if (step === 'DOCTOR_SELECT') {
           const fetchDocs = async () => {
               try {
                   const q = query(collection(db, "users"), where("role", "==", "doctor"));
                   const snapshot = await getDocs(q);
+                  // تصفية النتائج يدوياً للتأكد من الحالة (أحياناً الفلترة في الكويري تتطلب فهرس)
                   const docs = snapshot.docs
                       .map(d => ({...d.data(), uid: d.id} as UserProfile))
                       .filter(d => d.doctorData?.accountStatus === 'approved');
@@ -208,7 +251,6 @@ export const OnboardingView = ({
       }
   }, [step]);
 
-  // Handle Logic
   const handleMedTypeSelect = (type: 'narcotic' | 'psychiatric' | 'normal') => {
       if (type === 'narcotic') setBlockedState(true);
       else if (type === 'psychiatric') { setMedType(type); setPsychWarning(true); } 
@@ -310,6 +352,7 @@ export const OnboardingView = ({
       );
   }
 
+  // (باقي الواجهات USER_PATH_SELECT, DOCTOR_SELECT, etc. تبقى كما هي دون تغيير)
   if (step === 'USER_PATH_SELECT') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ROLE_SELECT" /><header className="mb-12 text-center animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1><p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p></header><div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full"><button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3><p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p></button><button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3><p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p></button></div></div>); }
   if (step === 'DOCTOR_SELECT') { const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="USER_PATH_SELECT" /><div className="max-w-4xl w-full animate-in fade-in"><header className="mb-8 text-center"><h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1><p className="text-slate-400">{t('path_doctor_desc')}</p></header><div className="relative mb-6"><Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/><input className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filteredDocs.length === 0 ? (<div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800"><Stethoscope className="mx-auto mb-4 text-slate-700" size={48} /><p className="text-slate-500">{availableDoctors.length === 0 ? 'No doctors available.' : 'No results found.'}</p></div>) : (filteredDocs.map(doc => (<div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div><div><h3 className="font-bold text-white text-lg">{doc.name}</h3><Badge color="blue">{doc.doctorData?.specialty}</Badge></div></div></div><p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p><div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div><Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>{loading ? 'Processing...' : t('doc_select_btn')}</Button></div>)))}</div></div></div>); }
   if (step === 'ALGO_SETUP_MED') { if (blockedState) return (<div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in"><div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div><h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1><p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p><Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button></div>); if (psychWarning) return (<div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in"><Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]"><div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div><h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2><p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p><div className="flex gap-4"><Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button><Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button></div></Card></div>); return (<div className="min-h-screen bg-[#020617] p-6 pt-20"><NavBackBtn to="USER_PATH_SELECT" /><header className="text-center mb-12 animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1></header><div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">{[{ type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }].map((item: any) => (<button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}><div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div><h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3><p className="text-sm text-slate-500 font-bold">{item.desc}</p></button>))}</div></div>); }

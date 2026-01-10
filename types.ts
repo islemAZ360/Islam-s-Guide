@@ -10,14 +10,19 @@ export type UserRole = 'admin' | 'doctor' | 'normal_user' | 'patient';
 export type DoctorAccountStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DoctorProfileData {
-  specialty: string;        // التخصص
-  licenseNumber: string;    // رقم الترخيص
-  clinicLocation?: string;  // مكان العيادة
-  phoneNumber: string;      // رقم الهاتف
-  bio: string;              // نبذة
-  photoUrl?: string;        // <--- NEW: رابط صورة الطبيب
+  specialty: string;        
+  licenseNumber: string;    
+  clinicLocation?: string;  
+  phoneNumber: string;      
+  bio: string;              
+  photoUrl?: string;        
   accountStatus: DoctorAccountStatus; 
   
+  // Rejection & Resubmission Logic (NEW)
+  rejectionReason?: string;       // سبب الرفض
+  submissionCount?: number;       // عدد مرات تقديم الطلب
+  lastSubmissionDate?: number;    // تاريخ آخر تقديم (للتحقق من الشهر)
+
   // Stats
   totalPatients: number;
   activePatients: number;
