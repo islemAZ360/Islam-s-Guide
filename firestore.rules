@@ -12,14 +12,16 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // دالة التحقق من الأدمن
-    // تم تحسينها لتقبل بريدك الإلكتروني مباشرةً كأدمن ممتاز (Super Admin)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Admin Check
     function isAdmin() {
       return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
         request.auth.token.email == 'admin@islamguide.com' ||
-        request.auth.token.email == 'islamaz@bomba.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        request.auth.token.email == 'islamaz@bomba.com'
       );
     }
     
@@ -30,33 +32,37 @@ service cloud.firestore {
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // 1. صلاحية مطلقة للأدمن (قراءة، كتابة، حذف)
+      // Admin: Full Access
       allow read, write, delete: if isAdmin();
 
-      // 2. صلاحيات القراءة لباقي المستخدمين
+      // Read Permissions
       allow read: if isSignedIn() && (
+        // 1. User reads own profile
         isOwner(userId) || 
-        // السماح بقراءة بيانات الأطباء المعتمدين (لعرضهم في القائمة)
+        
+        // 2. Anyone can read APPROVED Doctors (Fix for "No doctors available")
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        // الطبيب يقرأ مرضاه
-        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // الطبيب يبحث عن مستخدمين جدد
-        (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
+        
+        // 3. Approved Doctors can read Normal Users and Patients (Fix for "Doctor sees no users")
+        (isApprovedDoctor() && (resource.data.role == 'normal_user' || resource.data.role == 'patient')) ||
+        
+        // 4. Doctor sees their specific assigned patients
+        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid)
       );
 
-      // 3. صلاحيات الإنشاء
+      // Create: Anyone
       allow create: if isSignedIn() && isOwner(userId);
 
-      // 4. صلاحيات التعديل (لغير الأدمن، لأن الأدمن مشمول في القاعدة الأولى)
+      // Update
       allow update: if isSignedIn() && (
-        // المالك يعدل بياناته (بقيود)
+        // User updates self (with restrictions)
         (isOwner(userId) && 
          request.resource.data.role != 'admin' &&
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
-        // الطبيب يعدل مرضاه
+        // Doctor updates their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // الطبيب يضم مريضاً جديداً
+        // Doctor assigns themselves to a user
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
          resource.data.role != 'doctor' &&
@@ -67,7 +73,6 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      // صلاحية كاملة للأدمن
       allow read, write, delete: if isAdmin();
 
       allow read: if isSignedIn() && (
@@ -86,7 +91,7 @@ service cloud.firestore {
 
     // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
-      allow read, write, delete: if isAdmin(); // صلاحية كاملة للأدمن
+      allow read, write, delete: if isAdmin();
       allow read: if isSignedIn() && resource.data.isPublished == true;
       allow create: if isApprovedDoctor();
       allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
@@ -94,7 +99,7 @@ service cloud.firestore {
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      allow read, write, delete: if isAdmin(); // صلاحية كاملة للأدمن
+      allow read, write, delete: if isAdmin();
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;

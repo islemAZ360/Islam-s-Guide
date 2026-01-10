@@ -11,10 +11,10 @@ import {
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const DoctorPatientsView = () => {
-    const { t } = useLanguage(); // تفعيل الترجمة
+    const { t } = useLanguage();
 
     // -- State --
     const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
@@ -34,6 +34,7 @@ export const DoctorPatientsView = () => {
         
         setLoading(true);
         try {
+            // This query matches the rule: resource.data.patientData.assignedDoctorId == request.auth.uid
             const q = query(
                 collection(db, "users"), 
                 where("patientData.assignedDoctorId", "==", currentUser.uid)
@@ -42,7 +43,7 @@ export const DoctorPatientsView = () => {
             const list: UserProfile[] = [];
             snapshot.forEach(d => list.push({ uid: d.id, ...d.data() } as UserProfile));
             setMyPatients(list);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Error fetching my patients:", e); }
         setLoading(false);
     };
 
@@ -50,25 +51,38 @@ export const DoctorPatientsView = () => {
         fetchMyPatients();
     }, []);
 
-    // -- Fetch Available Users (For Adding) --
+    // -- Fetch Available Users (FIXED QUERY) --
     const fetchAvailableUsers = async () => {
         setLoading(true);
         try {
-            const q = query(collection(db, "users")); 
-            const snapshot = await getDocs(q);
+            // FIX: We must query specifically for roles allowed by security rules
+            // Query 1: Normal Users (Potential patients)
+            const q1 = query(collection(db, "users"), where("role", "==", "normal_user"));
+            const snap1 = await getDocs(q1);
+
+            // Query 2: Patients (Check if they don't have a doctor yet)
+            const q2 = query(collection(db, "users"), where("role", "==", "patient"));
+            const snap2 = await getDocs(q2);
+
             const list: UserProfile[] = [];
-            
-            snapshot.forEach(d => {
+            const seenIds = new Set();
+
+            const processDoc = (d: any) => {
                 const data = d.data() as UserProfile;
-                const hasDoctor = data.patientData?.assignedDoctorId;
-                const isStaff = data.role === 'doctor' || data.role === 'admin';
-                
-                if (!hasDoctor && !isStaff) {
+                // Only show users who DO NOT have an assigned doctor
+                if (!data.patientData?.assignedDoctorId && !seenIds.has(d.id)) {
                     list.push({ uid: d.id, ...data });
+                    seenIds.add(d.id);
                 }
-            });
+            };
+
+            snap1.forEach(processDoc);
+            snap2.forEach(processDoc);
+
             setAvailableUsers(list);
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error("Error fetching available users:", e); 
+        }
         setLoading(false);
     };
 
@@ -89,6 +103,7 @@ export const DoctorPatientsView = () => {
                 },
             });
             
+            // UI Update
             setAvailableUsers(prev => prev.filter(u => u.uid !== user.uid));
             setMyPatients(prev => [...prev, { 
                 ...user, 
@@ -105,6 +120,7 @@ export const DoctorPatientsView = () => {
             setViewMode('LIST');
         } catch (e) {
             console.error("Error adding patient:", e);
+            alert("Failed to add patient.");
         }
     };
 
@@ -166,28 +182,32 @@ export const DoctorPatientsView = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            {filteredAvailable.length === 0 && (
-                                <p className="text-slate-500 text-center col-span-2 py-8">No users found.</p>
-                            )}
-                            {filteredAvailable.map(user => (
-                                <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
-                                            {user.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">{user.name}</h4>
-                                            <p className="text-xs text-slate-500">{user.email}</p>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'General'}</Badge>
+                            {filteredAvailable.length === 0 ? (
+                                <div className="text-slate-500 text-center col-span-2 py-8 flex flex-col items-center">
+                                    <Users size={32} className="opacity-20 mb-2" />
+                                    <p>No available users found to add.</p>
+                                </div>
+                            ) : (
+                                filteredAvailable.map(user => (
+                                    <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
+                                                {user.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-white">{user.name}</h4>
+                                                <p className="text-xs text-slate-500">{user.email}</p>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'General'}</Badge>
+                                                </div>
                                             </div>
                                         </div>
+                                        <Button onClick={() => handleAddPatient(user)} variant="success" className="!py-2 !px-3 !text-xs">
+                                            <UserPlus size={14} className="mr-1"/> {t('add_btn')}
+                                        </Button>
                                     </div>
-                                    <Button onClick={() => handleAddPatient(user)} variant="success" className="!py-2 !px-3 !text-xs">
-                                        <UserPlus size={14} className="mr-1"/> {t('add_btn')}
-                                    </Button>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </Card>
                 </div>
@@ -207,6 +227,13 @@ export const DoctorPatientsView = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {filteredMyPatients.length === 0 && (
+                             <div className="col-span-2 text-center py-12 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
+                                 <Users className="mx-auto mb-4 text-slate-700" size={48} />
+                                 <p className="text-slate-500">You don't have any patients yet. Click "Add New Patient" to start.</p>
+                             </div>
+                        )}
+                        
                         {filteredMyPatients.map(patient => (
                             <div 
                                 key={patient.uid} 
@@ -252,7 +279,7 @@ export const DoctorPatientsView = () => {
                 </div>
             )}
 
-            {/* --- PATIENT DETAILS MODAL (FULL STATS) --- */}
+            {/* --- PATIENT DETAILS MODAL --- */}
             {selectedPatient && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-5xl h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative !p-0 overflow-hidden">
