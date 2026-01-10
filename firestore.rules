@@ -33,12 +33,11 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isOwner(userId) || 
         isAdmin() || 
-        // Allow reading public doctor profiles (for selection list)
+        // Allow reading public doctor profiles (for selection list in onboarding)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
         // Allow doctor to read their assigned patient's data
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Allow doctor to search for users (to add them) - Restricted to essential fields in query usually, 
-        // but for simplicity allow read if user has NO doctor yet (available users)
+        // Allow doctor to search for available users to add them
         (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
       );
 
@@ -47,16 +46,20 @@ service cloud.firestore {
 
       // Update: 
       allow update: if isSignedIn() && (
-        // 1. Admin can update anything (bans, approvals)
+        // 1. Admin can update anything
         isAdmin() || 
-        // 2. Owner can update own profile (with restrictions)
+        
+        // 2. Owner can update own profile (Onboarding & Settings)
         (isOwner(userId) && 
-         // Prevent self-promoting to admin or unbanning self
-         request.resource.data.role == resource.data.role && 
-         request.resource.data.isBanned == resource.data.isBanned
+         // Security Check: User cannot promote themselves to 'admin'
+         request.resource.data.role != 'admin' &&
+         // Security Check: User cannot unban themselves if they are banned
+         (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
+        
         // 3. Doctor can update their patient's plan/status
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        
         // 4. Doctor can assign themselves to a user (if user has no doctor)
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
@@ -87,7 +90,7 @@ service cloud.firestore {
       
       // Messages Sub-collection
       match /messages/{msgId} {
-        allow read: if isSignedIn(); // Parent room read rule handles access implicitly usually, but explicit check good
+        allow read: if isSignedIn();
         allow create: if isSignedIn();
       }
     }
@@ -112,7 +115,7 @@ service cloud.firestore {
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn(); // Allow system to log actions
+      allow create: if isSignedIn(); 
       allow update, delete: if false;
     }
   }

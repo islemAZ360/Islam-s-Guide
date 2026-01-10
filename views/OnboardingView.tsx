@@ -3,8 +3,8 @@ import {
   Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore'; // تمت إضافة setDoc و doc
+import { db, auth } from '../services/firebase'; // إضافة auth
 import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
@@ -41,6 +41,7 @@ export const OnboardingView = ({
   
   // -- Navigation State --
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
+  const [loading, setLoading] = useState(false); // إضافة حالة التحميل
   
   // -- Doctor Form State --
   const [doctorName, setDoctorName] = useState(userProfile.name || '');
@@ -67,6 +68,7 @@ export const OnboardingView = ({
       <button 
         onClick={() => to ? setStep(to) : handleLogout?.()}
         className="absolute top-6 left-6 z-20 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+        disabled={loading}
       >
         {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
       </button>
@@ -74,9 +76,12 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application
+  // 1. Submit Doctor Application (Direct Save to Firestore)
   const handleDoctorSubmit = async () => {
       if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) return;
+      if (!auth.currentUser) return;
+
+      setLoading(true);
       
       const newProfile: UserProfile = {
           ...userProfile,
@@ -98,7 +103,18 @@ export const OnboardingView = ({
           durationMonths: 0,
           medType: null
       };
-      setUserProfile(newProfile);
+
+      try {
+          // الحفظ المباشر في القاعدة لضمان وصول الطلب للأدمن فوراً
+          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+          
+          // تحديث الحالة المحلية للانتقال للشاشة التالية
+          setUserProfile(newProfile);
+      } catch (e) {
+          console.error("Error saving doctor profile:", e);
+          alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى.");
+      }
+      setLoading(false);
   };
 
   // 2. Fetch Doctors for Patient
@@ -118,9 +134,10 @@ export const OnboardingView = ({
       }
   }, [step]);
 
-  // 3. Assign Patient to Doctor
-  const handleAssignDoctor = (docProfile: UserProfile) => {
-      if (!docProfile.uid) return;
+  // 3. Assign Patient to Doctor (Direct Save)
+  const handleAssignDoctor = async (docProfile: UserProfile) => {
+      if (!docProfile.uid || !auth.currentUser) return;
+      setLoading(true);
       
       const newProfile: UserProfile = {
           ...userProfile,
@@ -135,7 +152,14 @@ export const OnboardingView = ({
           medType: 'normal', 
           durationMonths: 0
       };
-      setUserProfile(newProfile);
+
+      try {
+           await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+           setUserProfile(newProfile);
+      } catch(e) {
+           console.error("Error assigning doctor:", e);
+      }
+      setLoading(false);
   };
 
   // 4. Algorithm Flow Handlers
@@ -156,9 +180,10 @@ export const OnboardingView = ({
       setStep('ALGO_PREVIEW');
   };
 
-  const confirmAlgorithmPlan = () => {
-      startPlan(previewPlan, 1.0, 'algorithm');
-      
+  const confirmAlgorithmPlan = async () => {
+      if (!auth.currentUser) return;
+      setLoading(true);
+
       const newProfile: UserProfile = {
           ...userProfile,
           role: 'normal_user',
@@ -168,7 +193,21 @@ export const OnboardingView = ({
           medUnit: medUnit!,
           setupComplete: true
       };
-      setUserProfile(newProfile);
+
+      // نبدأ الخطة محلياً
+      startPlan(previewPlan, 1.0, 'algorithm');
+      
+      // نحفظ في القاعدة فوراً
+      try {
+          // ملاحظة: نقوم بحفظ البروفايل هنا، أما الخطة (plan) والسجلات (logs) فسيتم حفظها عبر App.tsx لاحقاً
+          // لكن تحديث userProfile.role مهم جداً ليعرف App.tsx كيفية المزامنة
+          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+          
+          setUserProfile(newProfile);
+      } catch(e) {
+          console.error("Error saving algo plan:", e);
+      }
+      setLoading(false);
   };
 
 
@@ -303,9 +342,9 @@ export const OnboardingView = ({
                           variant="success" 
                           className="w-full py-4 text-lg" 
                           onClick={handleDoctorSubmit}
-                          disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber}
+                          disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}
                       >
-                          {t('doc_submit')}
+                          {loading ? 'Sending...' : t('doc_submit')}
                       </Button>
                   </Card>
               </div>
@@ -404,8 +443,8 @@ export const OnboardingView = ({
                                       <MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}
                                   </div>
 
-                                  <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary">
-                                      {t('doc_select_btn')}
+                                  <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>
+                                      {loading ? 'Processing...' : t('doc_select_btn')}
                                   </Button>
                               </div>
                           ))
@@ -573,8 +612,8 @@ export const OnboardingView = ({
                      </Card>
                  </div>
 
-                 <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl">
-                     {t('confirm_log')}
+                 <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>
+                     {loading ? 'Setting up...' : t('confirm_log')}
                  </Button>
              </div>
          </div>

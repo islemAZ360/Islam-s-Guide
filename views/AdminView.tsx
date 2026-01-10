@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
-    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, deleteDoc 
+    collection, updateDoc, doc, addDoc, query, orderBy, deleteDoc, onSnapshot 
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
-import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
+import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
-import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const AdminView = () => {
-    const { t } = useLanguage(); // تفعيل الترجمة
+    const { t } = useLanguage();
 
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
@@ -31,28 +31,34 @@ export const AdminView = () => {
     // -- Search --
     const [searchTerm, setSearchTerm] = useState("");
 
-    // -- 1. FETCH DATA --
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const snap = await getDocs(collection(db, "users"));
-            const fetched: UserProfile[] = [];
-            snap.forEach(d => fetched.push({ uid: d.id, ...d.data() } as UserProfile));
-            setUsers(fetched);
-        } catch (e) { console.error(e); }
-        setLoading(false);
-    };
-
-    const fetchArticles = async () => {
-        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
-    };
-
+    // -- 1. REAL-TIME DATA FETCHING (UPDATED) --
     useEffect(() => {
-        if (activeTab === 'users' || activeTab === 'doctors' || activeTab === 'overview') fetchUsers();
-        if (activeTab === 'cms') fetchArticles();
-    }, [activeTab]);
+        setLoading(true);
+        // الاستماع المباشر للتغييرات في جدول المستخدمين
+        // هذا يضمن ظهور الطبيب فور تسجيله دون الحاجة لتحديث الصفحة
+        const qUsers = query(collection(db, "users"));
+        const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
+            const fetchedUsers: UserProfile[] = [];
+            snapshot.forEach(d => fetchedUsers.push({ uid: d.id, ...d.data() } as UserProfile));
+            setUsers(fetchedUsers);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching users:", error);
+            setLoading(false);
+        });
+
+        // الاستماع للمقالات
+        const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+        const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
+            setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
+        });
+
+        // تنظيف الاستماع عند الخروج
+        return () => {
+            unsubscribeUsers();
+            unsubscribeArticles();
+        };
+    }, []);
 
     // -- DOCTOR MANAGEMENT ACTIONS --
     
@@ -63,9 +69,7 @@ export const AdminView = () => {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "approved"
             });
-            setUsers(prev => prev.map(u => u.uid === docUid ? {
-                ...u, doctorData: { ...u.doctorData!, accountStatus: 'approved' }
-            } : u));
+            // لا نحتاج لتحديث الحالة يدوياً هنا لأن onSnapshot سيقوم بذلك
         } catch (e) { console.error(e); }
     };
 
@@ -75,9 +79,6 @@ export const AdminView = () => {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "rejected"
             });
-            setUsers(prev => prev.map(u => u.uid === docUid ? {
-                ...u, doctorData: { ...u.doctorData!, accountStatus: 'rejected' }
-            } : u));
         } catch (e) { console.error(e); }
     };
 
@@ -88,7 +89,6 @@ export const AdminView = () => {
         const newVal = !user.isBanned;
         if(confirm(newVal ? "Ban this user?" : "Unban this user?")) {
             await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
-            setUsers(users.map(u => u.uid === user.uid ? {...u, isBanned: newVal} : u));
         }
     }
 
@@ -109,14 +109,12 @@ export const AdminView = () => {
             });
             setShowArticleModal(false);
             setNewArticle({ title: '', content: '', category: 'tip' });
-            fetchArticles();
         } catch (e) { console.error(e); }
     };
 
     const deleteArticle = async (id: string) => {
         if(confirm("Delete this article?")) {
             await deleteDoc(doc(db, "articles", id));
-            setArticles(prev => prev.filter(a => a.id !== id));
         }
     }
 
@@ -200,7 +198,10 @@ export const AdminView = () => {
                                 <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
                             </h3>
                             {pendingDoctors.length === 0 ? (
-                                <div className="text-center text-slate-500 py-10">No pending approvals.</div>
+                                <div className="text-center text-slate-500 py-10 flex flex-col items-center">
+                                    <CheckCircle size={32} className="mb-2 opacity-20"/>
+                                    <p>No pending approvals.</p>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
                                     {pendingDoctors.slice(0, 3).map(doc => (
@@ -222,16 +223,23 @@ export const AdminView = () => {
             {/* --- TAB: DOCTORS MANAGEMENT --- */}
             {activeTab === 'doctors' && (
                 <div className="animate-in fade-in space-y-8">
-                     {/* 1. Pending Approvals */}
-                     {pendingDoctors.length > 0 && (
-                         <div className="space-y-4">
-                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                 <Lock className="text-amber-500" /> {t('pending_approvals')}
-                             </h2>
+                     {/* 1. Pending Approvals Section (Always Visible now to avoid confusion) */}
+                     <div className="space-y-4">
+                         <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
+                             <Lock className="text-amber-500" /> {t('pending_approvals')}
+                             <Badge color="amber">{pendingDoctors.length}</Badge>
+                         </h2>
+                         
+                         {pendingDoctors.length === 0 ? (
+                             <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500">
+                                 <AlertCircle className="mx-auto mb-2 opacity-50" size={32} />
+                                 <p>لا توجد طلبات انضمام معلقة حالياً.</p>
+                             </div>
+                         ) : (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {pendingDoctors.map(doc => (
                                     <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                                        <Badge color="amber" className="absolute top-4 left-4">Pending</Badge>
+                                        <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
                                         
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
@@ -242,8 +250,9 @@ export const AdminView = () => {
                                         </div>
                                         
                                         <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 space-y-2 mb-6">
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono">{doc.doctorData?.licenseNumber}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono">{doc.doctorData?.phoneNumber}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Email:</span> <span className="text-white select-all">{doc.email}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono select-all">{doc.doctorData?.licenseNumber}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono select-all">{doc.doctorData?.phoneNumber}</span></div>
                                             <div className="flex justify-between"><span>Loc:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
                                         </div>
 
@@ -258,8 +267,8 @@ export const AdminView = () => {
                                     </div>
                                 ))}
                              </div>
-                         </div>
-                     )}
+                         )}
+                     </div>
 
                      {/* 2. Active Doctors List & Stats */}
                      <div>
@@ -280,6 +289,9 @@ export const AdminView = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
+                                        {approvedDoctors.length === 0 && (
+                                            <tr><td colSpan={6} className="p-6 text-center">No approved doctors yet.</td></tr>
+                                        )}
                                         {approvedDoctors.map(doc => {
                                             const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
                                             const recoveredCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && u.patientData?.isRecovered).length;

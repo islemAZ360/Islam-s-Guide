@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Lock, Loader2 } from 'lucide-react';
+import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, onSnapshot } from 'firebase/firestore'; 
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -64,7 +64,6 @@ function AppContent() {
 
   // -- 0. Auth State Listener --
   useEffect(() => {
-    // FIX: Check if auth exists
     if (!auth) {
         setLoading(false);
         return;
@@ -74,13 +73,13 @@ function AppContent() {
         setAuthUser(user);
         if (!user && !isDemoMode) {
             setLoading(false);
-            setUserProfile(null); // Clear profile on logout
+            setUserProfile(null);
         }
     });
     return () => unsubscribe();
   }, [isDemoMode]);
 
-  // -- Load Local Data --
+  // -- Load Local Data (Fallback) --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
     const savedPlan = localStorage.getItem('taper_plan');
@@ -95,35 +94,34 @@ function AppContent() {
     if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
   }, []);
 
-  // -- 1. FETCH CLOUD DATA --
+  // -- 1. FETCH CLOUD DATA (REAL-TIME LISTENER) --
   useEffect(() => {
     if (authUser) {
-      const fetchUserData = async () => {
-        setLoading(true);
-        try {
-          const docRef = doc(db, "users", authUser.uid);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
+      setLoading(true);
+      const docRef = doc(db, "users", authUser.uid);
+      
+      // استخدام onSnapshot بدلاً من getDoc للتحديث اللحظي
+      // هذا يسمح للطبيب بمعرفة أنه تم قبوله فوراً دون تحديث الصفحة
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
             const data = docSnap.data();
             
             // Merge data
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
-            
-            if (data.userProfile) {
-                Object.assign(fetchedProfile, data.userProfile);
-            }
+            if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
+            // Logic to switch view based on Role changes (e.g. pending -> approved)
+            if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
+                setCurrentView(AppView.ADMIN);
+            } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
+                if (currentView !== AppView.DOCTOR_DASHBOARD && currentView !== AppView.DOCTOR_PATIENTS && currentView !== AppView.COMMUNITY) {
+                     setCurrentView(AppView.DOCTOR_DASHBOARD);
+                }
+            }
+            
             setUserProfile(fetchedProfile);
 
-            // *** FIX: Auto-redirect based on Role IMMEDIATELY ***
-            if (fetchedProfile.role === 'admin') {
-                setCurrentView(AppView.ADMIN);
-            } else if (fetchedProfile.role === 'doctor') {
-                setCurrentView(AppView.DOCTOR_DASHBOARD);
-            }
-            // Normal users stay on DASHBOARD (default)
-
+            // Load other data if exists
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
@@ -133,59 +131,57 @@ function AppContent() {
                alert(t('banned_msg'));
                handleLogout();
             }
-          } else {
-            // FIX: New User - Initialize as Skeleton to force Onboarding
+        } else {
+            // New User Setup
             const skeletonProfile: UserProfile = {
                 uid: authUser.uid,
                 email: authUser.email || '',
                 name: authUser.displayName || 'New User',
-                role: 'normal_user', // Will change in Onboarding
-                setupComplete: false, // Forces Onboarding View
+                role: 'normal_user',
+                setupComplete: false,
                 durationMonths: 0
             };
             setUserProfile(skeletonProfile);
-            // We don't save to DB yet to avoid creating "Guest" records unintentionally
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
         }
         setLoading(false);
-      };
-      fetchUserData();
+      }, (error) => {
+          console.error("Error fetching user data:", error);
+          setLoading(false);
+      });
+
+      return () => unsubscribe();
     }
-  }, [authUser]);
+  }, [authUser]); // Removed currentView dependency to avoid loops
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
+    // Save to LocalStorage always
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
+    // Sync to Firestore (Debounced)
+    // Only sync if user is fully setup to avoid overwriting onboarding data
     if (authUser && userProfile && userProfile.setupComplete) {
-        // FIX: Capture variables locally
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Extract primitive values
-        const currentUid = currentUser.uid;
-        const currentEmail = currentUser.email || email || '';
-
         const syncToCloud = async () => {
-            const totalDays = plan.length;
-            const daysCompleted = logs.length;
-            const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
-            
             try {
-                // FIX: Spread first, then overwrite with safe values
+                const totalDays = plan.length;
+                const daysCompleted = logs.length;
+                const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+
                 const updateData: any = {
                     ...currentProfileData, 
-                    email: currentEmail,   
-                    uid: currentUid,       
+                    email: currentUser.email || email,   
+                    uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
                 };
 
+                // Only sync medical data for patients/users
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -194,19 +190,20 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
+                // Important: Don't overwrite critical doctor data if it's missing in local state
                 if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
                     updateData.doctorData = currentProfileData.doctorData;
                 }
 
-                await setDoc(doc(db, "users", currentUid), updateData, { merge: true });
+                await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 2000); 
+        const timeoutId = setTimeout(syncToCloud, 3000); // 3 seconds debounce
         return () => clearTimeout(timeoutId);
     }
-  }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); 
+  }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
 
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
@@ -220,12 +217,13 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
+        // Fallback default views
       if (userProfile?.role === 'doctor') {
-          if (currentView !== AppView.DOCTOR_DASHBOARD) setCurrentView(AppView.DOCTOR_DASHBOARD);
+          setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
-          if (currentView !== AppView.ADMIN) setCurrentView(AppView.ADMIN);
+          setCurrentView(AppView.ADMIN);
       } else {
-          if (currentView !== AppView.DASHBOARD) setCurrentView(AppView.DASHBOARD);
+          setCurrentView(AppView.DASHBOARD);
       }
     }
   };
@@ -236,55 +234,52 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Logic
+    // Hardcoded Admin Backdoor (For testing/recovery)
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
-            const cred = await signInWithEmailAndPassword(auth, email, password);
-            setAuthUser(cred.user);
+            // Try to login if user exists
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                setAuthUser(cred.user);
+            } catch (err: any) {
+                 // Create admin if not exists
+                 if (err.code === 'auth/user-not-found') {
+                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                    setAuthUser(newCred.user);
+                 } else {
+                    throw err;
+                 }
+            }
             
-            const adminProfile: UserProfile = { 
-                uid: cred.user.uid,
-                email: email, 
-                name: 'System Admin', 
-                role: 'admin', 
-                setupComplete: true, 
-                durationMonths: 0 
-            };
-            
-            await setDoc(doc(db, "users", cred.user.uid), adminProfile, { merge: true });
-            setUserProfile(adminProfile);
-            setCurrentView(AppView.ADMIN); // Force Admin View
-        } catch (err: any) {
-             if (err.code === 'auth/user-not-found') {
-                const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                setAuthUser(newCred.user);
+            // Force Admin Profile in Firestore
+            if (auth.currentUser) {
                 const adminProfile: UserProfile = { 
-                    uid: newCred.user.uid,
-                    email, 
+                    uid: auth.currentUser.uid,
+                    email: email, 
                     name: 'System Admin', 
                     role: 'admin', 
                     setupComplete: true, 
                     durationMonths: 0 
                 };
-                await setDoc(doc(db, "users", newCred.user.uid), adminProfile, { merge: true });
+                await setDoc(doc(db, "users", auth.currentUser.uid), adminProfile, { merge: true });
                 setUserProfile(adminProfile);
-                setCurrentView(AppView.ADMIN); // Force Admin View
-             } else {
-                setLoginError(err.message);
-             }
+                setCurrentView(AppView.ADMIN);
+            }
+        } catch (err: any) {
+            setLoginError(err.message);
         }
         setLoading(false);
         return;
     }
 
+    // Normal Login
     if (auth) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        setAuthUser(cred.user);
-      } catch (err: any) { setLoginError('Login Error: ' + err.message); }
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle the rest
+      } catch (err: any) { setLoginError('Login Error: ' + err.message); setLoading(false); }
     }
-    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -292,11 +287,9 @@ function AppContent() {
     setLoading(true);
     if (auth) {
         try {
-            const result = await signInWithPopup(auth, googleProvider);
-            setAuthUser(result.user);
-        } catch (err: any) { setLoginError('Google Login Error: ' + err.message); }
+            await signInWithPopup(auth, googleProvider);
+        } catch (err: any) { setLoginError('Google Login Error: ' + err.message); setLoading(false); }
     }
-    setLoading(false);
   };
 
   const setDemoCreds = () => { setEmail('islamaz@bomba.com'); setPassword('bombaAZ360'); }
@@ -446,8 +439,7 @@ function AppContent() {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
-  // 2. ONBOARDING (If user exists but setup not complete)
-  // FIX: This ensures new users (who have setupComplete: false) see the onboarding, not Dashboard
+  // 2. ONBOARDING
   if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
     return <OnboardingView 
         userProfile={userProfile} 
@@ -491,10 +483,13 @@ function AppContent() {
                 <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
                 <p className="text-slate-400 max-w-lg leading-relaxed">
                     شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
+                    <br/><br/>
+                    <span className="text-xs text-slate-500">سيتم توجيهك تلقائياً فور الاعتماد.</span>
                 </p>
                 <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
                     Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
                 </div>
+                <Button variant="secondary" onClick={handleLogout} className="mt-6 !px-6">تسجيل خروج</Button>
             </div>
         ) : 
 

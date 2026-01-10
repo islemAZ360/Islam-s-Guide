@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 10/1/2026, 20:48:38
+Generated: 10/1/2026, 21:51:11
 
 ## 🌳 Project Structure
 ```text
@@ -188,7 +188,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.ARTICLES, icon: BookOpen, label: 'إدارة المحتوى' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'تذاكر الدعم' },
       );
-      // ملاحظة: لم نقم بإضافة الإعدادات هنا للأدمن
+      // ملاحظة: تم إزالة الإعدادات للأدمن كما طلبت
     }
     
     // 2. DOCTOR MENU
@@ -200,7 +200,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
         { id: AppView.COMMUNITY, icon: MessageSquare, label: 'غرف الدردشة' },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: 'الدعم الفني' },
       );
-      // الطبيب يحتاج الإعدادات؟ عادة نعم، لكن إذا أردت إزالتها له أيضاً أخبرني. سأتركها للطبيب والمستخدم العادي حالياً.
+      // الإعدادات للطبيب
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 
@@ -223,7 +223,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       }
-      // إضافة الإعدادات للمستخدم العادي والمريض
+      // الإعدادات للمستخدم العادي والمريض
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 
@@ -1267,6 +1267,120 @@ export const translations = {
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
     factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
+
+    // Onboarding & Roles
+    onboard_title: "أهلاً بك في Islam's Guide",
+    onboard_desc: "قبل البدء، يرجى تحديد طبيعة استخدامك للنظام.",
+    role_patient: "مستخدم / مريض",
+    role_patient_desc: "أريد التعافي من الدواء، سواء بمساعدة الخوارزمية الذكية أو تحت إشراف طبيب مختص.",
+    role_doctor: "طبيب معالج",
+    role_doctor_desc: "أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.",
+    
+    // Doctor Registration
+    doc_req_title: "طلب اعتماد طبيب",
+    doc_req_desc: "ستتم مراجعة بياناتك من قبل الإدارة قبل تفعيل حسابك.",
+    doc_fullname: "الاسم الكامل (كما سيظهر للمرضى)",
+    doc_specialty: "التخصص الطبي",
+    doc_license: "رقم الترخيص المهني",
+    doc_location: "مقر العيادة / المستشفى",
+    doc_phone: "رقم هاتف للتواصل (للإدارة)",
+    doc_bio: "نبذة تعريفية (تظهر للمرضى)",
+    doc_submit: "إرسال طلب الاعتماد",
+
+    // Path Selection
+    path_select_title: "اختر مسار العلاج",
+    path_algo: "الخوارزمية الذكية",
+    path_algo_desc: "أريد أن يقوم الموقع بحساب خطة التخفيض تلقائياً بناءً على كمية الدواء المتوفرة لدي.",
+    path_doctor: "متابعة مع طبيب",
+    path_doctor_desc: "سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.",
+
+    // Doctor Selection
+    doc_select_title: "اختر طبيبك المعالج",
+    doc_search_placeholder: "بحث باسم الطبيب...",
+    doc_select_btn: "اختيار هذا الطبيب",
+
+    // Algorithm Setup
+    med_type_title: "نوع الدواء",
+    med_type_narcotic: "مخدرات (جدول أول)",
+    med_type_narcotic_desc: "يتطلب حجز في مصحة",
+    med_type_psych: "أدوية نفسية",
+    med_type_psych_desc: "يتطلب إشراف طبي",
+    med_type_normal: "أدوية عامة",
+    med_type_normal_desc: "آمن للتخفيض الذاتي",
+    blocked_title: "الدخول محظور",
+    warning_title: "تنبيه طبي هام",
+    med_form_title: "شكل الدواء",
+    form_tablet: "أقراص / حبوب",
+    form_liquid: "سائل / قطرات",
+    unit_title: "وحدة القياس",
+
+    // Doctor Dashboard
+    stat_total_patients: "إجمالي المرضى",
+    stat_new_requests: "طلبات جديدة",
+    stat_recovered: "حالات التعافي",
+    stat_overview: "نظرة عامة",
+    create_plan_btn: "إنشاء الخطة العلاجية",
+    plan_notes: "ملاحظات للمريض",
+    plan_phases: "مراحل التخفيض",
+    duration_days: "المدة (أيام)",
+    submit_plan: "اعتماد وإرسال",
+
+    // Admin & Management
+    admin_title: "غرفة التحكم المركزية",
+    admin_subtitle: "نظام الإدارة المتكامل",
+    tab_overview: "نظرة عامة",
+    tab_doctors: "إدارة الأطباء",
+    tab_users: "المستخدمين",
+    tab_cms: "المحتوى",
+    stat_approved_docs: "أطباء معتمدين",
+    pending_approvals: "طلبات الانضمام المعلقة",
+    review_btn: "مراجعة",
+    approve_btn: "اعتماد",
+    reject_btn: "رفض",
+    approved_docs_list: "قائمة الأطباء المعتمدين",
+    ban_user: "حظر",
+    unban_user: "فك الحظر",
+    search_user_placeholder: "بحث عن مستخدم...",
+    
+    // Patient Management
+    manage_patients_title: "إدارة ملفات المرضى",
+    add_patient_btn: "ضم مريض جديد",
+    back_list_btn: "العودة للقائمة",
+    search_available_placeholder: "بحث عن مستخدم بالاسم أو البريد...",
+    add_btn: "ضم",
+    
+    // Articles
+    knowledge_center: "مركز المعرفة",
+    knowledge_desc: "مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي.",
+    new_article_btn: "نشر مقال جديد",
+    article_title_label: "عنوان المقال",
+    article_cat_label: "التصنيف",
+    article_content_label: "المحتوى",
+    publish_now: "نشر الآن",
+    cat_medical: "طبي",
+    cat_motivation: "دعم نفسي",
+    cat_tip: "نصائح",
+    cancel_btn: "إلغاء",
+
+    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
+    new_ticket: "فتح تذكرة جديدة",
+    new_ticket_title: "طلب مساعدة جديد",
+    ticket_subject: "الموضوع",
+    ticket_details: "التفاصيل",
+    send_request: "إرسال الطلب",
+    my_tickets: "تذاكري",
+    no_tickets: "لا توجد تذاكر سابقة.",
+    select_ticket_prompt: "اختر تذكرة لعرض التفاصيل أو ابدأ تذكرة جديدة",
+    status_open: "مفتوح",
+    status_pending: "قيد المراجعة",
+    status_resolved: "تم الحل",
+    status_closed: "مغلق",
+    ticket_closed_msg: "تم إغلاق هذه التذكرة. لفتحها مجدداً، يرجى إنشاء تذكرة جديدة.",
+    write_reply: "اكتب ردك هنا...",
+    me: "أنا",
+    support_team: "الدعم الفني",
+    current_account: "حسابك الحالي",
   },
   en: {
     welcome: "Welcome",
@@ -1279,7 +1393,6 @@ export const translations = {
     error_prefix: "Error: ",
     or: "OR",
     banned_msg: "Account suspended.",
-    
     nav_dashboard: "Dashboard",
     nav_calendar: "Schedule",
     nav_stats: "Analytics",
@@ -1294,7 +1407,6 @@ export const translations = {
     type_msg: "Type a message...",
     comm_rooms: "Chat Rooms",
     comm_leaderboard: "Leaderboard",
-
     daily_report: "Daily Check-in",
     days_left: "Days Left",
     status_stable: "Stable",
@@ -1317,7 +1429,6 @@ export const translations = {
     sos_button: "SOS",
     export_report: "Doctor Report",
     print: "Print Report",
-
     inv_status_ok: "Inventory Sufficient",
     inv_status_low: "Low Inventory",
     inv_alert_desc: "Current pace may deplete inventory before tapering ends. Consider slowing down.",
@@ -1329,11 +1440,9 @@ export const translations = {
     current_habit: "Current Dose",
     analyze_plan: "Generate Plan",
     guest: "Guest",
-
     toast_log_success: "Log saved. Plan recalculated.",
     toast_freeze_success: "Plan frozen for 3 days.",
     toast_speed_updated: "Pace updated successfully.",
-
     sleep_label: "Sleep Hours",
     symptoms_label: "Symptoms",
     sym_insomnia: "Insomnia",
@@ -1342,13 +1451,11 @@ export const translations = {
     sym_shake: "Tremors",
     sym_nausea: "Nausea",
     sym_headache: "Headache",
-    
     badges_title: "Milestones",
     badge_7days: "Week Warrior",
     badge_halfway: "Halfway Point",
     badge_sleep: "Sleep Restored",
     badge_stable: "Emotional Stability",
-
     sos_title: "Emergency Protocol",
     sos_phase_1_title: "STOP.",
     sos_phase_1_text: "You are safe. This is just chemistry.",
@@ -1365,7 +1472,6 @@ export const translations = {
     breathe_hold: "Hold",
     breathe_out: "Exhale",
     close: "Close",
-
     settings_title: "System Settings",
     settings_subtitle: "Algorithm Control",
     pace_control: "Tapering Pace",
@@ -1375,6 +1481,102 @@ export const translations = {
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
     factory_reset_btn: "Factory Reset",
+    onboard_title: "Welcome to Islam's Guide",
+    onboard_desc: "Before we start, please select how you'll use the system.",
+    role_patient: "User / Patient",
+    role_patient_desc: "I want to taper off medication, either via the Smart Algorithm or under doctor supervision.",
+    role_doctor: "Therapist / Doctor",
+    role_doctor_desc: "I want to join the medical staff to monitor patients and create treatment plans.",
+    doc_req_title: "Doctor Accreditation Request",
+    doc_req_desc: "Your details will be reviewed by admin before account activation.",
+    doc_fullname: "Full Name (Visible to patients)",
+    doc_specialty: "Medical Specialty",
+    doc_license: "License Number",
+    doc_location: "Clinic / Hospital Location",
+    doc_phone: "Contact Phone (For Admin)",
+    doc_bio: "Bio (Visible to patients)",
+    doc_submit: "Submit Request",
+    path_select_title: "Choose Treatment Path",
+    path_algo: "Smart Algorithm",
+    path_algo_desc: "I want the system to auto-calculate my tapering plan based on my inventory.",
+    path_doctor: "Follow with a Doctor",
+    path_doctor_desc: "I will choose a doctor from the platform and wait for them to assign a plan.",
+    doc_select_title: "Select Your Doctor",
+    doc_search_placeholder: "Search by doctor name...",
+    doc_select_btn: "Choose this Doctor",
+    med_type_title: "Medication Type",
+    med_type_narcotic: "Narcotics (Schedule I)",
+    med_type_narcotic_desc: "Requires Rehab Center",
+    med_type_psych: "Psychiatric Meds",
+    med_type_psych_desc: "Requires Medical Supervision",
+    med_type_normal: "General Meds",
+    med_type_normal_desc: "Safe for Self-Tapering",
+    blocked_title: "Access Restricted",
+    warning_title: "Important Medical Warning",
+    med_form_title: "Medication Form",
+    form_tablet: "Tablets / Pills",
+    form_liquid: "Liquid / Drops",
+    unit_title: "Measurement Unit",
+    stat_total_patients: "Total Patients",
+    stat_new_requests: "New Requests",
+    stat_recovered: "Recovered",
+    stat_overview: "Overview",
+    create_plan_btn: "Create Treatment Plan",
+    plan_notes: "Notes for Patient",
+    plan_phases: "Tapering Phases",
+    duration_days: "Duration (Days)",
+    submit_plan: "Approve & Send",
+    admin_title: "Central Control Room",
+    admin_subtitle: "Integrated Management System",
+    tab_overview: "Overview",
+    tab_doctors: "Doctors",
+    tab_users: "Users",
+    tab_cms: "Content",
+    stat_approved_docs: "Approved Doctors",
+    pending_approvals: "Pending Approvals",
+    review_btn: "Review",
+    approve_btn: "Approve",
+    reject_btn: "Reject",
+    approved_docs_list: "Approved Doctors List",
+    ban_user: "Ban",
+    unban_user: "Unban",
+    search_user_placeholder: "Search user...",
+    manage_patients_title: "Patient Files Management",
+    add_patient_btn: "Add New Patient",
+    back_list_btn: "Back to List",
+    search_available_placeholder: "Search user by name or email...",
+    add_btn: "Add",
+    knowledge_center: "Knowledge Center",
+    knowledge_desc: "Medical articles and daily tips to help your recovery journey.",
+    new_article_btn: "New Article",
+    article_title_label: "Article Title",
+    article_cat_label: "Category",
+    article_content_label: "Content",
+    publish_now: "Publish Now",
+    cat_medical: "Medical",
+    cat_motivation: "Motivation",
+    cat_tip: "Tip",
+    cancel_btn: "Cancel",
+
+    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    support_desc: "Contact the support team directly.",
+    new_ticket: "New Ticket",
+    new_ticket_title: "New Support Request",
+    ticket_subject: "Subject",
+    ticket_details: "Details",
+    send_request: "Submit",
+    my_tickets: "My Tickets",
+    no_tickets: "No previous tickets.",
+    select_ticket_prompt: "Select a ticket to view details",
+    status_open: "Open",
+    status_pending: "Pending",
+    status_resolved: "Resolved",
+    status_closed: "Closed",
+    ticket_closed_msg: "This ticket is closed.",
+    write_reply: "Write your reply...",
+    me: "Me",
+    support_team: "Support",
+    current_account: "Current Account",
   },
   ru: {
     welcome: "Добро пожаловать",
@@ -1401,7 +1603,6 @@ export const translations = {
     type_msg: "Сообщение...",
     comm_rooms: "Чаты",
     comm_leaderboard: "Лидеры",
-
     daily_report: "Отчет",
     days_left: "Дней",
     status_stable: "Стабильно",
@@ -1476,6 +1677,102 @@ export const translations = {
     pace_fast: "Быстро",
     danger_zone: "Опасно",
     factory_reset_btn: "Сброс",
+    onboard_title: "Добро пожаловать в Islam's Guide",
+    onboard_desc: "Пожалуйста, выберите цель использования.",
+    role_patient: "Пользователь / Пациент",
+    role_patient_desc: "Я хочу снизить дозу лекарств (алгоритм или врач).",
+    role_doctor: "Врач / Терапевт",
+    role_doctor_desc: "Я хочу присоединиться как врач для наблюдения за пациентами.",
+    doc_req_title: "Заявка врача",
+    doc_req_desc: "Ваши данные будут проверены администратором.",
+    doc_fullname: "ФИО (для пациентов)",
+    doc_specialty: "Специальность",
+    doc_license: "Номер лицензии",
+    doc_location: "Клиника / Адрес",
+    doc_phone: "Телефон (для админа)",
+    doc_bio: "О себе",
+    doc_submit: "Отправить заявку",
+    path_select_title: "Выберите путь",
+    path_algo: "Смарт-Алгоритм",
+    path_algo_desc: "Автоматический расчет плана на основе запасов.",
+    path_doctor: "Наблюдение у врача",
+    path_doctor_desc: "Я выберу врача и буду ждать план лечения.",
+    doc_select_title: "Выберите врача",
+    doc_search_placeholder: "Поиск врача...",
+    doc_select_btn: "Выбрать",
+    med_type_title: "Тип лекарства",
+    med_type_narcotic: "Наркотические",
+    med_type_narcotic_desc: "Нужен стационар",
+    med_type_psych: "Психиатрические",
+    med_type_psych_desc: "Нужен контроль врача",
+    med_type_normal: "Общие",
+    med_type_normal_desc: "Безопасно для снижения",
+    blocked_title: "Доступ запрещен",
+    warning_title: "Важное предупреждение",
+    med_form_title: "Форма лекарства",
+    form_tablet: "Таблетки",
+    form_liquid: "Жидкость / Капли",
+    unit_title: "Единица измерения",
+    stat_total_patients: "Всего пациентов",
+    stat_new_requests: "Новые заявки",
+    stat_recovered: "Выздоровели",
+    stat_overview: "Обзор",
+    create_plan_btn: "Создать план",
+    plan_notes: "Заметки для пациента",
+    plan_phases: "Фазы снижения",
+    duration_days: "Длительность (дни)",
+    submit_plan: "Утвердить и отправить",
+    admin_title: "Центральная панель управления",
+    admin_subtitle: "Интегрированная система управления",
+    tab_overview: "Обзор",
+    tab_doctors: "Врачи",
+    tab_users: "Пользователи",
+    tab_cms: "Контент",
+    stat_approved_docs: "Одобренные врачи",
+    pending_approvals: "Ожидающие одобрения",
+    review_btn: "Обзор",
+    approve_btn: "Одобрить",
+    reject_btn: "Отклонить",
+    approved_docs_list: "Список одобренных врачей",
+    ban_user: "Заблокировать",
+    unban_user: "Разблокировать",
+    search_user_placeholder: "Поиск пользователя...",
+    manage_patients_title: "Управление пациентами",
+    add_patient_btn: "Добавить пациента",
+    back_list_btn: "Назад к списку",
+    search_available_placeholder: "Поиск по имени или email...",
+    add_btn: "Добавить",
+    knowledge_center: "Центр знаний",
+    knowledge_desc: "Медицинские статьи и советы.",
+    new_article_btn: "Новая статья",
+    article_title_label: "Заголовок",
+    article_cat_label: "Категория",
+    article_content_label: "Содержание",
+    publish_now: "Опубликовать",
+    cat_medical: "Медицина",
+    cat_motivation: "Мотивация",
+    cat_tip: "Советы",
+    cancel_btn: "Отмена",
+
+    // --- Support & Tickets (ADDED MISSING KEYS) ---
+    support_desc: "Свяжитесь с командой поддержки напрямую.",
+    new_ticket: "Новый тикет",
+    new_ticket_title: "Новый запрос в поддержку",
+    ticket_subject: "Тема",
+    ticket_details: "Детали",
+    send_request: "Отправить",
+    my_tickets: "Мои тикеты",
+    no_tickets: "Нет предыдущих тикетов.",
+    select_ticket_prompt: "Выберите тикет для просмотра",
+    status_open: "Открыт",
+    status_pending: "В ожидании",
+    status_resolved: "Решен",
+    status_closed: "Закрыт",
+    ticket_closed_msg: "Этот тикет закрыт.",
+    write_reply: "Напишите ответ...",
+    me: "Я",
+    support_team: "Поддержка",
+    current_account: "Текущий аккаунт",
   }
 };
 ```
@@ -1485,19 +1782,22 @@ export const translations = {
 ```tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
-    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, deleteDoc, where 
+    collection, updateDoc, doc, addDoc, query, orderBy, deleteDoc, onSnapshot 
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
-import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
+import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
 import { 
-    Ban, Activity, Search, Users, Lock, Eye, Save, Plus, X, Flag, FileText, LifeBuoy, Stethoscope, CheckCircle, XCircle, Trash2
+    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle
 } from 'lucide-react';
 import { 
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
+    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const AdminView = () => {
+    const { t } = useLanguage();
+
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
     const [loading, setLoading] = useState(false);
@@ -1513,55 +1813,54 @@ export const AdminView = () => {
     // -- Search --
     const [searchTerm, setSearchTerm] = useState("");
 
-    // -- 1. FETCH DATA --
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const snap = await getDocs(collection(db, "users"));
-            const fetched: UserProfile[] = [];
-            snap.forEach(d => fetched.push({ uid: d.id, ...d.data() } as UserProfile));
-            setUsers(fetched);
-        } catch (e) { console.error(e); }
-        setLoading(false);
-    };
-
-    const fetchArticles = async () => {
-        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
-    };
-
+    // -- 1. REAL-TIME DATA FETCHING (UPDATED) --
     useEffect(() => {
-        if (activeTab === 'users' || activeTab === 'doctors' || activeTab === 'overview') fetchUsers();
-        if (activeTab === 'cms') fetchArticles();
-    }, [activeTab]);
+        setLoading(true);
+        // الاستماع المباشر للتغييرات في جدول المستخدمين
+        // هذا يضمن ظهور الطبيب فور تسجيله دون الحاجة لتحديث الصفحة
+        const qUsers = query(collection(db, "users"));
+        const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
+            const fetchedUsers: UserProfile[] = [];
+            snapshot.forEach(d => fetchedUsers.push({ uid: d.id, ...d.data() } as UserProfile));
+            setUsers(fetchedUsers);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching users:", error);
+            setLoading(false);
+        });
+
+        // الاستماع للمقالات
+        const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+        const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
+            setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
+        });
+
+        // تنظيف الاستماع عند الخروج
+        return () => {
+            unsubscribeUsers();
+            unsubscribeArticles();
+        };
+    }, []);
 
     // -- DOCTOR MANAGEMENT ACTIONS --
     
     const approveDoctor = async (docUid: string) => {
-        if (!confirm("هل أنت متأكد من اعتماد هذا الطبيب؟ سيتمكن من الوصول لبيانات المرضى.")) return;
+        if (!confirm("Are you sure you want to approve this doctor?")) return;
         
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "approved"
             });
-            // تحديث القائمة محلياً
-            setUsers(prev => prev.map(u => u.uid === docUid ? {
-                ...u, doctorData: { ...u.doctorData!, accountStatus: 'approved' }
-            } : u));
-            alert("تم اعتماد الطبيب بنجاح.");
+            // لا نحتاج لتحديث الحالة يدوياً هنا لأن onSnapshot سيقوم بذلك
         } catch (e) { console.error(e); }
     };
 
     const rejectDoctor = async (docUid: string) => {
-        if (!confirm("رفض الطلب سيمنع الطبيب من الدخول.")) return;
+        if (!confirm("Rejecting will prevent login. Continue?")) return;
         try {
             await updateDoc(doc(db, "users", docUid), {
                 "doctorData.accountStatus": "rejected"
             });
-            setUsers(prev => prev.map(u => u.uid === docUid ? {
-                ...u, doctorData: { ...u.doctorData!, accountStatus: 'rejected' }
-            } : u));
         } catch (e) { console.error(e); }
     };
 
@@ -1570,67 +1869,64 @@ export const AdminView = () => {
     const toggleBan = async (user: UserProfile) => {
         if (!user.uid) return;
         const newVal = !user.isBanned;
-        if(confirm(newVal ? "حظر هذا المستخدم؟" : "فك الحظر عن المستخدم؟")) {
+        if(confirm(newVal ? "Ban this user?" : "Unban this user?")) {
             await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
-            setUsers(users.map(u => u.uid === user.uid ? {...u, isBanned: newVal} : u));
         }
     }
 
     // -- CMS ACTIONS --
 
     const publishArticle = async () => {
+        const currentUser = auth?.currentUser;
         if (!newArticle.title || !newArticle.content) return;
+        
         try {
             await addDoc(collection(db, "articles"), {
                 ...newArticle,
                 isPublished: true,
                 createdAt: Date.now(),
-                authorName: "System Admin",
+                authorName: currentUser?.displayName || "System Admin",
                 authorRole: "admin",
-                authorId: "ADMIN"
+                authorId: currentUser?.uid || "ADMIN_CONSOLE"
             });
             setShowArticleModal(false);
             setNewArticle({ title: '', content: '', category: 'tip' });
-            fetchArticles();
         } catch (e) { console.error(e); }
     };
 
     const deleteArticle = async (id: string) => {
-        if(confirm("حذف هذا المقال؟")) {
+        if(confirm("Delete this article?")) {
             await deleteDoc(doc(db, "articles", id));
-            setArticles(prev => prev.filter(a => a.id !== id));
         }
     }
 
     // -- DERIVED DATA --
-    
     const doctorsList = users.filter(u => u.role === 'doctor');
     const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
     const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
-    
     const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
     const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
 
     // Stats for Overview
     const stats = useMemo(() => {
         return [
-            { name: 'إجمالي المرضى', value: normalUsers.length, color: '#6366f1' },
-            { name: 'أطباء معتمدين', value: approvedDoctors.length, color: '#10b981' },
-            { name: 'حالات تعافي', value: recoveredUsers.length, color: '#f59e0b' },
-            { name: 'طلبات أطباء', value: pendingDoctors.length, color: '#f43f5e' },
+            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
+            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981' },
+            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b' },
+            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e' },
         ];
-    }, [users]);
+    }, [users, t]);
 
     return (
         <LayoutContainer>
-            <PageHeader title="غرفة التحكم المركزية" subtitle="نظام الإدارة المتكامل (Admin Dashboard)" />
+            <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
 
             <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
                 {[
-                    { id: 'overview', icon: Activity, label: 'نظرة عامة' },
-                    { id: 'doctors', icon: Stethoscope, label: 'إدارة الأطباء' },
-                    { id: 'users', icon: Users, label: 'المستخدمين' },
-                    { id: 'cms', icon: FileText, label: 'إدارة المحتوى' },
+                    { id: 'overview', icon: Activity, label: t('tab_overview') },
+                    { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
+                    { id: 'users', icon: Users, label: t('tab_users') },
+                    { id: 'cms', icon: FileText, label: t('tab_cms') },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -1664,7 +1960,7 @@ export const AdminView = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Card className="bg-slate-900 border-white/5 min-h-[300px]">
-                            <h3 className="text-white font-bold mb-4">توزيع المستخدمين</h3>
+                            <h3 className="text-white font-bold mb-4">{t('stat_overview')}</h3>
                             <ResponsiveContainer width="100%" height="250px">
                                 <BarChart data={stats}>
                                     <XAxis dataKey="name" stroke="#475569" fontSize={10} tick={false} />
@@ -1681,10 +1977,13 @@ export const AdminView = () => {
                         {/* Pending Approvals Quick View */}
                         <Card className="bg-slate-900 border-white/5">
                             <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                                <Lock size={16} className="text-amber-500"/> طلبات الانضمام المعلقة
+                                <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
                             </h3>
                             {pendingDoctors.length === 0 ? (
-                                <div className="text-center text-slate-500 py-10">لا توجد طلبات معلقة حالياً.</div>
+                                <div className="text-center text-slate-500 py-10 flex flex-col items-center">
+                                    <CheckCircle size={32} className="mb-2 opacity-20"/>
+                                    <p>No pending approvals.</p>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
                                     {pendingDoctors.slice(0, 3).map(doc => (
@@ -1693,7 +1992,7 @@ export const AdminView = () => {
                                                 <div className="font-bold text-white text-sm">{doc.name}</div>
                                                 <div className="text-xs text-slate-500">{doc.doctorData?.specialty}</div>
                                             </div>
-                                            <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">مراجعة</Button>
+                                            <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">{t('review_btn')}</Button>
                                         </div>
                                     ))}
                                 </div>
@@ -1706,16 +2005,23 @@ export const AdminView = () => {
             {/* --- TAB: DOCTORS MANAGEMENT --- */}
             {activeTab === 'doctors' && (
                 <div className="animate-in fade-in space-y-8">
-                     {/* 1. Pending Approvals */}
-                     {pendingDoctors.length > 0 && (
-                         <div className="space-y-4">
-                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                 <Lock className="text-amber-500" /> طلبات الاعتماد الجديدة
-                             </h2>
+                     {/* 1. Pending Approvals Section (Always Visible now to avoid confusion) */}
+                     <div className="space-y-4">
+                         <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
+                             <Lock className="text-amber-500" /> {t('pending_approvals')}
+                             <Badge color="amber">{pendingDoctors.length}</Badge>
+                         </h2>
+                         
+                         {pendingDoctors.length === 0 ? (
+                             <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500">
+                                 <AlertCircle className="mx-auto mb-2 opacity-50" size={32} />
+                                 <p>لا توجد طلبات انضمام معلقة حالياً.</p>
+                             </div>
+                         ) : (
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {pendingDoctors.map(doc => (
                                     <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                                        <Badge color="amber" className="absolute top-4 left-4">قيد المراجعة</Badge>
+                                        <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
                                         
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
@@ -1726,50 +2032,51 @@ export const AdminView = () => {
                                         </div>
                                         
                                         <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 space-y-2 mb-6">
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>الترخيص:</span> <span className="text-white font-mono">{doc.doctorData?.licenseNumber}</span></div>
-                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>الهاتف:</span> <span className="text-white font-mono">{doc.doctorData?.phoneNumber}</span></div>
-                                            <div className="flex justify-between"><span>الموقع:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Email:</span> <span className="text-white select-all">{doc.email}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>License:</span> <span className="text-white font-mono select-all">{doc.doctorData?.licenseNumber}</span></div>
+                                            <div className="flex justify-between border-b border-white/5 pb-1"><span>Phone:</span> <span className="text-white font-mono select-all">{doc.doctorData?.phoneNumber}</span></div>
+                                            <div className="flex justify-between"><span>Loc:</span> <span className="text-white">{doc.doctorData?.clinicLocation}</span></div>
                                         </div>
 
                                         <div className="flex gap-2">
                                             <Button onClick={() => doc.uid && approveDoctor(doc.uid)} variant="success" className="flex-1 !py-2">
-                                                <CheckCircle size={16} className="mr-2"/> اعتماد
+                                                <CheckCircle size={16} className="mr-2"/> {t('approve_btn')}
                                             </Button>
                                             <Button onClick={() => doc.uid && rejectDoctor(doc.uid)} variant="danger" className="flex-1 !py-2">
-                                                <XCircle size={16} className="mr-2"/> رفض
+                                                <XCircle size={16} className="mr-2"/> {t('reject_btn')}
                                             </Button>
                                         </div>
                                     </div>
                                 ))}
                              </div>
-                         </div>
-                     )}
+                         )}
+                     </div>
 
                      {/* 2. Active Doctors List & Stats */}
                      <div>
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                             <Stethoscope className="text-emerald-500" /> قائمة الأطباء المعتمدين
+                             <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
                         </h2>
                         <Card className="bg-slate-900 border-white/5 overflow-hidden !p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-right text-sm text-slate-400">
                                     <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
                                         <tr>
-                                            <th className="p-4">الطبيب</th>
-                                            <th className="p-4">التخصص</th>
-                                            <th className="p-4 text-center">المرضى الحاليين</th>
-                                            <th className="p-4 text-center">حالات التعافي</th>
-                                            <th className="p-4 text-center">المستوى</th>
-                                            <th className="p-4">الحالة</th>
+                                            <th className="p-4">Doctor</th>
+                                            <th className="p-4">Specialty</th>
+                                            <th className="p-4 text-center">Patients</th>
+                                            <th className="p-4 text-center">Recovered</th>
+                                            <th className="p-4 text-center">Level</th>
+                                            <th className="p-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
+                                        {approvedDoctors.length === 0 && (
+                                            <tr><td colSpan={6} className="p-6 text-center">No approved doctors yet.</td></tr>
+                                        )}
                                         {approvedDoctors.map(doc => {
-                                            // حساب إحصائيات مع استخدام ?. لتجنب الأخطاء
                                             const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
                                             const recoveredCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && u.patientData?.isRecovered).length;
-                                            
-                                            // حساب المستوى
                                             const level = Math.floor(recoveredCount / 5) + 1;
 
                                             return (
@@ -1783,7 +2090,7 @@ export const AdminView = () => {
                                                     </td>
                                                     <td className="p-4">
                                                         <Button variant="danger" className="!py-1 !px-2 !text-xs" onClick={() => toggleBan(doc)}>
-                                                            {doc.isBanned ? 'فك الحظر' : 'حظر'}
+                                                            {doc.isBanned ? t('unban_user') : t('ban_user')}
                                                         </Button>
                                                     </td>
                                                 </tr>
@@ -1804,7 +2111,7 @@ export const AdminView = () => {
                         <Search className="text-slate-500 ml-4" size={20} />
                         <input 
                             className="bg-transparent w-full text-white outline-none"
-                            placeholder="بحث عن مستخدم..."
+                            placeholder={t('search_user_placeholder')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -1825,9 +2132,9 @@ export const AdminView = () => {
                                             {user.isBanned && <Ban size={12} className="text-rose-500"/>}
                                         </h4>
                                         <div className="flex gap-2 mt-1">
-                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? 'مريض' : 'مستخدم عادي'}</Badge>
+                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? t('role_patient') : 'User'}</Badge>
                                             {user.patientData?.assignedDoctorName && (
-                                                <span className="text-[9px] text-slate-500 flex items-center">طبيب: {user.patientData.assignedDoctorName}</span>
+                                                <span className="text-[9px] text-slate-500 flex items-center">Dr: {user.patientData.assignedDoctorName}</span>
                                             )}
                                         </div>
                                     </div>
@@ -1845,8 +2152,8 @@ export const AdminView = () => {
             {activeTab === 'cms' && (
                 <div className="animate-in fade-in space-y-4">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-white">إدارة المحتوى</h2>
-                        <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm"><Plus size={16}/> مقال جديد</Button>
+                        <h2 className="text-xl font-bold text-white">{t('tab_cms')}</h2>
+                        <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm"><Plus size={16}/> {t('new_article_btn')}</Button>
                     </div>
 
                     {showArticleModal && (
@@ -1854,13 +2161,13 @@ export const AdminView = () => {
                              <div className="space-y-4">
                                  <input 
                                      className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 outline-none focus:border-indigo-500" 
-                                     placeholder="العنوان" 
+                                     placeholder={t('article_title_label')}
                                      value={newArticle.title} 
                                      onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
                                  />
                                  
                                  <div>
-                                     <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">التصنيف</label>
+                                     <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">{t('article_cat_label')}</label>
                                      <div className="flex gap-2">
                                          {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
                                              <button 
@@ -1876,14 +2183,14 @@ export const AdminView = () => {
 
                                  <textarea 
                                      className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32 outline-none focus:border-indigo-500" 
-                                     placeholder="المحتوى..." 
+                                     placeholder={t('article_content_label')}
                                      value={newArticle.content} 
                                      onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
                                  />
                                  
                                  <div className="flex justify-end gap-2">
-                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>إلغاء</Button>
-                                     <Button variant="success" onClick={publishArticle}>نشر</Button>
+                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
+                                     <Button variant="success" onClick={publishArticle}>{t('publish_now')}</Button>
                                  </div>
                              </div>
                          </Card>
@@ -2402,6 +2709,7 @@ import React from 'react';
 import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
 import { PlanDay, DailyLog, UserProfile } from '../types';
 import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CalendarViewProps {
     plan: PlanDay[];
@@ -2411,6 +2719,8 @@ interface CalendarViewProps {
 }
 
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
+    const { t, language } = useLanguage();
+
     // تحديد تاريخ البداية لحساب الفراغات في التقويم
     const startDate = new Date(plan[0]?.date || new Date());
     const startDayIndex = (startDate.getDay() + 1) % 7; // ضبط الترتيب ليبدأ من السبت
@@ -2422,20 +2732,29 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
     // هل الخطة طبية أم خوارزمية؟
     const isDoctorPlan = userProfile?.planType === 'manual';
 
+    // ترجمة أيام الأسبوع
+    const daysMap: Record<string, string[]> = {
+        ar: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+        en: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        ru: ['Сб', 'Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт']
+    };
+    
+    const weekDays = daysMap[language] || daysMap['en'];
+
     return (
       <LayoutContainer>
         <PageHeader 
-            title="الجدول الزمني"
-            subtitle="خارطة الطريق نحو التعافي."
+            title={t('nav_calendar')}
+            subtitle={language === 'ar' ? "خارطة الطريق نحو التعافي." : "Your recovery roadmap."}
             action={
                 <div className="flex gap-2">
                     {isDoctorPlan ? (
                         <Badge color="indigo" className="!text-sm !py-2 !px-4">
-                            <Stethoscope size={16} className="mr-2" /> خطة الطبيب المعالج
+                            <Stethoscope size={16} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
                         </Badge>
                     ) : (
                         <Badge color="emerald" className="!text-sm !py-2 !px-4">
-                            <BrainCircuit size={16} className="mr-2" /> الخوارزمية الذكية
+                            <BrainCircuit size={16} className="mr-2" /> {t('path_algo')}
                         </Badge>
                     )}
                 </div>
@@ -2445,15 +2764,27 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-6">
           {/* Legend / مفتاح الخريطة */}
           <div className="flex flex-wrap gap-4 mb-6 text-xs text-slate-400 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-600"></div> اليوم الحالي</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> تم الالتزام</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500"></div> لم يتم الالتزام</div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> القادم</div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-indigo-600"></div> 
+                  {language === 'ar' ? 'اليوم الحالي' : language === 'ru' ? 'Сегодня' : 'Today'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div> 
+                  {language === 'ar' ? 'تم الالتزام' : language === 'ru' ? 'Выполнено' : 'Done'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-rose-500"></div> 
+                  {language === 'ar' ? 'لم يتم الالتزام' : language === 'ru' ? 'Пропущено' : 'Missed'}
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> 
+                  {language === 'ar' ? 'القادم' : language === 'ru' ? 'Будущее' : 'Upcoming'}
+              </div>
           </div>
 
           {/* ترويسة أيام الأسبوع */}
           <div className="grid grid-cols-7 gap-2 md:gap-4 mb-3">
-            {['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'].map(d => (
+            {weekDays.map(d => (
               <div key={d} className="bg-slate-950/50 p-2 md:p-3 text-center text-[10px] md:text-xs font-bold text-slate-500 rounded-xl">{d}</div>
             ))}
           </div>
@@ -3310,8 +3641,11 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
+import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
 
 export const DoctorDashboardView = () => {
+    const { t } = useLanguage(); // تفعيل الترجمة
+    
     // -- State --
     const [loading, setLoading] = useState(true);
     const [doctorProfile, setDoctorProfile] = useState<UserProfile | null>(null);
@@ -3328,10 +3662,8 @@ export const DoctorDashboardView = () => {
     // -- Fetch Data --
     useEffect(() => {
         const fetchDoctorData = async () => {
-            // FIX: Use optional chaining (?.) because auth might be undefined
             const currentUser = auth?.currentUser;
             
-            // إذا لم يكن هناك مستخدم، نتوقف فوراً لتجنب الأخطاء
             if (!currentUser) return;
             
             setLoading(true);
@@ -3386,7 +3718,7 @@ export const DoctorDashboardView = () => {
     const saveTreatmentPlan = async () => {
         if (!selectedPatient?.uid || phases.length === 0) return;
 
-        if (!confirm(`هل أنت متأكد من اعتماد هذه الخطة للمريض ${selectedPatient.name}؟`)) return;
+        if (!confirm("Confirm sending this plan?")) return;
 
         // Generate full calendar plan
         const fullPlan = generateManualPlan(phases, new Date().toISOString());
@@ -3412,17 +3744,17 @@ export const DoctorDashboardView = () => {
             setSelectedPatient(null);
             setPhases([]);
             setDoctorNote('');
-            alert("تم إرسال الخطة العلاجية للمريض بنجاح.");
+            alert("Plan sent successfully.");
 
         } catch (e) {
             console.error("Error saving plan:", e);
-            alert("حدث خطأ أثناء حفظ الخطة.");
+            alert("Error saving plan.");
         }
     };
 
     const markAsRecovered = async (patient: UserProfile) => {
         if (!patient.uid) return;
-        if (!confirm("هل تريد إغلاق ملف هذا المريض وتسجيله كمتعافي؟")) return;
+        if (!confirm("Mark this patient as recovered?")) return;
 
         await updateDoc(doc(db, "users", patient.uid), {
             "patientData.isRecovered": true,
@@ -3437,18 +3769,18 @@ export const DoctorDashboardView = () => {
 
     // -- Stats Data for Chart --
     const statsData = [
-        { name: 'بانتظار الخطة', value: pendingPatients.length, color: '#f59e0b' },
-        { name: 'قيد العلاج', value: patients.filter(p => !p.patientData?.isRecovered).length, color: '#6366f1' },
-        { name: 'متعافين', value: patients.filter(p => p.patientData?.isRecovered).length, color: '#10b981' },
+        { name: t('stat_new_requests'), value: pendingPatients.length, color: '#f59e0b' },
+        { name: 'Active', value: patients.filter(p => !p.patientData?.isRecovered).length, color: '#6366f1' },
+        { name: t('stat_recovered'), value: patients.filter(p => p.patientData?.isRecovered).length, color: '#10b981' },
     ];
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 animate-pulse">جاري تحميل بيانات العيادة...</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 animate-pulse">Loading clinic data...</div>;
 
     return (
         <LayoutContainer>
             <PageHeader 
-                title="لوحة تحكم الطبيب" 
-                subtitle={`د. ${doctorProfile?.name || 'Doctor'} - ${doctorProfile?.doctorData?.specialty || ''}`} 
+                title={t('nav_dashboard')} 
+                subtitle={`Dr. ${doctorProfile?.name || 'Doctor'} - ${doctorProfile?.doctorData?.specialty || ''}`} 
             />
 
             {/* STATS CARDS */}
@@ -3456,7 +3788,7 @@ export const DoctorDashboardView = () => {
                 <Card className="bg-slate-900 border-white/5 p-5">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase mb-1">إجمالي المرضى</p>
+                            <p className="text-slate-500 text-xs font-bold uppercase mb-1">{t('stat_total_patients')}</p>
                             <h3 className="text-3xl font-black text-white">{patients.length + pendingPatients.length}</h3>
                         </div>
                         <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Users size={20}/></div>
@@ -3466,7 +3798,7 @@ export const DoctorDashboardView = () => {
                 <Card className="bg-amber-900/10 border-amber-500/20 p-5">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">طلبات جديدة</p>
+                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">{t('stat_new_requests')}</p>
                             <h3 className="text-3xl font-black text-amber-500">{pendingPatients.length}</h3>
                         </div>
                         <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 animate-pulse"><Clock size={20}/></div>
@@ -3476,7 +3808,7 @@ export const DoctorDashboardView = () => {
                 <Card className="bg-emerald-900/10 border-emerald-500/20 p-5">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-emerald-500/70 text-xs font-bold uppercase mb-1">حالات التعافي</p>
+                            <p className="text-emerald-500/70 text-xs font-bold uppercase mb-1">{t('stat_recovered')}</p>
                             <h3 className="text-3xl font-black text-emerald-500">{patients.filter(p => p.patientData?.isRecovered).length}</h3>
                         </div>
                         <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><CheckCircle size={20}/></div>
@@ -3484,7 +3816,7 @@ export const DoctorDashboardView = () => {
                 </Card>
 
                 <Card className="bg-slate-900 border-white/5 p-5">
-                    <p className="text-slate-500 text-xs font-bold uppercase mb-4">نظرة عامة</p>
+                    <p className="text-slate-500 text-xs font-bold uppercase mb-4">{t('stat_overview')}</p>
                     <div className="h-16">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={statsData} layout="vertical">
@@ -3506,7 +3838,7 @@ export const DoctorDashboardView = () => {
             {pendingPatients.length > 0 && (
                 <div className="mb-8 animate-in slide-in-from-bottom-4">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <AlertCircle className="text-amber-500" /> طلبات العلاج المعلقة
+                        <AlertCircle className="text-amber-500" /> {t('stat_new_requests')}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {pendingPatients.map(patient => (
@@ -3519,15 +3851,15 @@ export const DoctorDashboardView = () => {
                                         <h3 className="font-bold text-white">{patient.name}</h3>
                                         <p className="text-xs text-slate-500">{patient.email}</p>
                                     </div>
-                                    <Badge color="amber" className="mr-auto">جديد</Badge>
+                                    <Badge color="amber" className="mr-auto">New</Badge>
                                 </div>
                                 <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 mb-4 space-y-1">
-                                    <div className="flex justify-between"><span>نوع الدواء:</span> <span className="text-white">{patient.medType}</span></div>
-                                    <div className="flex justify-between"><span>الشكل:</span> <span className="text-white">{patient.medForm}</span></div>
-                                    <div className="flex justify-between"><span>الوحدة:</span> <span className="text-white">{patient.medUnit}</span></div>
+                                    <div className="flex justify-between"><span>Type:</span> <span className="text-white">{patient.medType}</span></div>
+                                    <div className="flex justify-between"><span>Form:</span> <span className="text-white">{patient.medForm}</span></div>
+                                    <div className="flex justify-between"><span>Unit:</span> <span className="text-white">{patient.medUnit}</span></div>
                                 </div>
                                 <Button onClick={() => setSelectedPatient(patient)} className="w-full" variant="primary">
-                                    إنشاء الخطة العلاجية <ChevronRight size={16} />
+                                    {t('create_plan_btn')} <ChevronRight size={16} />
                                 </Button>
                             </div>
                         ))}
@@ -3539,10 +3871,10 @@ export const DoctorDashboardView = () => {
             <Card className="bg-slate-900 border-white/5 overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Users className="text-indigo-400" /> ملفات المرضى
+                        <Users className="text-indigo-400" /> {t('stat_total_patients')}
                     </h2>
                     <div className="text-sm text-slate-500">
-                        العدد الكلي: {patients.length}
+                        Count: {patients.length}
                     </div>
                 </div>
 
@@ -3550,17 +3882,17 @@ export const DoctorDashboardView = () => {
                     <table className="w-full text-right text-sm text-slate-400">
                         <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
                             <tr>
-                                <th className="p-4 rounded-tr-xl">المريض</th>
-                                <th className="p-4">الحالة</th>
-                                <th className="p-4">التقدم</th>
-                                <th className="p-4">آخر نشاط</th>
-                                <th className="p-4 rounded-tl-xl">إجراءات</th>
+                                <th className="p-4 rounded-tr-xl">Patient</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Progress</th>
+                                <th className="p-4">Last Active</th>
+                                <th className="p-4 rounded-tl-xl">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {patients.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">لا يوجد مرضى حالياً.</td>
+                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">No active patients.</td>
                                 </tr>
                             )}
                             {patients.map(patient => (
@@ -3573,9 +3905,9 @@ export const DoctorDashboardView = () => {
                                     </td>
                                     <td className="p-4">
                                         {patient.patientData?.isRecovered ? (
-                                            <Badge color="green">متعافي</Badge>
+                                            <Badge color="green">Recovered</Badge>
                                         ) : (
-                                            <Badge color="indigo">قيد العلاج</Badge>
+                                            <Badge color="indigo">Active</Badge>
                                         )}
                                     </td>
                                     <td className="p-4">
@@ -3595,7 +3927,7 @@ export const DoctorDashboardView = () => {
                                                 onClick={() => markAsRecovered(patient)}
                                                 className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all"
                                             >
-                                                تسجيل تعافي
+                                                Mark Recovered
                                             </button>
                                         )}
                                     </td>
@@ -3610,23 +3942,23 @@ export const DoctorDashboardView = () => {
             {selectedPatient && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col">
-                        <button onClick={() => setSelectedPatient(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20">
+                        <button type="button" onClick={() => setSelectedPatient(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20">
                             <X size={20} />
                         </button>
 
                         <div className="p-6 border-b border-white/5">
-                            <h2 className="text-2xl font-bold text-white mb-1">إنشاء الخطة العلاجية</h2>
-                            <p className="text-slate-500">المريض: <span className="text-indigo-400 font-bold">{selectedPatient.name}</span></p>
+                            <h2 className="text-2xl font-bold text-white mb-1">{t('create_plan_btn')}</h2>
+                            <p className="text-slate-500">Patient: <span className="text-indigo-400 font-bold">{selectedPatient.name}</span></p>
                         </div>
 
                         <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                             
                             {/* Doctor Notes */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ملاحظات للمريض (اختياري)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('plan_notes')}</label>
                                 <textarea 
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white h-20 outline-none focus:border-indigo-500"
-                                    placeholder="اكتب تعليمات خاصة..."
+                                    placeholder="..."
                                     value={doctorNote}
                                     onChange={e => setDoctorNote(e.target.value)}
                                 />
@@ -3634,25 +3966,25 @@ export const DoctorDashboardView = () => {
 
                             {/* Phases Builder */}
                             <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                                <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16}/> مراحل التخفيض</h3>
+                                <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16}/> {t('plan_phases')}</h3>
                                 
                                 <div className="flex gap-2 mb-4">
                                     <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 block mb-1">الجرعة ({selectedPatient.medUnit})</label>
+                                        <label className="text-[10px] text-slate-500 block mb-1">{t('dose')} ({selectedPatient.medUnit})</label>
                                         <input 
                                             type="number" 
                                             className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
-                                            placeholder="الجرعة"
+                                            placeholder="Dose"
                                             value={newDose}
                                             onChange={e => setNewDose(e.target.value)}
                                         />
                                     </div>
                                     <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 block mb-1">المدة (أيام)</label>
+                                        <label className="text-[10px] text-slate-500 block mb-1">{t('duration_days')}</label>
                                         <input 
                                             type="number" 
                                             className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
-                                            placeholder="الأيام"
+                                            placeholder="Days"
                                             value={newDays}
                                             onChange={e => setNewDays(e.target.value)}
                                         />
@@ -3663,13 +3995,13 @@ export const DoctorDashboardView = () => {
                                 </div>
 
                                 <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">لم تتم إضافة أي مراحل بعد.</p>}
+                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">No phases added yet.</p>}
                                     {phases.map((phase, idx) => (
                                         <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-white/5 animate-in slide-in-from-right-2">
                                             <span className="text-white font-bold text-sm">
-                                                المرحلة {idx + 1}: <span className="text-indigo-400">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> لمدة {phase.days} يوم
+                                                Phase {idx + 1}: <span className="text-indigo-400">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> for {phase.days} days
                                             </span>
-                                            <button onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
+                                            <button type="button" onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
                                         </div>
                                     ))}
                                 </div>
@@ -3677,15 +4009,15 @@ export const DoctorDashboardView = () => {
                             
                             {/* Summary */}
                             <div className="flex justify-between items-center text-sm font-bold text-slate-400 bg-slate-950 p-3 rounded-lg">
-                                <span>المدة الكلية: {phases.reduce((a,b) => a + b.days, 0)} يوم</span>
-                                <span>عدد المراحل: {phases.length}</span>
+                                <span>Total Duration: {phases.reduce((a,b) => a + b.days, 0)} days</span>
+                                <span>Phases: {phases.length}</span>
                             </div>
                         </div>
 
                         <div className="p-4 border-t border-white/5 bg-slate-900 flex justify-end gap-3">
-                            <Button variant="secondary" onClick={() => setSelectedPatient(null)}>إلغاء</Button>
+                            <Button variant="secondary" onClick={() => setSelectedPatient(null)}>{t('close')}</Button>
                             <Button variant="success" onClick={saveTreatmentPlan} disabled={phases.length === 0}>
-                                <Save size={18} className="mr-2"/> اعتماد وإرسال
+                                <Save size={18} className="mr-2"/> {t('submit_plan')}
                             </Button>
                         </div>
                     </Card>
@@ -3707,13 +4039,16 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
 import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, ChevronRight, X 
+    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X 
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
 
 export const DoctorPatientsView = () => {
+    const { t } = useLanguage(); // تفعيل الترجمة
+
     // -- State --
     const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
     const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
@@ -3727,9 +4062,7 @@ export const DoctorPatientsView = () => {
     
     // -- Fetch Doctor's Patients --
     const fetchMyPatients = async () => {
-        // التصحيح هنا: استخدام ?. للتحقق من وجود auth أولاً
         const currentUser = auth?.currentUser;
-        
         if (!currentUser) return;
         
         setLoading(true);
@@ -3773,12 +4106,10 @@ export const DoctorPatientsView = () => {
     };
 
     const handleAddPatient = async (user: UserProfile) => {
-        // التصحيح هنا أيضاً: استخدام ?.
         const currentUser = auth?.currentUser;
-
         if (!currentUser || !user.uid) return;
         
-        if (!confirm(`هل تريد ضم المستخدم ${user.name} إلى قائمة مرضاك؟`)) return;
+        if (!confirm(`Add ${user.name} to your patients?`)) return;
 
         try {
             await updateDoc(doc(db, "users", user.uid), {
@@ -3803,14 +4134,13 @@ export const DoctorPatientsView = () => {
                 } 
             }]);
             
-            alert("تم إضافة المريض بنجاح. يرجى الذهاب للوحة القيادة (Dashboard) لإنشاء خطة علاجية له.");
+            alert("Patient added successfully.");
             setViewMode('LIST');
         } catch (e) {
             console.error("Error adding patient:", e);
         }
     };
 
-    // -- Inspect Patient Details --
     const openPatientDetails = async (patient: UserProfile) => {
         if (!patient.uid) return;
         setSelectedPatient(patient);
@@ -3825,7 +4155,6 @@ export const DoctorPatientsView = () => {
         } catch (e) { console.error(e); }
     };
 
-    // -- Filtering --
     const filteredAvailable = availableUsers.filter(u => 
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -3839,16 +4168,16 @@ export const DoctorPatientsView = () => {
     return (
         <LayoutContainer>
             <PageHeader 
-                title="إدارة ملفات المرضى" 
-                subtitle="متابعة الحالات وإضافة مرضى جدد للعيادة."
+                title={t('manage_patients_title')} 
+                subtitle="Track progress and manage your clinic."
                 action={
                     viewMode === 'LIST' ? (
                         <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary">
-                            <UserPlus size={18} /> ضم مريض جديد
+                            <UserPlus size={18} /> {t('add_patient_btn')}
                         </Button>
                     ) : (
                         <Button onClick={() => setViewMode('LIST')} variant="secondary">
-                            <ChevronLeft size={18} /> العودة للقائمة
+                            <ChevronLeft size={18} /> {t('back_list_btn')}
                         </Button>
                     )
                 }
@@ -3858,12 +4187,12 @@ export const DoctorPatientsView = () => {
             {viewMode === 'ADD_NEW' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
                     <Card className="bg-slate-900 border-white/5 mb-6">
-                        <h3 className="text-xl font-bold text-white mb-4">البحث عن مستخدمين لضمهم</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">Find Users</h3>
                         <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-white/5 mb-6">
                             <Search className="text-slate-500" />
                             <input 
                                 className="bg-transparent w-full text-white outline-none placeholder-slate-600"
-                                placeholder="بحث عن مستخدم بالاسم أو البريد..."
+                                placeholder={t('search_available_placeholder')}
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
@@ -3871,7 +4200,7 @@ export const DoctorPatientsView = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             {filteredAvailable.length === 0 && (
-                                <p className="text-slate-500 text-center col-span-2 py-8">لا يوجد مستخدمين متاحين للبحث الحالي.</p>
+                                <p className="text-slate-500 text-center col-span-2 py-8">No users found.</p>
                             )}
                             {filteredAvailable.map(user => (
                                 <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
@@ -3883,12 +4212,12 @@ export const DoctorPatientsView = () => {
                                             <h4 className="font-bold text-white">{user.name}</h4>
                                             <p className="text-xs text-slate-500">{user.email}</p>
                                             <div className="flex gap-2 mt-1">
-                                                <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'غير محدد'}</Badge>
+                                                <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'General'}</Badge>
                                             </div>
                                         </div>
                                     </div>
                                     <Button onClick={() => handleAddPatient(user)} variant="success" className="!py-2 !px-3 !text-xs">
-                                        <UserPlus size={14} className="mr-1"/> ضم
+                                        <UserPlus size={14} className="mr-1"/> {t('add_btn')}
                                     </Button>
                                 </div>
                             ))}
@@ -3904,7 +4233,7 @@ export const DoctorPatientsView = () => {
                          <Search className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-500" size={18} />
                          <input 
                             className="w-full bg-slate-900 border border-white/5 rounded-2xl py-4 px-12 text-white outline-none focus:border-indigo-500 transition-all"
-                            placeholder="بحث في مرضاك..."
+                            placeholder={t('search_user_placeholder')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                          />
@@ -3930,21 +4259,21 @@ export const DoctorPatientsView = () => {
                                         </div>
                                     </div>
                                     <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'}>
-                                        {patient.patientData?.isRecovered ? 'متعافي' : patient.patientData?.isPlanAssigned ? 'نشط' : 'بانتظار الخطة'}
+                                        {patient.patientData?.isRecovered ? 'Recovered' : patient.patientData?.isPlanAssigned ? 'Active' : 'Pending Plan'}
                                     </Badge>
                                 </div>
                                 
                                 <div className="grid grid-cols-3 gap-2 mt-4 text-center">
                                     <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">التقدم</span>
+                                        <span className="block text-[10px] text-slate-500 uppercase">Progress</span>
                                         <span className="block font-bold text-indigo-400">{Math.round(patient.progress || 0)}%</span>
                                     </div>
                                     <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">المراحل</span>
-                                        <span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'جارية' : '-'}</span>
+                                        <span className="block text-[10px] text-slate-500 uppercase">Plan</span>
+                                        <span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'Active' : '-'}</span>
                                     </div>
                                     <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">آخر ظهور</span>
+                                        <span className="block text-[10px] text-slate-500 uppercase">Last Active</span>
                                         <span className="block font-bold text-slate-300 text-[10px] mt-1">
                                             {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
                                         </span>
@@ -3969,11 +4298,11 @@ export const DoctorPatientsView = () => {
                                 <div>
                                     <h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2>
                                     <div className="flex items-center gap-2 text-xs text-slate-500">
-                                        <FileText size={12}/> {selectedPatient.medType || 'غير محدد'} • {selectedPatient.medForm} • {selectedPatient.medUnit}
+                                        <FileText size={12}/> {selectedPatient.medType || 'General'} • {selectedPatient.medForm} • {selectedPatient.medUnit}
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white">
+                            <button type="button" onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white">
                                 <X size={24} />
                             </button>
                         </div>
@@ -3983,7 +4312,7 @@ export const DoctorPatientsView = () => {
                             {/* LEFT COLUMN: CHARTS */}
                             <div className="lg:col-span-2 space-y-6">
                                 <Card className="bg-slate-950 border-white/5">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16} className="text-indigo-400"/> سجل الالتزام بالجرعات</h3>
+                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16} className="text-indigo-400"/> Adherence</h3>
                                     <div className="h-64 w-full">
                                         {patientLogs.length > 0 ? (
                                             <ResponsiveContainer width="100%" height="100%">
@@ -4002,7 +4331,7 @@ export const DoctorPatientsView = () => {
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                         ) : (
-                                            <div className="h-full flex items-center justify-center text-slate-600">لا توجد سجلات متاحة</div>
+                                            <div className="h-full flex items-center justify-center text-slate-600">No data available</div>
                                         )}
                                     </div>
                                 </Card>
@@ -4012,7 +4341,7 @@ export const DoctorPatientsView = () => {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                      <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">متوسط النوم</span>
+                                         <span className="text-xs text-slate-500 uppercase block mb-1">{t('sleep_label')}</span>
                                          <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
                                              <Moon size={16} className="text-blue-400"/> 
                                              {patientLogs.length > 0 
@@ -4021,7 +4350,7 @@ export const DoctorPatientsView = () => {
                                          </span>
                                      </div>
                                      <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">المزاج العام</span>
+                                         <span className="text-xs text-slate-500 uppercase block mb-1">{t('mood')}</span>
                                          <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
                                              <Smile size={16} className="text-emerald-400"/>
                                              Good
@@ -4030,7 +4359,7 @@ export const DoctorPatientsView = () => {
                                 </div>
 
                                 <Card className="bg-slate-900 border-white/5 flex-1 max-h-[400px] overflow-hidden flex flex-col">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-slate-950 pb-2"><Calendar size={16} className="text-indigo-400"/> السجل اليومي</h3>
+                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-slate-950 pb-2"><Calendar size={16} className="text-indigo-400"/> Daily Logs</h3>
                                     <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
                                         {patientLogs.slice().reverse().map((log, i) => (
                                             <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-white/5 text-xs">
@@ -4174,10 +4503,10 @@ export const LoginView = ({
 import React, { useState, useEffect } from 'react';
 import { 
   Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
-  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search
+  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore'; // تمت إضافة setDoc و doc
+import { db, auth } from '../services/firebase'; // إضافة auth
 import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
@@ -4214,8 +4543,10 @@ export const OnboardingView = ({
   
   // -- Navigation State --
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
+  const [loading, setLoading] = useState(false); // إضافة حالة التحميل
   
   // -- Doctor Form State --
+  const [doctorName, setDoctorName] = useState(userProfile.name || '');
   const [doctorForm, setDoctorForm] = useState<Partial<DoctorProfileData>>({
       specialty: '', licenseNumber: '', clinicLocation: '', phoneNumber: '', bio: ''
   });
@@ -4239,6 +4570,7 @@ export const OnboardingView = ({
       <button 
         onClick={() => to ? setStep(to) : handleLogout?.()}
         className="absolute top-6 left-6 z-20 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+        disabled={loading}
       >
         {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
       </button>
@@ -4246,12 +4578,16 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application
+  // 1. Submit Doctor Application (Direct Save to Firestore)
   const handleDoctorSubmit = async () => {
-      if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber) return;
+      if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) return;
+      if (!auth.currentUser) return;
+
+      setLoading(true);
       
       const newProfile: UserProfile = {
           ...userProfile,
+          name: doctorName,
           role: 'doctor',
           setupComplete: true, 
           doctorData: {
@@ -4260,7 +4596,7 @@ export const OnboardingView = ({
               clinicLocation: doctorForm.clinicLocation || '',
               phoneNumber: doctorForm.phoneNumber!,
               bio: doctorForm.bio || '',
-              accountStatus: 'pending', // Important: Waiting for Admin Approval
+              accountStatus: 'pending', 
               totalPatients: 0,
               activePatients: 0,
               recoveredCount: 0,
@@ -4269,8 +4605,18 @@ export const OnboardingView = ({
           durationMonths: 0,
           medType: null
       };
-      // Trigger App.tsx to show "Waiting Approval" screen
-      setUserProfile(newProfile);
+
+      try {
+          // الحفظ المباشر في القاعدة لضمان وصول الطلب للأدمن فوراً
+          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+          
+          // تحديث الحالة المحلية للانتقال للشاشة التالية
+          setUserProfile(newProfile);
+      } catch (e) {
+          console.error("Error saving doctor profile:", e);
+          alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى.");
+      }
+      setLoading(false);
   };
 
   // 2. Fetch Doctors for Patient
@@ -4280,7 +4626,6 @@ export const OnboardingView = ({
               try {
                   const q = query(collection(db, "users"), where("role", "==", "doctor"));
                   const snapshot = await getDocs(q);
-                  // Filter approved doctors only
                   const docs = snapshot.docs
                       .map(d => ({...d.data(), uid: d.id} as UserProfile))
                       .filter(d => d.doctorData?.accountStatus === 'approved');
@@ -4291,9 +4636,10 @@ export const OnboardingView = ({
       }
   }, [step]);
 
-  // 3. Assign Patient to Doctor
-  const handleAssignDoctor = (docProfile: UserProfile) => {
-      if (!docProfile.uid) return;
+  // 3. Assign Patient to Doctor (Direct Save)
+  const handleAssignDoctor = async (docProfile: UserProfile) => {
+      if (!docProfile.uid || !auth.currentUser) return;
+      setLoading(true);
       
       const newProfile: UserProfile = {
           ...userProfile,
@@ -4302,14 +4648,20 @@ export const OnboardingView = ({
           patientData: {
               assignedDoctorId: docProfile.uid,
               assignedDoctorName: docProfile.name,
-              isPlanAssigned: false, // Waiting for doctor's plan
+              isPlanAssigned: false, 
               isRecovered: false
           },
           medType: 'normal', 
           durationMonths: 0
       };
-      // Trigger App.tsx to show "Waiting Plan" screen
-      setUserProfile(newProfile);
+
+      try {
+           await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+           setUserProfile(newProfile);
+      } catch(e) {
+           console.error("Error assigning doctor:", e);
+      }
+      setLoading(false);
   };
 
   // 4. Algorithm Flow Handlers
@@ -4330,10 +4682,10 @@ export const OnboardingView = ({
       setStep('ALGO_PREVIEW');
   };
 
-  const confirmAlgorithmPlan = () => {
-      // Start as Normal User with Algorithm Plan
-      startPlan(previewPlan, 1.0, 'algorithm');
-      
+  const confirmAlgorithmPlan = async () => {
+      if (!auth.currentUser) return;
+      setLoading(true);
+
       const newProfile: UserProfile = {
           ...userProfile,
           role: 'normal_user',
@@ -4343,7 +4695,21 @@ export const OnboardingView = ({
           medUnit: medUnit!,
           setupComplete: true
       };
-      setUserProfile(newProfile);
+
+      // نبدأ الخطة محلياً
+      startPlan(previewPlan, 1.0, 'algorithm');
+      
+      // نحفظ في القاعدة فوراً
+      try {
+          // ملاحظة: نقوم بحفظ البروفايل هنا، أما الخطة (plan) والسجلات (logs) فسيتم حفظها عبر App.tsx لاحقاً
+          // لكن تحديث userProfile.role مهم جداً ليعرف App.tsx كيفية المزامنة
+          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+          
+          setUserProfile(newProfile);
+      } catch(e) {
+          console.error("Error saving algo plan:", e);
+      }
+      setLoading(false);
   };
 
 
@@ -4357,8 +4723,8 @@ export const OnboardingView = ({
              {handleLogout && <NavBackBtn />}
              
              <header className="mb-12 text-center animate-in slide-in-from-top-4">
-                <h1 className="text-4xl font-black text-white mb-4">أهلاً بك في Islam's Guide</h1>
-                <p className="text-slate-400 max-w-lg mx-auto">قبل البدء، يرجى تحديد طبيعة استخدامك للنظام.</p>
+                <h1 className="text-4xl font-black text-white mb-4">{t('onboard_title')}</h1>
+                <p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p>
              </header>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
@@ -4368,8 +4734,8 @@ export const OnboardingView = ({
                  >
                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <UserPlus size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">مستخدم / مريض</h3>
-                     <p className="text-slate-500 leading-relaxed">أريد التعافي من الدواء، سواء بمساعدة الخوارزمية الذكية أو تحت إشراف طبيب مختص.</p>
+                     <h3 className="text-2xl font-bold text-white mb-2">{t('role_patient')}</h3>
+                     <p className="text-slate-500 leading-relaxed">{t('role_patient_desc')}</p>
                  </button>
 
                  <button 
@@ -4378,8 +4744,8 @@ export const OnboardingView = ({
                  >
                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <Stethoscope size={40} className="text-emerald-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">طبيب معالج</h3>
-                     <p className="text-slate-500 leading-relaxed">أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.</p>
+                     <h3 className="text-2xl font-bold text-white mb-2">{t('role_doctor')}</h3>
+                     <p className="text-slate-500 leading-relaxed">{t('role_doctor_desc')}</p>
                  </button>
              </div>
         </div>
@@ -4393,31 +4759,44 @@ export const OnboardingView = ({
               <NavBackBtn to="ROLE_SELECT" />
               <div className="max-w-2xl w-full animate-in fade-in slide-in-from-bottom-8">
                   <header className="text-center mb-8">
-                      <h1 className="text-3xl font-black text-white mb-2">طلب اعتماد طبيب</h1>
-                      <p className="text-slate-400">ستتم مراجعة بياناتك من قبل الإدارة قبل تفعيل حسابك.</p>
+                      <h1 className="text-3xl font-black text-white mb-2">{t('doc_req_title')}</h1>
+                      <p className="text-slate-400">{t('doc_req_desc')}</p>
                   </header>
                   
                   <Card className="bg-slate-900 border-white/5 space-y-6">
+                      <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_fullname')}</label>
+                          <div className="relative">
+                              <User className="absolute top-3 right-3 text-slate-500" size={18} />
+                              <input 
+                                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
+                                  placeholder={t('doc_fullname')}
+                                  value={doctorName}
+                                  onChange={e => setDoctorName(e.target.value)}
+                              />
+                          </div>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">التخصص الطبي</label>
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_specialty')}</label>
                               <div className="relative">
                                   <Award className="absolute top-3 right-3 text-slate-500" size={18} />
                                   <input 
                                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                      placeholder="مثال: طب نفس، علاج إدمان..."
+                                      placeholder={t('doc_specialty')}
                                       value={doctorForm.specialty}
                                       onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}
                                   />
                               </div>
                           </div>
                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">رقم الترخيص المهني</label>
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_license')}</label>
                               <div className="relative">
                                   <FileText className="absolute top-3 right-3 text-slate-500" size={18} />
                                   <input 
                                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                      placeholder="رقم الرخصة المعتمد"
+                                      placeholder={t('doc_license')}
                                       value={doctorForm.licenseNumber}
                                       onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}
                                   />
@@ -4426,12 +4805,12 @@ export const OnboardingView = ({
                       </div>
 
                       <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">مقر العيادة / المستشفى</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_location')}</label>
                           <div className="relative">
                               <MapPin className="absolute top-3 right-3 text-slate-500" size={18} />
                               <input 
                                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" 
-                                  placeholder="المدينة، اسم المركز الطبي"
+                                  placeholder={t('doc_location')}
                                   value={doctorForm.clinicLocation}
                                   onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}
                               />
@@ -4439,7 +4818,7 @@ export const OnboardingView = ({
                       </div>
 
                       <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">رقم هاتف للتواصل (للإدارة)</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_phone')}</label>
                           <div className="relative">
                               <Phone className="absolute top-3 right-3 text-slate-500" size={18} />
                               <input 
@@ -4452,10 +4831,10 @@ export const OnboardingView = ({
                       </div>
 
                       <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">نبذة تعريفية (تظهر للمرضى)</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_bio')}</label>
                           <textarea 
                               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none h-24 resize-none" 
-                              placeholder="خبراتك، مؤهلاتك..."
+                              placeholder={t('doc_bio')}
                               value={doctorForm.bio}
                               onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}
                           />
@@ -4465,9 +4844,9 @@ export const OnboardingView = ({
                           variant="success" 
                           className="w-full py-4 text-lg" 
                           onClick={handleDoctorSubmit}
-                          disabled={!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber}
+                          disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}
                       >
-                          إرسال طلب الاعتماد
+                          {loading ? 'Sending...' : t('doc_submit')}
                       </Button>
                   </Card>
               </div>
@@ -4475,22 +4854,20 @@ export const OnboardingView = ({
       );
   }
 
-  // SCREEN 3: USER PATH SELECTION (Normal vs Patient)
+  // SCREEN 3: USER PATH SELECTION
   if (step === 'USER_PATH_SELECT') {
       return (
         <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
             <NavBackBtn to="ROLE_SELECT" />
             
             <header className="mb-12 text-center animate-in slide-in-from-top-4">
-                <h1 className="text-4xl font-black text-white mb-4">اختر مسار العلاج</h1>
-                <p className="text-slate-400 max-w-lg mx-auto">كيف تفضل أن تبدأ رحلتك نحو التعافي؟</p>
+                <h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1>
+                <p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-                 {/* خيار 1: الخوارزمية (مستخدم عادي) */}
                  <button 
                     onClick={() => {
-                        // الانتقال مباشرة لإدخال البيانات وبدء الخوارزمية
                         setMedType(null);
                         setStep('ALGO_SETUP_MED');
                     }}
@@ -4498,26 +4875,25 @@ export const OnboardingView = ({
                  >
                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">الخوارزمية الذكية</h3>
-                     <p className="text-slate-500 leading-relaxed">أريد أن يقوم الموقع بحساب خطة التخفيض تلقائياً بناءً على كمية الدواء المتوفرة لدي (Smart Taper).</p>
+                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3>
+                     <p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p>
                  </button>
 
-                 {/* خيار 2: طبيب (مريض) */}
                  <button 
                     onClick={() => setStep('DOCTOR_SELECT')}
                     className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"
                  >
                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">متابعة مع طبيب</h3>
-                     <p className="text-slate-500 leading-relaxed">سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.</p>
+                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3>
+                     <p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p>
                  </button>
             </div>
         </div>
       );
   }
 
-  // SCREEN 4: DOCTOR SELECTION LIST (For Patients)
+  // SCREEN 4: DOCTOR SELECTION LIST
   if (step === 'DOCTOR_SELECT') {
       const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase()));
 
@@ -4526,15 +4902,15 @@ export const OnboardingView = ({
               <NavBackBtn to="USER_PATH_SELECT" />
               <div className="max-w-4xl w-full animate-in fade-in">
                   <header className="mb-8 text-center">
-                      <h1 className="text-3xl font-black text-white mb-2">اختر طبيبك المعالج</h1>
-                      <p className="text-slate-400">سيقوم الطبيب المختار بمراجعة ملفك ووضع الخطة المناسبة.</p>
+                      <h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1>
+                      <p className="text-slate-400">{t('path_doctor_desc')}</p>
                   </header>
 
                   <div className="relative mb-6">
                       <Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/>
                       <input 
                          className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500"
-                         placeholder="بحث باسم الطبيب..."
+                         placeholder={t('doc_search_placeholder')}
                          value={searchDoctor}
                          onChange={e => setSearchDoctor(e.target.value)}
                       />
@@ -4544,7 +4920,7 @@ export const OnboardingView = ({
                       {filteredDocs.length === 0 ? (
                           <div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800">
                               <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
-                              <p className="text-slate-500">{availableDoctors.length === 0 ? 'لا يوجد أطباء متاحين حالياً.' : 'لا توجد نتائج للبحث.'}</p>
+                              <p className="text-slate-500">{availableDoctors.length === 0 ? 'No doctors available.' : 'No results found.'}</p>
                           </div>
                       ) : (
                         filteredDocs.map(doc => (
@@ -4562,15 +4938,15 @@ export const OnboardingView = ({
                                   </div>
                                   
                                   <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">
-                                      {doc.doctorData?.bio || "لا توجد نبذة تعريفية."}
+                                      {doc.doctorData?.bio || "No bio available."}
                                   </p>
                                   
                                   <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
                                       <MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}
                                   </div>
 
-                                  <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary">
-                                      اختيار هذا الطبيب
+                                  <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>
+                                      {loading ? 'Processing...' : t('doc_select_btn')}
                                   </Button>
                               </div>
                           ))
@@ -4581,31 +4957,29 @@ export const OnboardingView = ({
       );
   }
 
-  // SCREEN 5: ALGO SETUP - MED TYPE (For Normal Users)
+  // SCREEN 5: ALGO SETUP - MED TYPE
   if (step === 'ALGO_SETUP_MED') {
-        // --- BLOCKED STATE ---
         if (blockedState) {
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in">
                     <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div>
-                    <h1 className="text-4xl font-black text-white mb-4">الدخول محظور</h1>
-                    <p className="text-red-200 text-xl max-w-lg mb-8">عذراً، هذا النظام غير مصرح له بالتعامل مع المواد المخدرة. يرجى التوجه لأقرب مصحة علاج إدمان فوراً.</p>
-                    <Button onClick={() => setBlockedState(false)} variant="secondary">عودة</Button>
+                    <h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1>
+                    <p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p>
+                    <Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button>
                 </div>
             );
         }
         
-        // --- PSYCH WARNING ---
         if (psychWarning) {
             return (
                 <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in">
                     <Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
                         <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div>
-                        <h2 className="text-2xl font-bold text-white text-center mb-4">تنبيه طبي هام</h2>
-                        <p className="text-slate-300 text-center mb-6 leading-relaxed">تنبيه هام: الأدوية النفسية تتطلب إشرافاً طبياً. استخدامك للخطة المقترحة هو وسيلة مساعدة وليست بديلاً عن الطبيب.</p>
+                        <h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2>
+                        <p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p>
                         <div className="flex gap-4">
-                            <Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">تراجع</Button>
-                            <Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">أوافق على المسؤولية</Button>
+                            <Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button>
+                            <Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button>
                         </div>
                     </Card>
                 </div>
@@ -4616,14 +4990,13 @@ export const OnboardingView = ({
             <div className="min-h-screen bg-[#020617] p-6 pt-20">
                 <NavBackBtn to="USER_PATH_SELECT" />
                 <header className="text-center mb-12 animate-in slide-in-from-top-4">
-                    <h1 className="text-4xl font-black text-white mb-4">نوع الدواء</h1>
-                    <p className="text-slate-400">لضمان سلامتك، يرجى تحديد تصنيف الدواء الذي تتناوله.</p>
+                    <h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                     {[
-                      { type: 'narcotic', label: 'مخدرات (جدول أول)', icon: AlertTriangle, color: 'rose', desc: 'يتطلب حجز في مصحة' },
-                      { type: 'psychiatric', label: 'أدوية نفسية', icon: BrainCircuit, color: 'amber', desc: 'يتطلب إشراف طبي' },
-                      { type: 'normal', label: 'أدوية عامة', icon: CheckCircle, color: 'emerald', desc: 'آمن للتخفيض الذاتي' }
+                      { type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') },
+                      { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') },
+                      { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }
                     ].map((item: any) => (
                       <button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}>
                         <div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div>
@@ -4642,20 +5015,20 @@ export const OnboardingView = ({
             <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center pt-20">
                 <NavBackBtn to="ALGO_SETUP_MED" /> 
                 <div className="max-w-2xl w-full animate-in zoom-in">
-                    <h1 className="text-3xl font-black text-white text-center mb-8">شكل الدواء</h1>
+                    <h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_title')}</h1>
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
                             <Pill className="mx-auto mb-4" size={40} />
-                            <span className="block text-center font-bold text-lg">أقراص / حبوب</span>
+                            <span className="block text-center font-bold text-lg">{t('form_tablet')}</span>
                         </button>
                         <button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
                             <FlaskConical className="mx-auto mb-4" size={40} />
-                            <span className="block text-center font-bold text-lg">سائل / قطرات</span>
+                            <span className="block text-center font-bold text-lg">{t('form_liquid')}</span>
                         </button>
                     </div>
                     {medForm && (
                         <div className="animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold text-white text-center mb-4">وحدة القياس</h2>
+                            <h2 className="text-xl font-bold text-white text-center mb-4">{t('unit_title')}</h2>
                             <div className="flex justify-center gap-4 mb-8">
                                 {(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (
                                     <button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-500 hover:text-white'}`}>{u}</button>
@@ -4663,7 +5036,7 @@ export const OnboardingView = ({
                             </div>
                         </div>
                     )}
-                    <Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>متابعة <ArrowRight /></Button>
+                    <Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>Next <ArrowRight /></Button>
                 </div>
             </div>
         );
@@ -4671,8 +5044,7 @@ export const OnboardingView = ({
 
   // SCREEN 7: ALGO SETUP - INVENTORY
   if (step === 'ALGO_SETUP_INV') {
-      const formLabel = medForm === 'liquid' ? 'زجاجات' : 'عبوات (علب)';
-      const subUnitLabel = medForm === 'liquid' ? `مل لكل زجاجة` : `حبة لكل علبة`;
+      const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes';
       const unitLabel = medUnit || 'mg';
 
       return (
@@ -4682,68 +5054,68 @@ export const OnboardingView = ({
                 <Card className="border-white/5 bg-slate-900">
                     <h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4">
                         <span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>
-                        جرد المخزون
+                        {t('inventory_title')}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">عدد {formLabel} الكاملة</label>
+                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label>
                             <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">المحتوى ({subUnitLabel})</label>
+                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label>
                             <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">كمية مفردة (فراط) {medForm === 'liquid' ? 'ml' : 'حبة'}</label>
+                            <label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label>
                             <input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} />
                         </div>
                     </div>
                     <div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center">
-                        <span className="text-slate-400 font-bold text-lg">الرصيد الكلي</span>
+                        <span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span>
                         <span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span>
                     </div>
                 </Card>
 
                 <Card className="bg-slate-900 border-white/5">
-                    <h2 className="text-2xl font-bold text-white mb-8">الجرعة الحالية ({unitLabel})</h2>
+                    <h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2>
                     <div className="flex flex-wrap gap-4">
                         {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
                             <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>
                         ))}
-                        <input type="number" placeholder="أخرى" className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} />
+                        <input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} />
                     </div>
                 </Card>
 
                 <Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>
-                    تحليل وإنشاء الخطة
+                    {t('analyze_plan')}
                 </Button>
             </div>
         </div>
       );
   }
 
-  // SCREEN 8: PREVIEW (Only for Algorithm users)
+  // SCREEN 8: PREVIEW
   if (step === 'ALGO_PREVIEW') {
       return (
          <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
              <NavBackBtn to="ALGO_SETUP_INV" />
              <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in">
-                 <h1 className="text-4xl font-black text-white">الخطة جاهزة!</h1>
-                 <p className="text-slate-400">بناءً على مخزونك البالغ {totalInventory} {medUnit}، قمنا بحساب جدول يمتد لـ {previewPlan.length} يوم.</p>
+                 <h1 className="text-4xl font-black text-white">Plan Ready!</h1>
+                 <p className="text-slate-400">Calculated duration: {previewPlan.length} days.</p>
                  
                  <div className="grid grid-cols-2 gap-4">
                      <Card className="bg-slate-900 text-center">
-                         <div className="text-xs text-slate-500 uppercase">مدة التعافي</div>
-                         <div className="text-3xl font-bold text-white">{previewPlan.length} يوم</div>
+                         <div className="text-xs text-slate-500 uppercase">{t('duration_days')}</div>
+                         <div className="text-3xl font-bold text-white">{previewPlan.length}</div>
                      </Card>
                      <Card className="bg-slate-900 text-center">
-                         <div className="text-xs text-slate-500 uppercase">تغطية المخزون</div>
+                         <div className="text-xs text-slate-500 uppercase">Coverage</div>
                          <div className="text-3xl font-bold text-emerald-400">100%</div>
                      </Card>
                  </div>
 
-                 <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl">
-                     اعتماد وبدء الرحلة
+                 <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>
+                     {loading ? 'Setting up...' : t('confirm_log')}
                  </Button>
              </div>
          </div>
@@ -5041,10 +5413,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
     // -- 1. Fetch User Tickets --
     useEffect(() => {
-        // FIX: Ensure uid exists before querying
         if (!user.uid) return;
         
-        // جلب التذاكر الخاصة بالمستخدم الحالي فقط
         const q = query(
             collection(db, "tickets"), 
             where("userId", "==", user.uid), 
@@ -5058,7 +5428,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
-            // تحديث التذكرة المفتوحة حالياً إذا وصل رد جديد (Real-time)
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -5080,7 +5449,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
     // -- 2. Actions --
     
     const createTicket = async () => {
-        // FIX: Ensure uid exists
         if (!user.uid) return;
         if (!newSubject.trim() || !newMessage.trim()) return;
         
@@ -5107,12 +5475,11 @@ export const SupportView = ({ user }: SupportViewProps) => {
             setNewMessage("");
         } catch (e) {
             console.error("Error creating ticket:", e);
-            alert("فشل إنشاء التذكرة. يرجى المحاولة لاحقاً.");
+            alert("Failed to create ticket.");
         }
     };
 
     const sendReply = async () => {
-        // FIX: Ensure uid and ticket ID exist
         if (!user.uid) return;
         if (!newMessage.trim() || !activeTicket || !activeTicket.id) return;
 
@@ -5131,7 +5498,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
             await updateDoc(ticketRef, {
                 messages: [...currentMessages, newMsg],
                 lastUpdate: Date.now(),
-                // إذا رد المستخدم، نعيد فتح التذكرة إذا كانت "قيد الانتظار" أو "مغلقة"
                 status: 'open' 
             });
             setNewMessage("");
@@ -5140,14 +5506,25 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     };
 
+    // Helper for translation keys
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'open': return t('status_open') || 'Open';
+            case 'pending': return t('status_pending') || 'Pending';
+            case 'resolved': return t('status_resolved') || 'Resolved';
+            case 'closed': return t('status_closed') || 'Closed';
+            default: return status;
+        }
+    };
+
     return (
         <LayoutContainer>
             <PageHeader 
-                title="مركز المساعدة والدعم" 
-                subtitle="تواصل مباشرة مع الفريق التقني والإداري للنظام."
+                title={t('nav_support')} 
+                subtitle={t('support_desc') || "Contact the support team directly."}
                 action={
                     <Button onClick={() => setShowCreateModal(true)} variant="primary">
-                        <Plus size={18} /> فتح تذكرة جديدة
+                        <Plus size={18} /> {t('new_ticket') || "New Ticket"}
                     </Button>
                 }
             />
@@ -5161,7 +5538,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                          user.medForm === 'tablet' ? <Pill size={20} /> : <User size={20}/>}
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">حسابك الحالي</p>
+                        <p className="text-xs text-slate-500 uppercase font-bold">{t('current_account') || "Current Account"}</p>
                         <p className="text-white font-bold text-sm flex items-center gap-2">
                             {user.name} 
                             <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">{user.role.toUpperCase()}</Badge>
@@ -5169,7 +5546,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                     </div>
                 </div>
                 {user.role === 'normal_user' && user.planType === 'algorithm' && (
-                    <Badge color="indigo">خوارزمية ذكية</Badge>
+                    <Badge color="indigo">Smart Algorithm</Badge>
                 )}
             </div>
 
@@ -5177,7 +5554,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 {/* LIST COLUMN */}
                 <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900 border-white/5 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/30">
-                        <h3 className="font-bold text-white">تذاكري</h3>
+                        <h3 className="font-bold text-white">{t('my_tickets') || "My Tickets"}</h3>
                         <Badge color="indigo">{tickets.length}</Badge>
                     </div>
                     
@@ -5185,7 +5562,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         {tickets.length === 0 && (
                             <div className="text-center py-10 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-xl m-2">
                                 <LifeBuoy className="mx-auto mb-2 opacity-50" size={24}/>
-                                لا توجد تذاكر سابقة.
+                                {t('no_tickets') || "No previous tickets."}
                             </div>
                         )}
                         {tickets.map(ticket => (
@@ -5203,7 +5580,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         {ticket.subject}
                                     </h4>
                                     <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-1.5">
-                                        {ticket.status === 'resolved' ? 'مغلق' : ticket.status === 'open' ? 'مفتوح' : 'قيد المراجعة'}
+                                        {getStatusLabel(ticket.status)}
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between items-end text-[10px] text-slate-500">
@@ -5222,7 +5599,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4 opacity-50">
                                 <LifeBuoy size={40} />
                             </div>
-                            <p>اختر تذكرة لعرض التفاصيل أو ابدأ تذكرة جديدة</p>
+                            <p>{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
                         </div>
                     ) : (
                         <>
@@ -5230,14 +5607,14 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
                                 <div>
                                     <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
-                                        <X size={14}/> إغلاق
+                                        <X size={14}/> {t('close')}
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-2">
                                         <Lock size={14} className="text-emerald-500"/> {activeTicket.subject}
                                     </h3>
                                     <p className="text-[10px] text-slate-500 font-mono mt-1">Ref: {activeTicket.id}</p>
                                 </div>
-                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> تم الحل</Badge>}
+                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> {t('status_resolved') || "Resolved"}</Badge>}
                             </div>
 
                             {/* Messages Area */}
@@ -5254,7 +5631,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                                 {msg.text}
                                             </div>
                                             <span className="text-[10px] text-slate-600 mt-1 px-1 flex items-center gap-1">
-                                                {isMe ? 'أنا' : 'الدعم الفني'} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {isMe ? (t('me') || "Me") : (t('support_team') || "Support")} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </div>
                                     );
@@ -5266,13 +5643,13 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div className="p-4 border-t border-white/5 bg-slate-950/30">
                                 {activeTicket.status === 'resolved' ? (
                                     <div className="text-center text-xs text-emerald-500 font-bold bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                                        تم إغلاق هذه التذكرة. لفتحها مجدداً، يرجى إنشاء تذكرة جديدة.
+                                        {t('ticket_closed_msg') || "This ticket is closed."}
                                     </div>
                                 ) : (
                                     <div className="flex gap-2">
                                         <input 
                                             className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-600"
-                                            placeholder="اكتب ردك هنا..."
+                                            placeholder={t('write_reply') || "Write your reply..."}
                                             value={newMessage}
                                             onChange={e => setNewMessage(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && sendReply()}
@@ -5295,30 +5672,30 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
                         
                         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <LifeBuoy className="text-indigo-500"/> طلب مساعدة جديد
+                            <LifeBuoy className="text-indigo-500"/> {t('new_ticket_title') || "New Support Request"}
                         </h3>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">الموضوع</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_subject') || "Subject"}</label>
                                 <input 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none transition-all" 
                                     value={newSubject} 
                                     onChange={e => setNewSubject(e.target.value)} 
-                                    placeholder="مثال: مشكلة في تسجيل الجرعة" 
+                                    placeholder="..." 
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">التفاصيل</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_details') || "Details"}</label>
                                 <textarea 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none transition-all" 
                                     value={newMessage} 
                                     onChange={e => setNewMessage(e.target.value)} 
-                                    placeholder="اشرح المشكلة بالتفصيل..." 
+                                    placeholder="..." 
                                 />
                             </div>
                             <Button onClick={createTicket} variant="primary" className="w-full py-3" disabled={!newSubject || !newMessage}>
-                                إرسال الطلب
+                                {t('send_request') || "Submit"}
                             </Button>
                         </div>
                     </Card>
@@ -5333,10 +5710,10 @@ export const SupportView = ({ user }: SupportViewProps) => {
 ### File: `App.tsx`
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Lock, Loader2 } from 'lucide-react';
+import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
 import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, onSnapshot } from 'firebase/firestore'; 
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -5396,7 +5773,7 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // -- 0. Auth State Listener (Fixes Reload Issue) --
+  // -- 0. Auth State Listener --
   useEffect(() => {
     if (!auth) {
         setLoading(false);
@@ -5407,12 +5784,13 @@ function AppContent() {
         setAuthUser(user);
         if (!user && !isDemoMode) {
             setLoading(false);
+            setUserProfile(null);
         }
     });
     return () => unsubscribe();
   }, [isDemoMode]);
 
-  // -- Load Local Data --
+  // -- Load Local Data (Fallback) --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
     const savedPlan = localStorage.getItem('taper_plan');
@@ -5427,95 +5805,94 @@ function AppContent() {
     if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
   }, []);
 
-  // -- 1. FETCH CLOUD DATA --
+  // -- 1. FETCH CLOUD DATA (REAL-TIME LISTENER) --
   useEffect(() => {
     if (authUser) {
-      const fetchUserData = async () => {
-        setLoading(true);
-        try {
-          const docRef = doc(db, "users", authUser.uid);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
+      setLoading(true);
+      const docRef = doc(db, "users", authUser.uid);
+      
+      // استخدام onSnapshot بدلاً من getDoc للتحديث اللحظي
+      // هذا يسمح للطبيب بمعرفة أنه تم قبوله فوراً دون تحديث الصفحة
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Merge data with local state structure
+            // Merge data
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
-            
-            // Handle legacy data structure
-            if (data.userProfile) {
-                Object.assign(fetchedProfile, data.userProfile);
-            }
+            if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
+            // Logic to switch view based on Role changes (e.g. pending -> approved)
+            if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
+                setCurrentView(AppView.ADMIN);
+            } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
+                if (currentView !== AppView.DOCTOR_DASHBOARD && currentView !== AppView.DOCTOR_PATIENTS && currentView !== AppView.COMMUNITY) {
+                     setCurrentView(AppView.DOCTOR_DASHBOARD);
+                }
+            }
+            
             setUserProfile(fetchedProfile);
 
+            // Load other data if exists
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
             
-            // Handle Bans
             if (data.isBanned) {
                alert(t('banned_msg'));
                handleLogout();
             }
-          } else {
-            // Guest Issue Fix: Create basic profile if none exists
-            const newProfile: UserProfile = {
+        } else {
+            // New User Setup
+            const skeletonProfile: UserProfile = {
                 uid: authUser.uid,
                 email: authUser.email || '',
                 name: authUser.displayName || 'New User',
-                role: 'normal_user', // Default
+                role: 'normal_user',
                 setupComplete: false,
                 durationMonths: 0
             };
-            
-            await setDoc(docRef, newProfile);
-            setUserProfile(newProfile);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
+            setUserProfile(skeletonProfile);
         }
         setLoading(false);
-      };
-      fetchUserData();
+      }, (error) => {
+          console.error("Error fetching user data:", error);
+          setLoading(false);
+      });
+
+      return () => unsubscribe();
     }
-  }, [authUser]);
+  }, [authUser]); // Removed currentView dependency to avoid loops
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
-    // 1. Local Storage Sync
+    // Save to LocalStorage always
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
     localStorage.setItem('taper_speed', speedModifier.toString());
 
-    // 2. Cloud Sync (Smart)
-    if (authUser && userProfile) {
-        // Capture variables locally
+    // Sync to Firestore (Debounced)
+    // Only sync if user is fully setup to avoid overwriting onboarding data
+    if (authUser && userProfile && userProfile.setupComplete) {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Extract primitive values explicitly
-        const currentUid = currentUser.uid;
-        const currentEmail = currentUser.email || email || '';
-
         const syncToCloud = async () => {
-            const totalDays = plan.length;
-            const daysCompleted = logs.length;
-            const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
-            
             try {
-                // FIX: Spread `currentProfileData` FIRST, then overwrite with safe variables.
+                const totalDays = plan.length;
+                const daysCompleted = logs.length;
+                const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+
                 const updateData: any = {
                     ...currentProfileData, 
-                    email: currentEmail,   
-                    uid: currentUid,       
+                    email: currentUser.email || email,   
+                    uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
                 };
 
-                // Add specific data based on role
+                // Only sync medical data for patients/users
                 if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -5524,19 +5901,20 @@ function AppContent() {
                     updateData.progress = progressPercentage;
                 }
 
+                // Important: Don't overwrite critical doctor data if it's missing in local state
                 if (currentProfileData.role === 'doctor' && currentProfileData.doctorData) {
                     updateData.doctorData = currentProfileData.doctorData;
                 }
 
-                await setDoc(doc(db, "users", currentUid), updateData, { merge: true });
+                await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         };
-        const timeoutId = setTimeout(syncToCloud, 2000); // Debounce
+        const timeoutId = setTimeout(syncToCloud, 3000); // 3 seconds debounce
         return () => clearTimeout(timeoutId);
     }
-  }, [userProfile, plan, logs, inventory, speedModifier, authUser, email]); 
+  }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
 
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
@@ -5550,12 +5928,13 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
+        // Fallback default views
       if (userProfile?.role === 'doctor') {
-          if (currentView !== AppView.DOCTOR_DASHBOARD) setCurrentView(AppView.DOCTOR_DASHBOARD);
+          setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
-          if (currentView !== AppView.ADMIN) setCurrentView(AppView.ADMIN);
+          setCurrentView(AppView.ADMIN);
       } else {
-          if (currentView !== AppView.DASHBOARD) setCurrentView(AppView.DASHBOARD);
+          setCurrentView(AppView.DASHBOARD);
       }
     }
   };
@@ -5566,46 +5945,52 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
+    // Hardcoded Admin Backdoor (For testing/recovery)
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
-            const cred = await signInWithEmailAndPassword(auth, email, password);
-            setAuthUser(cred.user);
+            // Try to login if user exists
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                setAuthUser(cred.user);
+            } catch (err: any) {
+                 // Create admin if not exists
+                 if (err.code === 'auth/user-not-found') {
+                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                    setAuthUser(newCred.user);
+                 } else {
+                    throw err;
+                 }
+            }
             
-            const adminProfile: UserProfile = { 
-                email, 
-                name: 'System Admin', 
-                role: 'admin', 
-                setupComplete: true, 
-                durationMonths: 0 
-            };
-            
-            await setDoc(doc(db, "users", cred.user.uid), adminProfile, { merge: true });
-            setUserProfile(adminProfile);
-            setCurrentView(AppView.ADMIN);
-        } catch (err: any) {
-             if (err.code === 'auth/user-not-found') {
-                const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                setAuthUser(newCred.user);
-                const adminProfile: UserProfile = { email, name: 'System Admin', role: 'admin', setupComplete: true, durationMonths: 0 };
-                await setDoc(doc(db, "users", newCred.user.uid), adminProfile, { merge: true });
+            // Force Admin Profile in Firestore
+            if (auth.currentUser) {
+                const adminProfile: UserProfile = { 
+                    uid: auth.currentUser.uid,
+                    email: email, 
+                    name: 'System Admin', 
+                    role: 'admin', 
+                    setupComplete: true, 
+                    durationMonths: 0 
+                };
+                await setDoc(doc(db, "users", auth.currentUser.uid), adminProfile, { merge: true });
                 setUserProfile(adminProfile);
                 setCurrentView(AppView.ADMIN);
-             } else {
-                setLoginError(err.message);
-             }
+            }
+        } catch (err: any) {
+            setLoginError(err.message);
         }
         setLoading(false);
         return;
     }
 
+    // Normal Login
     if (auth) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        setAuthUser(cred.user);
-      } catch (err: any) { setLoginError('Login Error: ' + err.message); }
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle the rest
+      } catch (err: any) { setLoginError('Login Error: ' + err.message); setLoading(false); }
     }
-    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -5613,11 +5998,9 @@ function AppContent() {
     setLoading(true);
     if (auth) {
         try {
-            const result = await signInWithPopup(auth, googleProvider);
-            setAuthUser(result.user);
-        } catch (err: any) { setLoginError('Google Login Error: ' + err.message); }
+            await signInWithPopup(auth, googleProvider);
+        } catch (err: any) { setLoginError('Google Login Error: ' + err.message); setLoading(false); }
     }
-    setLoading(false);
   };
 
   const setDemoCreds = () => { setEmail('islamaz@bomba.com'); setPassword('bombaAZ360'); }
@@ -5762,10 +6145,12 @@ function AppContent() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
+  // 1. LOGIN SCREEN
   if (!authUser && !isDemoMode) {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
+  // 2. ONBOARDING
   if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
     return <OnboardingView 
         userProfile={userProfile} 
@@ -5780,6 +6165,7 @@ function AppContent() {
     />;
   }
 
+  // 3. MAIN APP ROUTING
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -5799,6 +6185,7 @@ function AppContent() {
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
         
+        {/* --- DOCTOR WAITING SCREEN --- */}
         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
@@ -5807,13 +6194,17 @@ function AppContent() {
                 <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
                 <p className="text-slate-400 max-w-lg leading-relaxed">
                     شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
+                    <br/><br/>
+                    <span className="text-xs text-slate-500">سيتم توجيهك تلقائياً فور الاعتماد.</span>
                 </p>
                 <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
                     Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
                 </div>
+                <Button variant="secondary" onClick={handleLogout} className="mt-6 !px-6">تسجيل خروج</Button>
             </div>
         ) : 
 
+        /* --- PATIENT WAITING SCREEN --- */
         userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
@@ -5830,14 +6221,15 @@ function AppContent() {
             </div>
         ) : 
 
+        /* --- APPROVED VIEWS --- */
         (
             <>
-                {/* FIX: Ensure userProfile exists before usage */}
+                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
                 {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                     <>
                         {currentView === AppView.DASHBOARD && (
                             <DashboardView 
-                                userProfile={userProfile} // Passed safely
+                                userProfile={userProfile}
                                 plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
                                 progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
                                 showDoctorWarning={showDoctorWarning}
@@ -5857,6 +6249,7 @@ function AppContent() {
                     </>
                 )}
 
+                {/* --- DOCTOR VIEWS --- */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                      <>
                         {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -5864,6 +6257,7 @@ function AppContent() {
                      </>
                 )}
 
+                {/* --- SHARED VIEWS --- */}
                 {currentView === AppView.COMMUNITY && userProfile && (
                      <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
                 )}
@@ -5872,13 +6266,13 @@ function AppContent() {
                      <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
                 )}
                 
-                {/* FIX: Ensure userProfile is passed with valid data */}
                 {currentView === AppView.ARTICLES && (
                     <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
                 )}
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
+                {/* SETTINGS VIEW */}
                 {currentView === AppView.SETTINGS && userProfile && (
                     <LayoutContainer>
                         <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
@@ -5923,6 +6317,7 @@ function AppContent() {
                             )}
                         </Card>
 
+                        {/* Account Actions */}
                         <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                             <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
@@ -5983,12 +6378,11 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isOwner(userId) || 
         isAdmin() || 
-        // Allow reading public doctor profiles (for selection list)
+        // Allow reading public doctor profiles (for selection list in onboarding)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
         // Allow doctor to read their assigned patient's data
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Allow doctor to search for users (to add them) - Restricted to essential fields in query usually, 
-        // but for simplicity allow read if user has NO doctor yet (available users)
+        // Allow doctor to search for available users to add them
         (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
       );
 
@@ -5997,16 +6391,20 @@ service cloud.firestore {
 
       // Update: 
       allow update: if isSignedIn() && (
-        // 1. Admin can update anything (bans, approvals)
+        // 1. Admin can update anything
         isAdmin() || 
-        // 2. Owner can update own profile (with restrictions)
+        
+        // 2. Owner can update own profile (Onboarding & Settings)
         (isOwner(userId) && 
-         // Prevent self-promoting to admin or unbanning self
-         request.resource.data.role == resource.data.role && 
-         request.resource.data.isBanned == resource.data.isBanned
+         // Security Check: User cannot promote themselves to 'admin'
+         request.resource.data.role != 'admin' &&
+         // Security Check: User cannot unban themselves if they are banned
+         (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
+        
         // 3. Doctor can update their patient's plan/status
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        
         // 4. Doctor can assign themselves to a user (if user has no doctor)
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
@@ -6037,7 +6435,7 @@ service cloud.firestore {
       
       // Messages Sub-collection
       match /messages/{msgId} {
-        allow read: if isSignedIn(); // Parent room read rule handles access implicitly usually, but explicit check good
+        allow read: if isSignedIn();
         allow create: if isSignedIn();
       }
     }
@@ -6062,7 +6460,7 @@ service cloud.firestore {
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn(); // Allow system to log actions
+      allow create: if isSignedIn(); 
       allow update, delete: if false;
     }
   }
@@ -6652,5 +7050,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 34
-- Total Characters: 320231
-- Estimated Tokens: ~80.058 (GPT-4 Context)
+- Total Characters: 336650
+- Estimated Tokens: ~84.163 (GPT-4 Context)
