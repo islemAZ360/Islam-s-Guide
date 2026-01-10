@@ -3,8 +3,8 @@ import {
   Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore'; // تمت إضافة setDoc و doc
-import { db, auth } from '../services/firebase'; // إضافة auth
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
 import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
@@ -41,7 +41,7 @@ export const OnboardingView = ({
   
   // -- Navigation State --
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
-  const [loading, setLoading] = useState(false); // إضافة حالة التحميل
+  const [loading, setLoading] = useState(false);
   
   // -- Doctor Form State --
   const [doctorName, setDoctorName] = useState(userProfile.name || '');
@@ -76,11 +76,13 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application (Direct Save to Firestore)
+  // 1. Submit Doctor Application
   const handleDoctorSubmit = async () => {
+      // FIX: Check if auth exist first
+      if (!auth || !auth.currentUser) return;
       if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) return;
-      if (!auth.currentUser) return;
 
+      const currentUser = auth.currentUser; // Capture user safely
       setLoading(true);
       
       const newProfile: UserProfile = {
@@ -105,10 +107,7 @@ export const OnboardingView = ({
       };
 
       try {
-          // الحفظ المباشر في القاعدة لضمان وصول الطلب للأدمن فوراً
-          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
-          
-          // تحديث الحالة المحلية للانتقال للشاشة التالية
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
           setUserProfile(newProfile);
       } catch (e) {
           console.error("Error saving doctor profile:", e);
@@ -134,9 +133,12 @@ export const OnboardingView = ({
       }
   }, [step]);
 
-  // 3. Assign Patient to Doctor (Direct Save)
+  // 3. Assign Patient to Doctor
   const handleAssignDoctor = async (docProfile: UserProfile) => {
-      if (!docProfile.uid || !auth.currentUser) return;
+      // FIX: Check if auth exist first
+      if (!auth || !auth.currentUser || !docProfile.uid) return;
+      
+      const currentUser = auth.currentUser; // Capture user safely
       setLoading(true);
       
       const newProfile: UserProfile = {
@@ -154,7 +156,7 @@ export const OnboardingView = ({
       };
 
       try {
-           await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
+           await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
            setUserProfile(newProfile);
       } catch(e) {
            console.error("Error assigning doctor:", e);
@@ -181,7 +183,10 @@ export const OnboardingView = ({
   };
 
   const confirmAlgorithmPlan = async () => {
-      if (!auth.currentUser) return;
+      // FIX: Check if auth exist first
+      if (!auth || !auth.currentUser) return;
+      
+      const currentUser = auth.currentUser; // Capture user safely
       setLoading(true);
 
       const newProfile: UserProfile = {
@@ -194,15 +199,10 @@ export const OnboardingView = ({
           setupComplete: true
       };
 
-      // نبدأ الخطة محلياً
       startPlan(previewPlan, 1.0, 'algorithm');
       
-      // نحفظ في القاعدة فوراً
       try {
-          // ملاحظة: نقوم بحفظ البروفايل هنا، أما الخطة (plan) والسجلات (logs) فسيتم حفظها عبر App.tsx لاحقاً
-          // لكن تحديث userProfile.role مهم جداً ليعرف App.tsx كيفية المزامنة
-          await setDoc(doc(db, "users", auth.currentUser.uid), newProfile, { merge: true });
-          
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
           setUserProfile(newProfile);
       } catch(e) {
           console.error("Error saving algo plan:", e);
@@ -212,8 +212,9 @@ export const OnboardingView = ({
 
 
   // --- RENDERS ---
+  // (باقي الكود للعرض يبقى كما هو تماماً دون تغيير)
 
-  // SCREEN 1: ROLE SELECTION (Doctor vs User)
+  // SCREEN 1: ROLE SELECTION
   if (step === 'ROLE_SELECT') {
       return (
         <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center relative">
