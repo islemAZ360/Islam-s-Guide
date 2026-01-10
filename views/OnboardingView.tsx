@@ -58,9 +58,8 @@ export const OnboardingView = ({
   
   const totalInventory = calculateTotalInventory(inventory);
   
-  // -- NEW: Load existing data if resubmitting --
+  // -- Load existing data if resubmitting --
   useEffect(() => {
-      // إذا كان المستخدم طبيباً ولديه بيانات (يعني أنه يعيد التقديم)، نملأ الحقول وننقله لصفحة النموذج مباشرة
       if (userProfile.role === 'doctor' && userProfile.doctorData) {
           setDoctorName(userProfile.name);
           setDoctorForm({
@@ -86,7 +85,7 @@ export const OnboardingView = ({
 
   // --- Actions ---
 
-  // 1. Submit Doctor Application (Updated)
+  // 1. Submit Doctor Application (Fix Applied)
   const handleDoctorSubmit = async () => {
       if (!auth || !auth.currentUser) {
           alert("خطأ: لم يتم التعرف على جلسة المستخدم. يرجى إعادة تسجيل الدخول.");
@@ -104,13 +103,12 @@ export const OnboardingView = ({
       const lastDate = currentData?.lastSubmissionDate ? new Date(currentData.lastSubmissionDate) : new Date();
       const now = new Date();
 
-      // تصفير العداد إذا مر شهر جديد
       if (currentData?.lastSubmissionDate && lastDate.getMonth() !== now.getMonth()) {
           count = 0;
       }
 
       if (count >= 10) {
-          alert("عذراً، لقد تجاوزت الحد الأقصى لمحاولات تقديم الطلب لهذا الشهر (10 مرات). يرجى التواصل مع الدعم الفني.");
+          alert("عذراً، لقد تجاوزت الحد الأقصى لمحاولات تقديم الطلب لهذا الشهر (10 مرات).");
           return;
       }
 
@@ -130,16 +128,19 @@ export const OnboardingView = ({
               phoneNumber: doctorForm.phoneNumber!,
               bio: doctorForm.bio || '',
               
-              // Reset Status for Resubmission
+              // Reset Status
               accountStatus: 'pending', 
-              rejectionReason: undefined, // Clear rejection reason (using undefined to delete field behavior or null)
+              // FIX: Use null instead of undefined
+              // @ts-ignore
+              rejectionReason: null, 
               
               // Stats & Limits
               totalPatients: currentData?.totalPatients || 0,
               activePatients: currentData?.activePatients || 0,
               recoveredCount: currentData?.recoveredCount || 0,
               doctorLevel: currentData?.doctorLevel || 1,
-              photoUrl: currentData?.photoUrl,
+              // FIX: Ensure photoUrl is never undefined
+              photoUrl: currentData?.photoUrl || null,
               
               // Update Limits
               submissionCount: count + 1,
@@ -150,17 +151,7 @@ export const OnboardingView = ({
       };
 
       try {
-          // استخدام update لمسح rejectionReason عن طريق تعيينه إلى null (أو استبدال الكائن بالكامل)
-          // هنا نستخدم setDoc مع merge لاستبدال البيانات
-          const dataToSave = { ...newProfile };
-          // تأكد من مسح سبب الرفض في قاعدة البيانات
-          if (dataToSave.doctorData) {
-              // @ts-ignore
-              dataToSave.doctorData.rejectionReason = null; 
-          }
-
-          await setDoc(doc(db, "users", currentUser.uid), dataToSave, { merge: true });
-          
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
           alert("تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة.");
       } catch (e: any) {
           console.error("Error saving doctor profile:", e);
@@ -240,7 +231,6 @@ export const OnboardingView = ({
               try {
                   const q = query(collection(db, "users"), where("role", "==", "doctor"));
                   const snapshot = await getDocs(q);
-                  // تصفية النتائج يدوياً للتأكد من الحالة (أحياناً الفلترة في الكويري تتطلب فهرس)
                   const docs = snapshot.docs
                       .map(d => ({...d.data(), uid: d.id} as UserProfile))
                       .filter(d => d.doctorData?.accountStatus === 'approved');
