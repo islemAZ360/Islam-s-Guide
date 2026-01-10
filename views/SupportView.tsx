@@ -28,6 +28,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
     // -- 1. Fetch User Tickets --
     useEffect(() => {
+        // FIX: Ensure uid exists before querying
         if (!user.uid) return;
         
         // جلب التذاكر الخاصة بالمستخدم الحالي فقط
@@ -66,7 +67,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
     // -- 2. Actions --
     
     const createTicket = async () => {
-        if (!newSubject.trim() || !newMessage.trim() || !user.uid) return;
+        // FIX: Ensure uid exists
+        if (!user.uid) return;
+        if (!newSubject.trim() || !newMessage.trim()) return;
         
         const initialMsg: TicketMessage = {
             senderId: user.uid,
@@ -96,7 +99,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
     };
 
     const sendReply = async () => {
-        if (!newMessage.trim() || !activeTicket || !activeTicket.id || !user.uid) return;
+        // FIX: Ensure uid and ticket ID exist
+        if (!user.uid) return;
+        if (!newMessage.trim() || !activeTicket || !activeTicket.id) return;
 
         const newMsg: TicketMessage = {
             senderId: user.uid,
@@ -108,8 +113,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
-            // استخدمنا any هنا لتجاوز تدقيق Typescript الصارم مع Firestore arrayUnion في بعض النسخ، 
-            // لكن التحديث المباشر للمصفوفة كما يلي يعمل بشكل جيد مع البيانات المجلوبة
             const currentMessages = activeTicket.messages || [];
             
             await updateDoc(ticketRef, {
@@ -136,7 +139,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 }
             />
 
-            {/* Context Banner: يعرض هوية المستخدم لتسهيل لقطات الشاشة للدعم */}
+            {/* Context Banner */}
             <div className="mb-6 bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
@@ -213,7 +216,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             {/* Ticket Header */}
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
                                 <div>
-                                    <button onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
+                                    <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
                                         <X size={14}/> إغلاق
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-2">
@@ -276,7 +279,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             {showCreateModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
                     <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl">
-                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
                         
                         <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                             <LifeBuoy className="text-indigo-500"/> طلب مساعدة جديد

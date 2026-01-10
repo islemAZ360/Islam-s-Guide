@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Lock, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from './services/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore'; 
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
@@ -62,6 +62,22 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // -- 0. Auth State Listener (Fixes Reload Issue) --
+  useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setAuthUser(user);
+        if (!user && !isDemoMode) {
+            setLoading(false);
+        }
+    });
+    return () => unsubscribe();
+  }, [isDemoMode]);
+
   // -- Load Local Data --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
@@ -75,8 +91,6 @@ function AppContent() {
     if (savedLogs) setLogs(JSON.parse(savedLogs));
     if (savedInventory) setInventory(JSON.parse(savedInventory));
     if (savedSpeed) setSpeedModifier(parseFloat(savedSpeed));
-    
-    setLoading(false); 
   }, []);
 
   // -- 1. FETCH CLOUD DATA --
@@ -91,10 +105,10 @@ function AppContent() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // دمج البيانات مع الحالة المحلية
+            // Merge data with local state structure
             const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
             
-            // تصحيح هيكلية البيانات القديمة إذا وجدت
+            // Handle legacy data structure
             if (data.userProfile) {
                 Object.assign(fetchedProfile, data.userProfile);
             }
@@ -106,11 +120,24 @@ function AppContent() {
             if (data.inventory) setInventory(data.inventory);
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
             
-            // التعامل مع الحظر
+            // Handle Bans
             if (data.isBanned) {
                alert(t('banned_msg'));
                handleLogout();
             }
+          } else {
+            // Guest Issue Fix: Create basic profile if none exists
+            const newProfile: UserProfile = {
+                uid: authUser.uid,
+                email: authUser.email || '',
+                name: authUser.displayName || 'New User',
+                role: 'normal_user', // Default
+                setupComplete: false,
+                durationMonths: 0
+            };
+            
+            await setDoc(docRef, newProfile);
+            setUserProfile(newProfile);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -136,7 +163,7 @@ function AppContent() {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Extract primitive values HERE
+        // Extract primitive values explicitly
         const currentUid = currentUser.uid;
         const currentEmail = currentUser.email || email || '';
 
@@ -146,12 +173,12 @@ function AppContent() {
             const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
             
             try {
-                // FIX: Put spread operator first to avoid overwriting specific fields
+                // FIX: Spread `currentProfileData` FIRST, then overwrite with safe variables.
                 const updateData: any = {
-                    ...currentProfileData, // 1. Spread existing profile data first
-                    email: currentEmail,   // 2. Ensure email is set correctly (overwrites spread if needed)
+                    ...currentProfileData, 
+                    email: currentEmail,   
+                    uid: currentUid,       
                     lastActive: new Date().toISOString(),
-                    uid: currentUid,       // 3. Ensure UID is set correctly
                 };
 
                 // Add specific data based on role
@@ -189,7 +216,6 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      // Default fallback based on role
       if (userProfile?.role === 'doctor') {
           if (currentView !== AppView.DOCTOR_DASHBOARD) setCurrentView(AppView.DOCTOR_DASHBOARD);
       } else if (userProfile?.role === 'admin') {
@@ -206,7 +232,6 @@ function AppContent() {
     setLoginError('');
     setLoading(true);
 
-    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
@@ -286,7 +311,6 @@ function AppContent() {
             ...userProfile,
             setupComplete: true,
             planType: planType,
-            // If patient, assume doctor assigned it
             patientData: userProfile.role === 'patient' && userProfile.patientData ? {
                 ...userProfile.patientData,
                 isPlanAssigned: true 
@@ -299,7 +323,6 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    // 1. Update Inventory
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
@@ -312,7 +335,6 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
@@ -320,7 +342,6 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Dynamic Adjustment (Only for Algorithm users)
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
@@ -328,7 +349,6 @@ function AppContent() {
         setPlan(newPlan);
     }
     
-    // 4. Cleanup UI
     setSelectedDose(null);
     setSelectedMood(null);
     showToast(t('toast_log_success'));
@@ -364,7 +384,6 @@ function AppContent() {
       showToast(t('toast_freeze_success'));
   };
 
-  // --- SETTINGS: SPEED CONTROL ---
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
       if (userProfile?.planType === 'algorithm') {
@@ -395,7 +414,6 @@ function AppContent() {
     }
   };
 
-  // -- CALCULATED PROPS --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
@@ -408,16 +426,12 @@ function AppContent() {
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
 
-  // -- RENDER STATES --
-
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
-  // 1. LOGIN SCREEN
   if (!authUser && !isDemoMode) {
     return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
   }
 
-  // 2. ONBOARDING (If user exists but setup not complete)
   if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
     return <OnboardingView 
         userProfile={userProfile} 
@@ -432,7 +446,6 @@ function AppContent() {
     />;
   }
 
-  // 3. MAIN APP ROUTING
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -441,7 +454,6 @@ function AppContent() {
           </div>
       )}
 
-      {/* Navigation Bars */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
@@ -453,7 +465,6 @@ function AppContent() {
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
         
-        {/* --- DOCTOR WAITING SCREEN --- */}
         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
@@ -469,7 +480,6 @@ function AppContent() {
             </div>
         ) : 
 
-        /* --- PATIENT WAITING SCREEN --- */
         userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                 <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
@@ -486,15 +496,14 @@ function AppContent() {
             </div>
         ) : 
 
-        /* --- APPROVED VIEWS --- */
         (
             <>
-                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
-                {(userProfile?.role === 'normal_user' || (userProfile?.role === 'patient' && userProfile?.patientData?.isPlanAssigned)) && (
+                {/* FIX: Ensure userProfile exists before usage */}
+                {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                     <>
                         {currentView === AppView.DASHBOARD && (
                             <DashboardView 
-                                userProfile={userProfile!} 
+                                userProfile={userProfile} // Passed safely
                                 plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
                                 progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
                                 showDoctorWarning={showDoctorWarning}
@@ -505,16 +514,15 @@ function AppContent() {
                         )}
                         
                         {currentView === AppView.CALENDAR && (
-                             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile!} />
+                             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
                         )}
                         
                         {currentView === AppView.STATS && (
-                             <StatsView logs={logs} plan={plan} userProfile={userProfile!} />
+                             <StatsView logs={logs} plan={plan} userProfile={userProfile} />
                         )} 
                     </>
                 )}
 
-                {/* --- DOCTOR VIEWS --- */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                      <>
                         {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -522,7 +530,6 @@ function AppContent() {
                      </>
                 )}
 
-                {/* --- SHARED VIEWS --- */}
                 {currentView === AppView.COMMUNITY && userProfile && (
                      <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
                 )}
@@ -538,7 +545,6 @@ function AppContent() {
                 
                 {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
                 
-                {/* SETTINGS VIEW */}
                 {currentView === AppView.SETTINGS && userProfile && (
                     <LayoutContainer>
                         <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
@@ -583,7 +589,6 @@ function AppContent() {
                             )}
                         </Card>
 
-                        {/* Account Actions */}
                         <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                             <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>

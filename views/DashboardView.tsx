@@ -9,7 +9,7 @@ import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardViewProps {
-  userProfile: UserProfile | null;
+  userProfile: UserProfile | null; // نقبل null هنا لتجنب مشاكل النوع، لكننا نتحقق منه
   plan: PlanDay[];
   logs: DailyLog[];
   todayPlan: PlanDay | undefined;
@@ -96,7 +96,7 @@ export const DashboardView = ({
       
       <PageHeader 
         title={t('daily_report')}
-        subtitle={`${t('welcome')} ${userProfile?.name}`}
+        subtitle={`${t('welcome')} ${userProfile?.name || ''}`}
         action={
             <div className="flex flex-wrap gap-4 items-center">
                 <div className="hidden md:block"><LanguageSwitcher /></div>
@@ -133,7 +133,6 @@ export const DashboardView = ({
       )}
 
       {/* Safety Warning & Freeze Option */}
-      {/* يظهر فقط لمستخدمي الخوارزمية، لأن المريض يجب أن يراجع طبيبه في حالات الخطر */}
       {showDoctorWarning && !isManualPlan && (
         <div className="bg-rose-500/5 border border-rose-500/20 p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md animate-in zoom-in duration-500 mb-6">
           <div className="flex items-center gap-4">

@@ -32,6 +32,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // 1. جلب غرف الدردشة (Smart Filtering)
     useEffect(() => {
+        // إذا لم يكن للمستخدم معرف، لا نقوم بجلب البيانات
+        if (!currentUser.uid) return;
+
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const allRooms: ChatRoom[] = [];
@@ -94,7 +97,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     // --- Actions ---
 
     const createRoom = async () => {
-        if (!newRoomName.trim()) return;
+        if (!newRoomName.trim() || !currentUser.uid) return;
         
         const isDoctor = currentUser.role === 'doctor';
         
@@ -121,7 +124,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     const sendMessage = async () => {
-        if (!newMessage.trim() || !activeRoom) return;
+        if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: newMessage,
