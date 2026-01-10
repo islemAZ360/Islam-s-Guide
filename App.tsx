@@ -37,7 +37,7 @@ function AppContent() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // New State for Resubmission Flow
+  // New State for Resubmission Flow (Doctors & Patients)
   const [isResubmitting, setIsResubmitting] = useState(false);
 
   const { dir, t } = useLanguage();
@@ -96,16 +96,28 @@ function AppContent() {
             
             if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
-            // FIX: REMOVED THE AGGRESSIVE AUTO-REDIRECT LOGIC HERE
-            // The previous logic was forcing redirects because it used stale state.
-            // We only force redirect for Admin or if transitioning from pending.
-            
+            // Auto-redirect logic
             if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
                 setCurrentView(AppView.ADMIN);
-            } 
+            } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
+                const allowedDoctorViews = [
+                    AppView.DOCTOR_DASHBOARD, 
+                    AppView.DOCTOR_PATIENTS, 
+                    AppView.COMMUNITY,
+                    AppView.ARTICLES,
+                    AppView.SUPPORT,
+                    AppView.SETTINGS
+                ];
+                if (!allowedDoctorViews.includes(currentView)) {
+                     setCurrentView(AppView.DOCTOR_DASHBOARD);
+                }
+            }
             
-            // If status changed back to pending (e.g. after resubmission), turn off resubmitting mode
+            // Reset resubmitting state if status changes to pending (for doctors) or approved (for patients)
             if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'pending') {
+                setIsResubmitting(false);
+            }
+            if (fetchedProfile.role === 'patient' && fetchedProfile.patientData?.requestStatus === 'pending') {
                 setIsResubmitting(false);
             }
 
@@ -140,7 +152,7 @@ function AppContent() {
 
       return () => unsubscribe();
     }
-  }, [authUser]); // Removed currentView dependency to prevent loops
+  }, [authUser]);
 
   // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
@@ -154,7 +166,7 @@ function AppContent() {
         const currentUser = authUser;
         const currentProfileData = { ...userProfile };
         
-        // Safety Guard: Don't sync incomplete doctor data
+        // Safety Guard
         if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
             return;
         }
@@ -276,7 +288,7 @@ function AppContent() {
     setAuthUser(null);
     setIsDemoMode(false);
     setUserProfile(null);
-    setIsResubmitting(false); // Reset Resubmission state
+    setIsResubmitting(false); 
     setPlan([]);
     setLogs([]);
     setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
@@ -468,6 +480,25 @@ function AppContent() {
                   محاولات هذا الشهر: {userProfile.doctorData.submissionCount || 1} / 10
               </p>
           </div>
+      ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' ? (
+          /* PATIENT REJECTION SCREEN */
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
+                  <XCircle size={48} className="text-rose-500 animate-pulse" />
+              </div>
+              <h1 className="text-4xl font-black text-white mb-4">عذراً، تم رفض الطلب</h1>
+              <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                  لم يتم قبول طلب انضمامك من قبل الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
+                  يمكنك المحاولة مع طبيب آخر.
+              </p>
+              
+              <div className="flex gap-4">
+                  <Button variant="secondary" onClick={handleLogout}>تسجيل خروج</Button>
+                  <Button variant="primary" onClick={() => setIsResubmitting(true)}>
+                      اختيار طبيب آخر
+                  </Button>
+              </div>
+          </div>
       ) : (
           /* Normal App Layout */
           <>
@@ -501,16 +532,31 @@ function AppContent() {
                     </div>
                 ) : 
 
-                /* PATIENT WAITING SCREEN */
+                /* PATIENT PENDING SCREEN (Waiting for Doctor Approval) */
+                userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Clock size={48} className="text-blue-500 animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                            طلبك للانضمام إلى قائمة مرضى <strong>{userProfile.patientData?.assignedDoctorName}</strong> قيد المراجعة. 
+                            يرجى الانتظار حتى يقوم الطبيب بقبول الطلب.
+                        </p>
+                        <Button variant="secondary" onClick={handleLogout} className="!px-6">تسجيل خروج</Button>
+                    </div>
+                ) :
+
+                /* PATIENT WAITING FOR PLAN (Doctor Approved but No Plan Yet) */
                 userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
                     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                         <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
                             <Loader2 size={48} className="text-indigo-500 animate-spin" />
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">بانتظار خطة الطبيب</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
                         <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            لقد تم إرسال ملفك إلى الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
-                            يرجى الانتظار حتى يقوم الطبيب بمراجعة حالتك ووضع الجدول العلاجي المناسب.
+                            وافق الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong> على انضمامك. 
+                            يرجى الانتظار حتى يقوم بوضع الجدول العلاجي المناسب.
                         </p>
                         <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
                             دخول المجتمع مؤقتاً

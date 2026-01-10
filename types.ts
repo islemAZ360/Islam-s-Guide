@@ -15,12 +15,10 @@ export interface DoctorProfileData {
   clinicLocation?: string;  
   phoneNumber: string;      
   bio: string;              
-  // FIX: Allow null for database compatibility
   photoUrl?: string | null;        
   accountStatus: DoctorAccountStatus; 
   
   // Rejection & Resubmission Logic
-  // FIX: Allow null here too
   rejectionReason?: string | null;       
   submissionCount?: number;       
   lastSubmissionDate?: number;    
@@ -36,6 +34,9 @@ export interface DoctorProfileData {
 export interface PatientProfileData {
   assignedDoctorId: string;
   assignedDoctorName: string;
+  // NEW: Request Status logic
+  requestStatus: 'pending' | 'approved' | 'rejected'; 
+  
   isPlanAssigned: boolean; 
   isRecovered: boolean;    
   recoveryDate?: string;   

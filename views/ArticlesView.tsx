@@ -4,12 +4,14 @@ import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
 import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
 
 interface ArticlesViewProps {
-    userProfile?: UserProfile | null; // نحتاج البروفايل لمعرفة الصلاحيات
+    userProfile?: UserProfile | null;
 }
 
 export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
+    const { t, language } = useLanguage(); // تفعيل الترجمة
     const [articles, setArticles] = useState<Article[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<'all' | ArticleCategory>('all');
     const [readingArticle, setReadingArticle] = useState<Article | null>(null);
@@ -43,10 +45,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     // -- Publish Action --
     const handlePublish = async () => {
-        // FIX: Use optional chaining (?.) for auth
         const currentUser = auth?.currentUser;
 
-        // التحقق من المتغير المحلي
         if (!currentUser || !userProfile) return;
         
         if (!newArticle.title.trim() || !newArticle.content.trim()) return;
@@ -58,20 +58,18 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 category: newArticle.category,
                 isPublished: true,
                 createdAt: Date.now(),
-                // استخدام المتغير المحلي الآمن
                 authorId: currentUser.uid, 
                 authorName: userProfile.name,
                 authorRole: userProfile.role 
             });
             
-            // Reset and Refresh
             setShowCreateModal(false);
             setNewArticle({ title: '', content: '', category: 'tip' });
             fetchArticles();
-            alert("تم نشر المقال بنجاح!");
+            alert(language === 'ar' ? "تم نشر المقال بنجاح!" : "Article published successfully!");
         } catch (e) {
             console.error("Error publishing article:", e);
-            alert("حدث خطأ أثناء النشر.");
+            alert("Error publishing article.");
         }
     };
 
@@ -96,18 +94,17 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         }
     };
 
-    // هل المستخدم يملك صلاحية النشر؟
     const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
 
     return (
         <LayoutContainer>
             <PageHeader 
-                title="مركز المعرفة" 
-                subtitle="مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي."
+                title={t('knowledge_center')} 
+                subtitle={t('knowledge_desc')}
                 action={
                     canPublish && (
                         <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
-                            <PenTool size={16} /> نشر مقال جديد
+                            <PenTool size={16} /> {t('new_article_btn')}
                         </Button>
                     )
                 }
@@ -116,10 +113,10 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
             {/* Category Filters */}
             <div className="flex gap-3 overflow-x-auto pb-4 mb-2 scrollbar-hide">
                 {[
-                    { id: 'all', label: 'الكل', icon: BookOpen },
-                    { id: 'medical', label: 'طبي وعلمي', icon: Stethoscope },
-                    { id: 'motivation', label: 'دعم نفسي', icon: Heart },
-                    { id: 'tip', label: 'نصائح عملية', icon: Lightbulb },
+                    { id: 'all', label: t('cat_all'), icon: BookOpen },
+                    { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
+                    { id: 'motivation', label: t('cat_motivation'), icon: Heart },
+                    { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
                 ].map((cat) => (
                     <button
                         key={cat.id}
@@ -138,11 +135,11 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Articles Grid */}
             {loading ? (
-                <div className="text-center py-20 text-slate-500 animate-pulse">جاري تحميل المحتوى...</div>
+                <div className="text-center py-20 text-slate-500 animate-pulse">Loading...</div>
             ) : filteredArticles.length === 0 ? (
                 <div className="text-center py-20 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
                     <BookOpen size={48} className="mx-auto text-slate-700 mb-4"/>
-                    <p className="text-slate-500">لا توجد مقالات في هذا القسم حالياً.</p>
+                    <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات هنا.' : 'No articles found.'}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -177,7 +174,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     </span>
                                 </div>
                                 <span className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
-                                    قراءة <ArrowRight size={14} />
+                                    {t('read_more')} <ArrowRight size={14} />
                                 </span>
                             </div>
                         </div>
@@ -185,34 +182,34 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 </div>
             )}
 
-            {/* Create Article Modal (For Admins & Doctors) */}
+            {/* Create Article Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative">
                         <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
                         
                         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <PenTool className="text-indigo-400"/> نشر مقال جديد
+                            <PenTool className="text-indigo-400"/> {t('new_article_btn')}
                         </h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">عنوان المقال</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_title_label')}</label>
                                 <input 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
-                                    placeholder="اكتب عنواناً جذاباً..."
+                                    placeholder="..."
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">التصنيف</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_cat_label')}</label>
                                 <div className="flex gap-2">
                                     {[
-                                        { id: 'medical', label: 'معلومة طبية' },
-                                        { id: 'motivation', label: 'دعم نفسي' },
-                                        { id: 'tip', label: 'نصيحة عملية' },
+                                        { id: 'medical', label: t('cat_medical') },
+                                        { id: 'motivation', label: t('cat_motivation') },
+                                        { id: 'tip', label: t('cat_tip') },
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
@@ -230,19 +227,19 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">المحتوى</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_content_label')}</label>
                                 <textarea 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 h-40 resize-none"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
-                                    placeholder="اكتب محتوى المقال هنا..."
+                                    placeholder="..."
                                 />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
-                                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>إلغاء</Button>
+                                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('cancel_btn')}</Button>
                                 <Button variant="success" onClick={handlePublish} disabled={!newArticle.title || !newArticle.content}>
-                                    نشر الآن
+                                    {t('publish_now')}
                                 </Button>
                             </div>
                         </div>
@@ -270,9 +267,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                 {readingArticle.title}
                             </h2>
                             <div className="flex items-center gap-3 text-xs text-slate-500">
-                                <span>بقلم: {readingArticle.authorName}</span>
-                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">طبيب</Badge>}
-                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">أدمن</Badge>}
+                                <span>{t('author_by')}: {readingArticle.authorName}</span>
+                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">Dr</Badge>}
+                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">Admin</Badge>}
                                 <span>•</span>
                                 <span>{new Date(readingArticle.createdAt).toLocaleDateString()}</span>
                             </div>
@@ -289,9 +286,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-white/5 bg-slate-950 flex justify-between items-center">
-                            <p className="text-xs text-slate-600">مركز المعرفة - Islam's Guide</p>
+                            <p className="text-xs text-slate-600">Islam's Guide Knowledge Center</p>
                             <Button variant="secondary" onClick={() => setReadingArticle(null)} className="!py-2 !px-4 !text-xs">
-                                إغلاق
+                                {t('close')}
                             </Button>
                         </div>
                     </Card>

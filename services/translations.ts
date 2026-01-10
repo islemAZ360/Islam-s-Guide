@@ -117,7 +117,6 @@ export const translations = {
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
     factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
-    // New Profile Translations
     profile_title: "الملف الشخصي",
     photo_url_label: "رابط الصورة الشخصية",
     save_changes: "حفظ التغييرات",
@@ -153,7 +152,7 @@ export const translations = {
     // Doctor Selection
     doc_select_title: "اختر طبيبك المعالج",
     doc_search_placeholder: "بحث باسم الطبيب...",
-    doc_select_btn: "اختيار هذا الطبيب",
+    doc_select_btn: "إرسال طلب انضمام", // Changed from "Select this doctor"
 
     // Algorithm Setup
     med_type_title: "نوع الدواء",
@@ -170,7 +169,7 @@ export const translations = {
     form_liquid: "سائل / قطرات",
     unit_title: "وحدة القياس",
 
-    // Doctor Dashboard
+    // Doctor Dashboard & Plan Builder (NEW)
     stat_total_patients: "إجمالي المرضى",
     stat_new_requests: "طلبات جديدة",
     stat_recovered: "حالات التعافي",
@@ -180,6 +179,21 @@ export const translations = {
     plan_phases: "مراحل التخفيض",
     duration_days: "المدة (أيام)",
     submit_plan: "اعتماد وإرسال",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "منشئ الأنماط",
+    pattern_sequence: "النمط (مثال: 0.5, 0, 0.5, 0)",
+    repeat_count: "عدد التكرار",
+    days_per_dose: "أيام لكل جرعة",
+    apply_pattern: "تطبيق النمط",
+    clear_phases: "مسح الكل",
+    
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "طلبات المرضى الجدد",
+    accept_patient: "قبول",
+    reject_patient: "رفض",
+    no_requests: "لا توجد طلبات معلقة",
+    req_sent_msg: "تم إرسال طلبك للطبيب. يرجى الانتظار لحين الموافقة.",
 
     // Admin & Management
     admin_title: "غرفة التحكم المركزية",
@@ -196,9 +210,9 @@ export const translations = {
     approved_docs_list: "قائمة الأطباء المعتمدين",
     ban_user: "حظر",
     unban_user: "فك الحظر",
-    delete_user: "حذف نهائي", // NEW
-    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", // NEW
-    view_details: "عرض التفاصيل", // NEW
+    delete_user: "حذف نهائي", 
+    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", 
+    view_details: "عرض التفاصيل", 
     search_user_placeholder: "بحث عن مستخدم...",
     
     // Patient Management
@@ -216,10 +230,13 @@ export const translations = {
     article_cat_label: "التصنيف",
     article_content_label: "المحتوى",
     publish_now: "نشر الآن",
-    cat_medical: "طبي",
+    cat_medical: "طبي وعلمي",
     cat_motivation: "دعم نفسي",
-    cat_tip: "نصائح",
+    cat_tip: "نصائح عملية",
+    cat_all: "الكل",
     cancel_btn: "إلغاء",
+    read_more: "قراءة المزيد",
+    author_by: "بقلم",
 
     // Support & Tickets
     support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
@@ -340,7 +357,6 @@ export const translations = {
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
     factory_reset_btn: "Factory Reset",
-    // New Profile Translations
     profile_title: "My Profile",
     photo_url_label: "Profile Photo URL",
     save_changes: "Save Changes",
@@ -369,7 +385,8 @@ export const translations = {
     path_doctor_desc: "I will choose a doctor from the platform and wait for them to assign a plan.",
     doc_select_title: "Select Your Doctor",
     doc_search_placeholder: "Search by doctor name...",
-    doc_select_btn: "Choose this Doctor",
+    doc_select_btn: "Request to Join", // Changed
+
     med_type_title: "Medication Type",
     med_type_narcotic: "Narcotics (Schedule I)",
     med_type_narcotic_desc: "Requires Rehab Center",
@@ -392,6 +409,22 @@ export const translations = {
     plan_phases: "Tapering Phases",
     duration_days: "Duration (Days)",
     submit_plan: "Approve & Send",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "Pattern Builder",
+    pattern_sequence: "Sequence (e.g. 0.5, 0, 0.5, 0)",
+    repeat_count: "Repeat Count",
+    days_per_dose: "Days per Dose",
+    apply_pattern: "Apply Pattern",
+    clear_phases: "Clear All",
+
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "Patient Requests",
+    accept_patient: "Accept",
+    reject_patient: "Reject",
+    no_requests: "No pending requests",
+    req_sent_msg: "Request sent. Waiting for doctor approval.",
+
     admin_title: "Central Control Room",
     admin_subtitle: "Integrated Management System",
     tab_overview: "Overview",
@@ -406,9 +439,9 @@ export const translations = {
     approved_docs_list: "Approved Doctors List",
     ban_user: "Ban",
     unban_user: "Unban",
-    delete_user: "Delete User", // NEW
-    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", // NEW
-    view_details: "View Details", // NEW
+    delete_user: "Delete User", 
+    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", 
+    view_details: "View Details", 
     search_user_placeholder: "Search user...",
     manage_patients_title: "Patient Files Management",
     add_patient_btn: "Add New Patient",
@@ -425,7 +458,10 @@ export const translations = {
     cat_medical: "Medical",
     cat_motivation: "Motivation",
     cat_tip: "Tip",
+    cat_all: "All",
     cancel_btn: "Cancel",
+    read_more: "Read More",
+    author_by: "By",
 
     // Support & Tickets
     support_desc: "Contact the support team directly.",
@@ -546,7 +582,6 @@ export const translations = {
     pace_fast: "Быстро",
     danger_zone: "Опасно",
     factory_reset_btn: "Сброс",
-    // New Profile Translations
     profile_title: "Профиль",
     photo_url_label: "URL фото",
     save_changes: "Сохранить",
@@ -575,7 +610,8 @@ export const translations = {
     path_doctor_desc: "Я выберу врача и буду ждать план лечения.",
     doc_select_title: "Выберите врача",
     doc_search_placeholder: "Поиск врача...",
-    doc_select_btn: "Выбрать",
+    doc_select_btn: "Отправить запрос", // Changed
+
     med_type_title: "Тип лекарства",
     med_type_narcotic: "Наркотические",
     med_type_narcotic_desc: "Нужен стационар",
@@ -598,6 +634,22 @@ export const translations = {
     plan_phases: "Фазы снижения",
     duration_days: "Длительность (дни)",
     submit_plan: "Утвердить и отправить",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "Конструктор шаблонов",
+    pattern_sequence: "Шаблон (напр: 0.5, 0)",
+    repeat_count: "Повторить (раз)",
+    days_per_dose: "Дней на дозу",
+    apply_pattern: "Применить",
+    clear_phases: "Очистить все",
+
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "Заявки пациентов",
+    accept_patient: "Принять",
+    reject_patient: "Отклонить",
+    no_requests: "Нет заявок",
+    req_sent_msg: "Запрос отправлен врачу.",
+
     admin_title: "Центральная панель управления",
     admin_subtitle: "Интегрированная система управления",
     tab_overview: "Обзор",
@@ -612,9 +664,9 @@ export const translations = {
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
-    delete_user: "Удалить", // NEW
-    delete_confirm_msg: "Вы уверены? Это действие необратимо.", // NEW
-    view_details: "Подробнее", // NEW
+    delete_user: "Удалить", 
+    delete_confirm_msg: "Вы уверены? Это действие необратимо.", 
+    view_details: "Подробнее", 
     search_user_placeholder: "Поиск пользователя...",
     manage_patients_title: "Управление пациентами",
     add_patient_btn: "Добавить пациента",
@@ -631,7 +683,10 @@ export const translations = {
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
     cat_tip: "Советы",
+    cat_all: "Все",
     cancel_btn: "Отмена",
+    read_more: "Читать",
+    author_by: "Автор",
 
     // Support & Tickets
     support_desc: "Свяжитесь с командой поддержки напрямую.",

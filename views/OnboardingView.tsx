@@ -159,7 +159,7 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  // 2. Assign Patient to Doctor
+  // 2. Assign Patient to Doctor (UPDATED: Request Logic)
   const handleAssignDoctor = async (docProfile: UserProfile) => {
       if (!auth || !auth.currentUser || !docProfile.uid) return;
       
@@ -174,6 +174,7 @@ export const OnboardingView = ({
           patientData: {
               assignedDoctorId: docProfile.uid,
               assignedDoctorName: docProfile.name,
+              requestStatus: 'pending', // <--- IMPORTANT: Set status to pending
               isPlanAssigned: false, 
               isRecovered: false
           },
@@ -183,7 +184,7 @@ export const OnboardingView = ({
 
       try {
            await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
-           alert("تم اختيار الطبيب بنجاح.");
+           alert(t('req_sent_msg')); // "Request sent. Waiting for doctor approval."
       } catch(e: any) {
            console.error("Error assigning doctor:", e);
            alert(`حدث خطأ: ${e.message}`);
@@ -219,12 +220,11 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  // 4. Fetch Doctors (UPDATED TO MATCH RULES)
+  // 4. Fetch Doctors
   useEffect(() => {
       if (step === 'DOCTOR_SELECT') {
           const fetchDocs = async () => {
               try {
-                  // FIX: Query explicitly for 'approved' status to match Firestore Rules
                   const q = query(
                       collection(db, "users"), 
                       where("role", "==", "doctor"),
@@ -237,10 +237,6 @@ export const OnboardingView = ({
                   setAvailableDoctors(docs);
               } catch (e: any) { 
                   console.error("Error fetching doctors:", e);
-                  // إذا كان الخطأ بسبب نقص الفهرس (Index)، ننبه المطور
-                  if (e.code === 'failed-precondition') {
-                      console.log("NOTE: This query requires a Firestore Index. Check console link.");
-                  }
               }
           };
           fetchDocs();
@@ -351,7 +347,6 @@ export const OnboardingView = ({
   if (step === 'USER_PATH_SELECT') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ROLE_SELECT" /><header className="mb-12 text-center animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1><p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p></header><div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full"><button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3><p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p></button><button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3><p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p></button></div></div>); }
   
   if (step === 'DOCTOR_SELECT') { 
-      // تصفية النتائج
       const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); 
       
       return (
@@ -372,7 +367,7 @@ export const OnboardingView = ({
                             <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
                             <p className="text-slate-500">
                                 {availableDoctors.length === 0 
-                                    ? 'No approved doctors available yet.' // رسالة أوضح
+                                    ? 'No approved doctors available yet.' 
                                     : 'No results found.'}
                             </p>
                         </div>
@@ -381,7 +376,11 @@ export const OnboardingView = ({
                             <div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div>
+                                        {doc.doctorData?.photoUrl ? (
+                                            <img src={doc.doctorData.photoUrl} alt="Dr" className="w-12 h-12 rounded-full object-cover border border-white/10" />
+                                        ) : (
+                                            <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div>
+                                        )}
                                         <div>
                                             <h3 className="font-bold text-white text-lg">{doc.name}</h3>
                                             <Badge color="blue">{doc.doctorData?.specialty}</Badge>
@@ -390,7 +389,9 @@ export const OnboardingView = ({
                                 </div>
                                 <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p>
                                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div>
-                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>{loading ? 'Processing...' : t('doc_select_btn')}</Button>
+                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>
+                                    {loading ? 'Sending...' : t('doc_select_btn')}
+                                </Button>
                             </div>
                         ))
                     )}
