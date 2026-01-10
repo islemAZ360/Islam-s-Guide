@@ -14,7 +14,7 @@ export const ArticlesView = () => {
     useEffect(() => {
         const fetchArticles = async () => {
             try {
-                // Fetch only published articles
+                // جلب المقالات المنشورة فقط
                 const q = query(
                     collection(db, "articles"), 
                     where("isPublished", "==", true),

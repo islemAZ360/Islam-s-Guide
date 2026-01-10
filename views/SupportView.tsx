@@ -42,6 +42,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
+            // تحديث التذكرة المفتوحة حالياً إذا وصل رد جديد
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -51,7 +52,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
         return () => unsubscribe();
     }, [user.uid, activeTicket?.id]);
 
-    // Scroll to bottom
+    // Scroll to bottom on new message
     useEffect(() => {
         if (activeTicket) {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -107,7 +108,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             await updateDoc(ticketRef, {
                 messages: [...currentMessages, newMsg],
                 lastUpdate: Date.now(),
-                status: 'open' 
+                status: 'open' // إعادة فتح التذكرة إذا رد المستخدم
             });
             setNewMessage("");
         } catch (e) {
@@ -127,7 +128,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 }
             />
 
-            {/* Context Banner */}
+            {/* Context Banner: يعرض نوع الدواء وشكله لتسهيل الدعم */}
             <div className="mb-6 bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
@@ -140,6 +141,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         </p>
                     </div>
                 </div>
+                {user.planType === 'algorithm' && (
+                    <Badge color="blue">خوارزمية ذكية</Badge>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[500px]">

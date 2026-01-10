@@ -42,6 +42,8 @@ function AppContent() {
   const [currentDoseHabit, setCurrentDoseHabit] = useState<number>(0);
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [logs, setLogs] = useState<DailyLog[]>([]);
+  
+  // New: Speed Modifier State (1.0 = Normal, 0.8 = Slow/Extend, 1.2 = Fast)
   const [speedModifier, setSpeedModifier] = useState<number>(1.0);
   
   // Navigation
@@ -58,13 +60,13 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // -- Load Local --
+  // -- Load Local Data --
   useEffect(() => {
     const savedProfile = localStorage.getItem('taper_profile');
     const savedPlan = localStorage.getItem('taper_plan');
     const savedLogs = localStorage.getItem('taper_logs');
-    const savedSpeed = localStorage.getItem('taper_speed');
     const savedInventory = localStorage.getItem('taper_inventory');
+    const savedSpeed = localStorage.getItem('taper_speed'); // Load Speed
     
     if (savedProfile) setUserProfile(JSON.parse(savedProfile));
     if (savedPlan) setPlan(JSON.parse(savedPlan));
@@ -75,7 +77,7 @@ function AppContent() {
     setLoading(false); 
   }, []);
 
-  // -- 1. FETCH DATA --
+  // -- 1. FETCH CLOUD DATA --
   useEffect(() => {
     if (authUser) {
       const fetchUserData = async () => {
@@ -90,7 +92,7 @@ function AppContent() {
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
             if (data.inventory) setInventory(data.inventory);
-            if (data.speedModifier) setSpeedModifier(data.speedModifier);
+            if (data.speedModifier) setSpeedModifier(data.speedModifier); // Sync Speed
             
             if (data.isBanned) {
                alert(t('banned_msg'));
@@ -106,12 +108,14 @@ function AppContent() {
     }
   }, [authUser]);
 
-  // -- 2. SYNC DATA --
+  // -- 2. SYNC TO LOCAL & CLOUD --
   useEffect(() => {
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
     if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
+    
+    // Save Speed Logic
     localStorage.setItem('taper_speed', speedModifier.toString());
 
     if (authUser && userProfile) {
@@ -127,7 +131,7 @@ function AppContent() {
                     plan, 
                     logs, 
                     inventory, 
-                    speedModifier,
+                    speedModifier, // Push Speed to Cloud
                     lastActive: new Date().toISOString(),
                     progress: progressPercentage,
                     uid: authUser.uid,
@@ -143,7 +147,7 @@ function AppContent() {
         const timeoutId = setTimeout(syncToCloud, 2000);
         return () => clearTimeout(timeoutId);
     }
-  }, [userProfile, plan, logs, speedModifier, authUser, inventory]);
+  }, [userProfile, plan, logs, inventory, speedModifier, authUser]);
 
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
@@ -161,11 +165,13 @@ function AppContent() {
     }
   };
 
+  // --- AUTHENTICATION HANDLERS (Login/Logout) ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     setLoading(true);
 
+    // Hardcoded Admin Logic
     if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
         if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
         try {
@@ -175,6 +181,7 @@ function AppContent() {
             setUserProfile({ email, name: 'System Admin', medType: null, durationMonths: 0, setupComplete: true, isAdmin: true });
             setCurrentView(AppView.ADMIN);
         } catch (err: any) {
+            // If admin doesn't exist, create him
             if (err.code === 'auth/user-not-found') {
                 try {
                     const newCred = await createUserWithEmailAndPassword(auth, email, password);
@@ -189,6 +196,7 @@ function AppContent() {
         return;
     }
 
+    // Hardcoded Demo Logic
     if (email === 'islamaz@bomba.com' && password === 'bombaAZ360') {
         setTimeout(() => { setIsDemoMode(true); setLoading(false); }, 800);
         return;
@@ -224,11 +232,13 @@ function AppContent() {
     setPlan([]);
     setLogs([]);
     setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+    setSpeedModifier(1.0);
     localStorage.clear();
     if (auth) auth.signOut().catch(console.error);
     window.location.reload();
   };
 
+  // --- PLAN MANAGEMENT ---
   const startPlan = (customPlan: PlanDay[], speed: number = 1.0, planType: 'algorithm' | 'manual' = 'algorithm') => {
     setSpeedModifier(speed); 
     setPlan(customPlan);
@@ -249,10 +259,12 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
+    // 1. Update Inventory
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
+    // Try to update boxes count smartly
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
         newInventory.loosePills = Math.round((newTotal % inventory.pillsPerBox) * 100) / 100;
@@ -261,6 +273,7 @@ function AppContent() {
     }
     setInventory(newInventory);
 
+    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
@@ -268,13 +281,18 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
+    // 3. Dynamic Adjustment (The "Smart" part)
     if (userProfile?.planType !== 'manual') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
+        // Estimate initial inventory to reconstruct logic
         const theoreticalInitial = newTotal + totalUsed;
+        
+        // Pass speedModifier to the engine
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier);
         setPlan(newPlan);
     }
     
+    // 4. Cleanup UI
     setSelectedDose(null);
     setSelectedMood(null);
     showToast(t('toast_log_success'));
@@ -292,6 +310,7 @@ function AppContent() {
       const newPlanDays: PlanDay[] = [];
       let currentDateStr = today;
       
+      // Add 3 freeze days
       for (let i = 0; i < 3; i++) {
           currentDateStr = addDaysSafe(currentDateStr, 1);
           newPlanDays.push({
@@ -301,6 +320,7 @@ function AppContent() {
           });
       }
       
+      // Shift future days
       future.forEach(day => {
           currentDateStr = addDaysSafe(currentDateStr, 1);
           newPlanDays.push({ ...day, date: currentDateStr });
@@ -310,12 +330,16 @@ function AppContent() {
       showToast(t('toast_freeze_success'));
   };
 
+  // --- SETTINGS: SPEED CONTROL ---
   const updateSpeedSettings = (newSpeed: number) => {
       setSpeedModifier(newSpeed);
+      
       if (userProfile?.planType !== 'manual') {
+          // Trigger immediate recalculation
           const currentInv = calculateTotalInventory(inventory);
           const totalUsed = logs.reduce((a, b) => a + b.doseTaken, 0);
           const theoreticalInitial = currentInv + totalUsed;
+          
           const newPlan = adjustPlan(plan, logs, theoreticalInitial, newSpeed);
           setPlan(newPlan);
           showToast(t('toast_speed_updated'));
@@ -339,6 +363,7 @@ function AppContent() {
     }
   };
 
+  // -- CALCULATED PROPS --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
@@ -346,11 +371,13 @@ function AppContent() {
   const totalDays = plan.length;
   const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
   
-  // Calculate warning
+  // Warning Logic
   const recentLogs = logs.slice(-3);
   const badMoodCount = recentLogs.filter(l => l.mood === 'bad').length;
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
+
+  // -- RENDER STATES --
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
 
@@ -372,12 +399,14 @@ function AppContent() {
           </div>
       )}
 
+      {/* Mobile Back Button */}
       {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
               {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
           </button>
       )}
 
+      {/* Desktop Back Button */}
       {(viewHistory.length > 0 && currentView !== AppView.DASHBOARD) && (
           <button onClick={goBack} className="hidden md:flex fixed top-8 left-8 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors">
               {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
@@ -388,6 +417,7 @@ function AppContent() {
       <MobileNav currentView={currentView} setCurrentView={navigateTo} />
       
       <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
+        
         {currentView === AppView.DASHBOARD && (
             <DashboardView 
                 userProfile={userProfile}
@@ -399,30 +429,73 @@ function AppContent() {
                 submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
             />
         )}
-        {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
-        {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
-        {currentView === AppView.COMMUNITY && userProfile && <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />}
-        {/* Pass user object carefully constructing it to ensure no nulls */}
-        {currentView === AppView.SUPPORT && userProfile && authUser && <SupportView user={{...userProfile, uid: authUser.uid}} />}
+        
+        {currentView === AppView.CALENDAR && (
+             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
+        )}
+        
+        {currentView === AppView.STATS && (
+             <StatsView logs={logs} plan={plan} userProfile={userProfile} />
+        )} 
+        
+        {currentView === AppView.COMMUNITY && userProfile && (
+             <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
+        )}
+        
+        {currentView === AppView.SUPPORT && userProfile && (
+             <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
+        )}
+        
         {currentView === AppView.ARTICLES && <ArticlesView />}
+        
         {currentView === AppView.ADMIN && userProfile?.isAdmin && <AdminView />}
+        
+        {/* SETTINGS VIEW with SPEED CONTROL */}
         {currentView === AppView.SETTINGS && userProfile && (
             <LayoutContainer>
                 <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
                 <Card className="bg-slate-900 border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-indigo-400" /> {t('pace_control')}</h2>
                     <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
-                    {/* Fixed: Optional Chaining to prevent crash if profile is loading/null */}
+                    
                     {userProfile?.planType === 'manual' ? (
-                         <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4"><ShieldCheck size={40} className="text-slate-700" /><p>Manual Plan Active</p></div>
+                         <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
+                             <ShieldCheck size={40} className="text-slate-700" />
+                             <p>خطط الطبيب اليدوية لا تقبل التعديل التلقائي.</p>
+                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <button onClick={() => updateSpeedSettings(0.8)} className={`p-8 rounded-[2rem] border transition-all ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}><Clock size={32} className="mx-auto mb-4" /><span className="block font-bold">{t('pace_slow')}</span></button>
-                            <button onClick={() => updateSpeedSettings(1.0)} className={`p-8 rounded-[2rem] border transition-all ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}><ShieldCheck size={32} className="mx-auto mb-4" /><span className="block font-bold">{t('pace_balanced')}</span></button>
-                            <button onClick={() => updateSpeedSettings(1.2)} className={`p-8 rounded-[2rem] border transition-all ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}><Zap size={32} className="mx-auto mb-4" /><span className="block font-bold">{t('pace_fast')}</span></button>
+                            <button 
+                                onClick={() => updateSpeedSettings(0.8)} 
+                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            >
+                                <Clock size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold mb-1">{t('pace_slow')}</span>
+                                <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => updateSpeedSettings(1.0)} 
+                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier >= 0.9 && speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            >
+                                <ShieldCheck size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold mb-1">{t('pace_balanced')}</span>
+                                <span className="text-[10px] opacity-70">الوضع القياسي</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => updateSpeedSettings(1.2)} 
+                                className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            >
+                                <Zap size={32} className="mx-auto mb-4" />
+                                <span className="block font-bold mb-1">{t('pace_fast')}</span>
+                                <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
+                            </button>
                         </div>
                     )}
                 </Card>
+
+                {/* Account Actions */}
                 <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                     <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>

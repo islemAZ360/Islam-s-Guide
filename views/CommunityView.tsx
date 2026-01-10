@@ -30,7 +30,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-    // Fetch Rooms
+    // 1. جلب غرف الدردشة (Realtime)
     useEffect(() => {
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -41,7 +41,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         return () => unsubscribe();
     }, []);
 
-    // Fetch Leaderboard
+    // 2. جلب لوحة المتصدرين (Top 20 by Progress)
     useEffect(() => {
         if (tab === 'leaderboard') {
             const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(20));
@@ -54,7 +54,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     }, [tab]);
 
-    // Fetch Messages when room active
+    // 3. جلب الرسائل عند دخول غرفة
     useEffect(() => {
         if (!activeRoom) return;
         const q = query(collection(db, "rooms", activeRoom.id, "messages"), orderBy("timestamp", "asc"));
@@ -62,6 +62,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             const m: ChatMessage[] = [];
             snapshot.forEach((doc) => m.push({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(m);
+            // التمرير التلقائي لآخر رسالة
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
         });
         return () => unsubscribe();
@@ -81,7 +82,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     const deleteRoom = async (roomId: string) => {
-        if (confirm("Delete this room?")) {
+        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟")) {
             await deleteDoc(doc(db, "rooms", roomId));
             if (activeRoom?.id === roomId) setActiveRoom(null);
         }
@@ -121,12 +122,14 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             {tab === 'leaderboard' && (
                 <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
                     {leaderboard.map((user, idx) => {
+                        // تلوين المراكز الثلاثة الأولى
                         let rankColor = 'bg-slate-800 text-slate-400';
                         let borderClass = 'border-white/5';
                         if (idx === 0) { rankColor = 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-amber-500/20 shadow-lg'; borderClass = 'border-amber-500/30'; }
                         else if (idx === 1) { rankColor = 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-500/20 shadow-lg'; borderClass = 'border-slate-400/30'; }
                         else if (idx === 2) { rankColor = 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/20 shadow-lg'; borderClass = 'border-orange-500/30'; }
 
+                        // تحديد أيقونة الدواء (سائل أم حبوب)
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
@@ -181,6 +184,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
                                         <MessageCircle size={20} />
                                     </div>
+                                    {/* زر الحذف لصاحب الغرفة أو الأدمن */}
                                     {(currentUser.uid === room.createdBy || currentUser.isAdmin) && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}

@@ -1,14 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
-    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, limit, where 
+    collection, getDocs, updateDoc, doc, addDoc, query, orderBy, limit 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { UserProfile, DailyLog, PlanDay, Article, Ticket, AuditLog } from '../types';
+import { UserProfile, DailyLog, Article, Ticket, AuditLog } from '../types';
 import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
-    Ban, MessageSquare, Activity, Search, 
-    Users, Megaphone, Lock, Eye, Save, Plus, X, Flag, FileText, LifeBuoy
+    Ban, Activity, Search, Users, Lock, Eye, Save, Plus, X, Flag, FileText, LifeBuoy, Zap, ShieldAlert, Pill, FlaskConical
 } from 'lucide-react';
 import { 
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
@@ -25,8 +24,6 @@ interface DashboardStats {
 }
 
 export const AdminView = () => {
-    const { t } = useLanguage();
-    
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'cms' | 'tickets' | 'audit'>('overview');
     const [loading, setLoading] = useState(false);
@@ -95,7 +92,7 @@ export const AdminView = () => {
         setSelectedUser(user);
 
         try {
-             // Dynamic import to avoid SSR issues if any, mainly ensuring standard firebase usage
+             // Fetch logs specific to user
              const d = await import('firebase/firestore').then(mod => mod.getDoc(mod.doc(db, "users", user.uid!)));
              if (d.exists()) {
                  const data = d.data();
@@ -123,6 +120,14 @@ export const AdminView = () => {
         setUsers(users.map(u => u.uid === selectedUser.uid ? {...u, isFlagged: newVal} : u));
     };
 
+    const toggleBan = async () => {
+        if (!selectedUser?.uid) return;
+        const newVal = !selectedUser.isBanned;
+        await updateDoc(doc(db, "users", selectedUser.uid), { isBanned: newVal });
+        setSelectedUser({...selectedUser, isBanned: newVal});
+        setUsers(users.map(u => u.uid === selectedUser.uid ? {...u, isBanned: newVal} : u));
+    }
+
     const publishArticle = async () => {
         if (!newArticle.title) return;
         await addDoc(collection(db, "articles"), {
@@ -144,7 +149,7 @@ export const AdminView = () => {
         const now = Date.now();
 
         users.forEach(u => {
-            if (u.email === 'admin@islamguide.com') return;
+            if (u.email?.includes('admin')) return;
             if (u.isBanned) banned++;
             if (u.medType === 'narcotic') medTypes.narcotic++;
             else if (u.medType === 'psychiatric') medTypes.psychiatric++;
@@ -153,18 +158,21 @@ export const AdminView = () => {
             const p = u.progress || 0;
             if (p < 30) progress.start++; else if (p < 80) progress.mid++; else progress.end++;
 
+            // Active in last 24h
             if (u.lastActive && (now - new Date(u.lastActive).getTime() < 86400000)) active++;
+            
+            // Risk Logic: Flagged OR (Inactive for 7 days AND progress < 50%)
             if (u.isFlagged || (u.lastActive && (now - new Date(u.lastActive).getTime() > 86400000 * 7) && p < 50)) risk++;
         });
 
         return {
-            totalUsers: users.length - 1, // Exclude admin roughly
+            totalUsers: users.length > 1 ? users.length - 1 : 0, 
             activeToday: active,
             bannedUsers: banned,
             atRisk: risk,
             medTypeDistribution: [
                 { name: 'مخدرات', value: medTypes.narcotic, color: '#f43f5e' },
-                { name: 'نفسية', value: medTypes.psychiatric, color: '#8b5cf6' },
+                { name: 'نفسية', value: medTypes.psychiatric, color: '#f59e0b' },
                 { name: 'عامة', value: medTypes.normal, color: '#10b981' },
             ].filter(x => x.value > 0),
             progressDistribution: [
@@ -176,8 +184,8 @@ export const AdminView = () => {
     }, [users]);
 
     const filteredUsers = users.filter(u => {
-        if (u.email === 'admin@islamguide.com') return false;
-        const matchSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+        if (u.email?.includes('admin')) return false;
+        const matchSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
         let matchFilter = true;
         if (filterType === 'banned') matchFilter = !!u.isBanned;
         if (filterType === 'flagged') matchFilter = !!u.isFlagged;
@@ -188,6 +196,13 @@ export const AdminView = () => {
         }
         return matchSearch && matchFilter;
     });
+
+    // Helper for Pace Label
+    const getPaceLabel = (speed?: number) => {
+        if (!speed || speed === 1.0) return "Normal";
+        if (speed < 1.0) return "Slow (Extended)";
+        return "Fast (Intense)";
+    };
 
     return (
         <LayoutContainer>
@@ -296,12 +311,14 @@ export const AdminView = () => {
                                         {user.isFlagged && <div className="absolute -top-1 -right-1 bg-rose-500 rounded-full p-1"><Flag size={8} className="text-white"/></div>}
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white flex items-center gap-2">{user.name} {user.isBanned && <Ban size={12} className="text-rose-500"/>}</h4>
+                                        <h4 className="font-bold text-white flex items-center gap-2">
+                                            {user.name} 
+                                            {user.isBanned && <Ban size={12} className="text-rose-500"/>}
+                                        </h4>
                                         <p className="text-xs text-slate-500">{user.email}</p>
-                                        {/* Added Med Info Display */}
                                         <div className="flex gap-2 mt-1">
-                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.medType}</Badge>
-                                            {user.medForm && <Badge color="indigo" className="!text-[9px] !px-1.5 !py-0.5">{user.medForm === 'liquid' ? 'Liquid' : 'Tablet'}</Badge>}
+                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.medType || 'Normal'}</Badge>
+                                            {user.planType === 'algorithm' && <Badge color="indigo" className="!text-[9px] !px-1.5 !py-0.5">Smart</Badge>}
                                         </div>
                                     </div>
                                 </div>
@@ -396,7 +413,7 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* === DOCTOR INSPECTOR MODAL === */}
+            {/* === USER INSPECTOR MODAL === */}
             {selectedUser && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-5xl h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative overflow-hidden">
@@ -413,25 +430,47 @@ export const AdminView = () => {
                                     {selectedUser.name}
                                     {selectedUser.isFlagged && <Badge color="red">MAPPED FOR REVIEW</Badge>}
                                 </h2>
-                                <div className="flex gap-2 text-slate-500 font-mono text-sm mt-1">
+                                <div className="flex gap-2 text-slate-500 font-mono text-sm mt-1 items-center">
                                     <span>{selectedUser.email}</span>
                                     <span>•</span>
-                                    {/* Display Med Type and Form/Unit */}
-                                    <span className="text-indigo-400 font-bold">
-                                        {selectedUser.medType} 
-                                        {selectedUser.medForm ? ` (${selectedUser.medForm === 'liquid' ? 'Liquid' : 'Tablet'} - ${selectedUser.medUnit || 'mg'})` : ''}
+                                    {/* Smart System Data */}
+                                    <span className="flex items-center gap-1 text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded">
+                                        {selectedUser.medForm === 'liquid' ? <FlaskConical size={12}/> : <Pill size={12}/>}
+                                        {selectedUser.medUnit}
+                                    </span>
+                                    <span className="text-slate-500 text-[10px] uppercase font-bold border border-slate-700 px-1 rounded">
+                                        {getPaceLabel(selectedUser.speedModifier)}
                                     </span>
                                 </div>
                             </div>
                             <div className="mr-auto flex gap-2">
-                                <Button onClick={toggleFlag} variant={selectedUser.isFlagged ? "success" : "danger"} className="!py-2 !px-4">
-                                    <Flag size={16} className="mr-2" /> {selectedUser.isFlagged ? "Remove Flag" : "Flag User"}
+                                <Button onClick={toggleBan} variant={selectedUser.isBanned ? "success" : "danger"} className="!py-2 !px-4 !text-xs">
+                                     <Ban size={14} className="mr-2"/> {selectedUser.isBanned ? "Unban" : "Ban User"}
+                                </Button>
+                                <Button onClick={toggleFlag} variant={selectedUser.isFlagged ? "success" : "secondary"} className="!py-2 !px-4 !text-xs">
+                                    <Flag size={14} className="mr-2" /> {selectedUser.isFlagged ? "Unflag" : "Flag"}
                                 </Button>
                             </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 custom-scrollbar">
                             <div className="lg:col-span-2 space-y-6">
+                                {/* Plan Type Alert */}
+                                <div className="flex gap-4">
+                                     <div className="flex-1 bg-slate-950 p-4 rounded-xl border border-white/5">
+                                         <span className="block text-xs text-slate-500 uppercase">Plan Type</span>
+                                         <span className="text-lg font-bold text-white capitalize">{selectedUser.planType || 'Algorithm'}</span>
+                                     </div>
+                                     <div className="flex-1 bg-slate-950 p-4 rounded-xl border border-white/5">
+                                         <span className="block text-xs text-slate-500 uppercase">Progress</span>
+                                         <span className="text-lg font-bold text-emerald-400">{Math.round(selectedUser.progress || 0)}%</span>
+                                     </div>
+                                     <div className="flex-1 bg-slate-950 p-4 rounded-xl border border-white/5">
+                                         <span className="block text-xs text-slate-500 uppercase">Last Active</span>
+                                         <span className="text-sm font-bold text-white">{selectedUser.lastActive ? new Date(selectedUser.lastActive).toLocaleDateString() : 'N/A'}</span>
+                                     </div>
+                                </div>
+
                                 <Card className="bg-slate-950 border-white/5 min-h-[300px]">
                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Dose Reduction History ({selectedUser.medUnit || 'mg'})</h3>
                                     <ResponsiveContainer width="100%" height={250}>
@@ -450,23 +489,6 @@ export const AdminView = () => {
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </Card>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                                         <span className="block text-xs text-slate-500 uppercase">Avg Sleep</span>
-                                         <span className="text-2xl font-bold text-white">
-                                             {inspectLogs.length > 0 
-                                                ? (inspectLogs.reduce((a, b) => a + (b.sleepHours || 0), 0) / inspectLogs.length).toFixed(1) 
-                                                : 0}h
-                                         </span>
-                                     </div>
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                                         <span className="block text-xs text-slate-500 uppercase">Bad Mood Count</span>
-                                         <span className="text-2xl font-bold text-rose-400">
-                                             {inspectLogs.filter(l => l.mood === 'bad').length}
-                                         </span>
-                                     </div>
-                                </div>
                             </div>
 
                             <div className="space-y-6">
@@ -483,6 +505,7 @@ export const AdminView = () => {
 
                                 <div className="bg-slate-950 rounded-2xl border border-white/5 p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 sticky top-0 bg-slate-950 py-2">Last 7 Days Symptoms</h3>
+                                    {inspectLogs.length === 0 && <p className="text-slate-600 text-xs italic">No logs available.</p>}
                                     {inspectLogs.slice(-7).reverse().map((log, i) => (
                                         <div key={i} className="mb-3 pb-3 border-b border-white/5 last:border-0">
                                             <div className="flex justify-between text-xs mb-1">
@@ -494,6 +517,7 @@ export const AdminView = () => {
                                                     <span key={si} className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300">{s}</span>
                                                 )) || <span className="text-[10px] text-slate-600">No symptoms</span>}
                                             </div>
+                                            <div className="text-[10px] text-indigo-400 mt-1">Dose: {log.doseTaken}{selectedUser.medUnit}</div>
                                         </div>
                                     ))}
                                 </div>

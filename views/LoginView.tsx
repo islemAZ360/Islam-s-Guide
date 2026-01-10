@@ -19,16 +19,16 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6 relative overflow-hidden" dir={dir}>
-      {/* Background Ambient Effects */}
+      {/* خلفية تفاعلية (Ambient Background Effects) */}
       <div className="absolute top-0 left-0 w-[500px] md:w-[800px] h-[500px] md:h-[800px] bg-indigo-600/10 rounded-full blur-[100px] md:blur-[150px] -translate-x-1/2 -translate-y-1/2 animate-pulse duration-[10000ms]"></div>
       <div className="absolute bottom-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-violet-600/5 rounded-full blur-[80px] md:blur-[120px] translate-x-1/2 translate-y-1/2"></div>
       
-      {/* Top Language Switcher (Fixed Position) */}
+      {/* مبدل اللغة في الزاوية */}
       <div className="absolute top-6 right-6 z-50">
         <LanguageSwitcher />
       </div>
 
-      <Card className="w-full max-w-md p-8 md:p-10 relative z-10 border-white/10 shadow-[0_0_80px_rgba(79,70,229,0.15)] bg-slate-900/80">
+      <Card className="w-full max-w-md p-8 md:p-10 relative z-10 border-white/10 shadow-[0_0_80px_rgba(79,70,229,0.15)] bg-slate-900/80 backdrop-blur-2xl">
         <div className="text-center mb-10">
           <div className="relative inline-block group">
               <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-full"></div>
@@ -43,7 +43,7 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
         <div className="space-y-6">
             <Button 
                 onClick={handleGoogleLogin}
-                className="w-full py-4 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3"
+                className="w-full py-4 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3 font-bold"
             >
                 <Chrome className="w-5 h-5" />
                 <span>{t('login_google')}</span>
@@ -56,29 +56,34 @@ export const LoginView = ({ handleLogin, handleGoogleLogin, email, setEmail, pas
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-4">
-                <div className="group relative">
-                    <input 
-                        type="text" 
-                        placeholder={t('email')}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
-                    />
+                <div className="space-y-4">
+                    <div className="group relative">
+                        <input 
+                            type="text" 
+                            placeholder={t('email')}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
+                        />
+                    </div>
+                    <div className="group relative">
+                        <input 
+                            type="password" 
+                            placeholder={t('password')}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
+                        />
+                    </div>
                 </div>
-                <div className="group relative">
-                    <input 
-                        type="password" 
-                        placeholder={t('password')}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
-                    />
-                </div>
-            </div>
-            {loginError && <p className="text-rose-400 text-sm bg-rose-500/10 p-4 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">{t('error_prefix')}{loginError}</p>}
-            
-            <Button className="w-full py-5 text-lg shadow-indigo-500/25" type="submit">{t('login_email')}</Button>
+                
+                {loginError && (
+                    <div className="text-rose-400 text-sm bg-rose-500/10 p-4 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
+                        {t('error_prefix')}{loginError}
+                    </div>
+                )}
+                
+                <Button className="w-full py-5 text-lg shadow-indigo-500/25" type="submit">{t('login_email')}</Button>
             </form>
         </div>
           

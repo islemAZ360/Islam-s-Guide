@@ -47,7 +47,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
           Islam's Guide
         </h2>
         <span className="text-[10px] text-slate-500 mr-[3.25rem] block mt-2 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
-            Pro Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Smart Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
         </span>
       </div>
       

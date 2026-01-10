@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Card, PageHeader, LayoutContainer } from '../components/UI';
 import { DailyLog, PlanDay, UserProfile } from '../types';
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine
 } from 'recharts';
 import { Smile, Activity, Zap, Moon, Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -15,28 +15,52 @@ interface StatsViewProps {
 
 export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     const { t } = useLanguage();
+    // استخراج وحدة القياس لضمان دقة العرض في المخططات
     const unitLabel = userProfile?.medUnit || 'mg';
 
-    // 1. Mood Data Calculation
+    // 1. حساب بيانات الحالة المزاجية
     const moodData = useMemo(() => [
-        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' },
-        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' },
-        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },
+        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, // Emerald
+        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, // Amber
+        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    // Rose
     ].filter(d => d.value > 0), [logs, t]);
 
-    // 2. Adherence / Projection Data
+    // 2. حساب بيانات الالتزام (مخطط vs فعلي)
+    // نقوم بدمج السجلات السابقة مع الخطة المستقبلية لإنشاء خط زمني متصل
     const inventoryProjection = useMemo(() => {
-        const combined = [...logs, ...plan.filter(p => p.date > (logs[logs.length-1]?.date || ''))];
-        const relevantDays = combined.sort((a,b) => a.date.localeCompare(b.date));
+        // نأخذ آخر تاريخ مسجل
+        const lastLogDate = logs.length > 0 ? logs[logs.length-1].date : '';
         
-        return relevantDays.map(day => ({
-            date: day.date.slice(5), // MM-DD
-            planned: 'plannedDose' in day ? (day as PlanDay).plannedDose : 0,
-            actual: 'doseTaken' in day ? (day as DailyLog).doseTaken : null,
+        // المستقبل: الأيام في الخطة التي تأتي بعد آخر سجل
+        const futurePlan = plan.filter(p => p.date > lastLogDate);
+        
+        // الماضي: السجلات الموجودة
+        // نقوم بتحويل السجلات إلى نفس هيكل البيانات للرسم البياني
+        const pastData = logs.map(log => {
+            // نحاول إيجاد الجرعة المخططة لذلك اليوم للمقارنة
+            const plannedForDay = plan.find(p => p.date === log.date)?.plannedDose || 0;
+            return {
+                date: log.date.slice(5), // MM-DD
+                fullDate: log.date,
+                planned: plannedForDay,
+                actual: log.doseTaken,
+                isProjected: false
+            };
+        });
+
+        // المستقبل: بيانات توقعية
+        const futureData = futurePlan.map(day => ({
+            date: day.date.slice(5),
+            fullDate: day.date,
+            planned: day.plannedDose,
+            actual: null, // لا يوجد جرعة فعلية بعد
+            isProjected: true
         }));
+
+        return [...pastData, ...futureData];
     }, [plan, logs]);
 
-    // 3. Badges Logic
+    // 3. منطق الأوسمة (Gamification)
     const badges = [
         {
             id: 'warrior',
@@ -50,6 +74,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_halfway'),
             icon: Zap,
             color: 'amber',
+            // تم تحقيق الوسام إذا كانت الجرعة الحالية أقل من نصف جرعة البداية
             achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2)
         },
         {
@@ -57,6 +82,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_sleep'),
             icon: Moon,
             color: 'blue',
+            // معدل النوم آخر 3 أيام جيد
             achieved: logs.length > 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7
         },
         {
@@ -64,6 +90,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_stable'),
             icon: Smile,
             color: 'emerald',
+            // آخر 3 أيام مزاج جيد
             achieved: logs.length > 3 && logs.slice(-3).every(l => l.mood === 'good')
         }
     ];
@@ -72,10 +99,10 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
       <LayoutContainer>
           <PageHeader 
             title={t('nav_stats')}
-            subtitle="تحليلات الأداء والمؤشرات الحيوية."
+            subtitle="تحليلات الأداء والمؤشرات الحيوية ومتابعة الالتزام."
           />
 
-          {/* Badges Section */}
+          {/* Badges Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {badges.map((badge) => (
                   <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30` : 'bg-slate-900/40 border-white/5 opacity-50 grayscale'}`}>
@@ -91,17 +118,17 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* 1. Planned vs Actual (Adherence) */}
+              {/* 1. Adherence Chart (Planned vs Actual) */}
               <Card className="min-h-[400px] flex flex-col md:col-span-2 bg-slate-900/50">
                   <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
                           <Activity className="w-5 h-5"/>
                       </div>
-                       الالتزام بالخطة (مخطط vs فعلي)
+                       مسار التعافي (المخطط vs الفعلي)
                   </h3>
                   <div className="flex-1 h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={inventoryProjection.slice(-30)}>
+                          <AreaChart data={inventoryProjection.slice(-30)}> {/* عرض آخر 30 نقطة فقط لعدم الازدحام */}
                               <defs>
                                 <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -119,9 +146,10 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                   contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                   itemStyle={{color: '#fff'}}
                                   formatter={(val: number) => [`${val} ${unitLabel}`, '']}
+                                  labelFormatter={(label) => `التاريخ: ${label}`}
                               />
-                              <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" />
-                              <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" connectNulls />
+                              <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" strokeWidth={2} />
+                              <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" strokeWidth={2} connectNulls />
                           </AreaChart>
                       </ResponsiveContainer>
                   </div>
@@ -133,7 +161,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                           <Smile className="w-5 h-5"/>
                       </div>
-                      الحالة المزاجية
+                      تحليل الحالة المزاجية
                   </h3>
                   <div className="flex-1 relative">
                        {moodData.length > 0 ? (
@@ -156,7 +184,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                   </Pie>
                                   <Tooltip 
                                       contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                      itemStyle={{fontWeight: 'bold'}}
+                                      itemStyle={{fontWeight: 'bold', color: '#fff'}}
                                   />
                               </PieChart>
                           </ResponsiveContainer>
@@ -176,13 +204,13 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                   </div>
               </Card>
 
-              {/* 3. Sleep & Doses Bar Chart */}
+              {/* 3. Sleep Quality Chart */}
               <Card className="min-h-[350px] flex flex-col">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                           <Moon className="w-5 h-5"/>
                       </div>
-                       جودة النوم (ساعات)
+                       جودة النوم (آخر 7 أيام)
                   </h3>
                   <div className="flex-1">
                       <ResponsiveContainer width="100%" height="100%">
@@ -193,8 +221,10 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                               <Tooltip 
                                   cursor={{fill: '#1e293b', opacity: 0.5}}
                                   contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                  itemStyle={{color: '#fff'}}
+                                  formatter={(val) => [`${val} ساعة`, 'النوم']}
                               />
-                              <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target', fill: '#10b981', fontSize: 10 }} />
+                              <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'الهدف (7)', fill: '#10b981', fontSize: 10 }} />
                               <Bar dataKey="sleepHours" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={20}>
                                 {logs.slice(-7).map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />

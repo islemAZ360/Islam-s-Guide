@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css'; // <--- هذا السطر هو الذي يربط ملف التصميم الذي أنشأته
+import './index.css'; // استيراد ملف التصميم الذي يحتوي على Tailwind و Animations
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

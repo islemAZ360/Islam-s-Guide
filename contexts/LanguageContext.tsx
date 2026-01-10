@@ -4,49 +4,51 @@ import { translations, Language } from '../services/translations';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: keyof typeof translations['en']) => string;
+  t: (key: keyof typeof translations['en']) => string; // Type-safe translation keys
   dir: 'rtl' | 'ltr';
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider = ({ children }: { children?: React.ReactNode }) => {
-  // Initialize with browser detection logic
+  // 1. Initialize Language State
   const [language, setLanguageState] = useState<Language>(() => {
-    // 1. Check Local Storage
+    // A. Check Local Storage first
     const saved = localStorage.getItem('app_lang');
     if (saved && ['ar', 'en', 'ru'].includes(saved)) {
         return saved as Language;
     }
     
-    // 2. Check Browser Language
+    // B. Check Browser Language preference
     if (typeof navigator !== 'undefined') {
         const browserLang = navigator.language.split('-')[0];
         if (browserLang === 'ar') return 'ar';
         if (browserLang === 'ru') return 'ru';
     }
 
-    // 3. Default to English (or change to 'ar' if you prefer Arabic default)
-    return 'ar'; // Changed default to Arabic as per context, or 'en'
+    // C. Default fallback (Arabic for this specific audience)
+    return 'ar'; 
   });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('app_lang', lang);
     
-    // Update Document Direction
+    // Update HTML attributes for accessibility and CSS
     const dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dir = dir;
     document.documentElement.lang = lang;
   };
 
+  // The translation function
   const t = (key: keyof typeof translations['en']) => {
-    return translations[language][key] || key;
+    // Fallback to English if key missing in current lang, then fallback to key string
+    return translations[language][key] || translations['en'][key] || key;
   };
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
 
-  // Set initial direction on mount
+  // Effect to sync direction on mount/change
   useEffect(() => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;

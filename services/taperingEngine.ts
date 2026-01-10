@@ -1,7 +1,7 @@
 import { Inventory, PlanDay, DailyLog, ManualPhase } from '../types';
 
 /**
- * Helper to add days safely using UTC to avoid timezone duplication/skipping
+ * Helper to add days safely
  */
 const addDays = (dateStr: string, days: number): string => {
   const date = new Date(dateStr);
@@ -10,17 +10,18 @@ const addDays = (dateStr: string, days: number): string => {
 };
 
 /**
- * Calculates total inventory
+ * Calculates total inventory based on form type
  */
 export const calculateTotalInventory = (inv: Inventory): number => {
   const total = (inv.boxes * inv.pillsPerBox) + inv.loosePills;
   return Math.max(0, total);
 };
 
+// Minimum cut unit. For tablets usually 0.5 or 0.25. For liquid 0.1.
 const MIN_SPLIT = 0.1; 
 
 const roundToSplit = (num: number): number => {
-  if (num <= MIN_SPLIT / 2) return 0;
+  if (num <= 0.05) return 0;
   return Math.round(num * 10) / 10;
 };
 
@@ -49,148 +50,175 @@ export const generateManualPlan = (
 };
 
 /**
- * SMART INTELLIGENT ALGORITHM
- * Logic:
- * 1. Reserve inventory for the "Tail" (Stopping Phase) first as priority.
- * 2. If surplus inventory exists, extend the tail (add skip-days cycles).
- * 3. Use remaining inventory for the "Descent" (Active Tapering).
+ * SMART INTELLIGENT ALGORITHM (Elastic Inventory Logic)
+ * 
+ * Philosophy:
+ * 1. "Safety First": Always reserve pills for the 'Tail' (Stopping Phase).
+ * 2. If Inventory is LOW: Shorten the high-dose duration, but keep the tail long.
+ * 3. If Inventory is HIGH: Extend the tail (add skip-3-days, skip-4-days cycles).
  */
 export const generatePlan = (
   totalPills: number, 
   startDose: number, 
   startDateStr: string,
-  speedModifier: number = 1.0 
+  speedModifier: number = 1.0 // 0.8 (Slow/Extended), 1.0 (Normal), 1.2 (Fast)
 ): PlanDay[] => {
   
   if (totalPills <= 0 || startDose <= 0) return [];
 
-  // 1. Setup
+  // --- 1. SETUP & DEFINITIONS ---
   let currentDose = roundToSplit(startDose);
-  if (currentDose === 0 && startDose > 0) currentDose = MIN_SPLIT;
   
-  // Determine the smallest unit used for the tail (e.g. 0.5 or 0.1)
+  // Define the "Tail Unit" (The smallest dose before stopping)
+  // Usually 0.5mg for tablets, or equal to current dose if already small.
   const tailUnit = currentDose <= 0.5 ? currentDose : 0.5;
 
-  // 2. Define Essential Tail Requirements
-  // We want at least: [Dose, 0] x 3 cycles, [Dose, 0, 0] x 3 cycles
-  // This is the safety net.
-  const baseTailCycles = Math.max(2, Math.round(3 / speedModifier));
-  const costPerSkip1 = tailUnit; // Cost of 1 cycle of (Dose, 0) is just Dose
-  const costPerSkip2 = tailUnit; // Cost of 1 cycle of (Dose, 0, 0) is just Dose
-  
-  const essentialTailCost = (costPerSkip1 * baseTailCycles) + (costPerSkip2 * baseTailCycles);
-  
-  // 3. Allocate Inventory
-  let remainingInventory = totalPills;
-  let descentPlan: { dose: number, days: number }[] = [];
-  let tailPlan: { dose: number, days: number }[] = [];
+  // Base duration for a phase (e.g., 2 weeks), scaled by user preference.
+  // Slower speed (0.8) means LONGER duration.
+  // Faster speed (1.2) means SHORTER duration.
+  const basePhaseDuration = Math.max(7, Math.round(14 / speedModifier));
 
-  // Priority allocation: Secure the tail first? 
-  // No, actually we calculate descent normally, but if we run short, we cut descent to save the tail.
-  // Better approach: Calculate cost of descent step-by-step.
+  // --- 2. RESERVE INVENTORY FOR THE "ESSENTIAL TAIL" ---
+  // We MUST guarantee these phases exist to prevent shock.
+  // Phase T1: Every Other Day (1 On, 1 Off) -> Needs (basePhaseDuration / 2) pills
+  // Phase T2: Every 3rd Day (1 On, 2 Off)   -> Needs (basePhaseDuration / 3) pills
   
-  let inventoryForDescent = remainingInventory - essentialTailCost;
+  const cyclesT1 = Math.ceil(basePhaseDuration / 2); // Count of doses needed
+  const cyclesT2 = Math.ceil(basePhaseDuration / 3); // Count of doses needed
   
-  // If we are critical (can't even afford tail), we have to shrink tail later.
-  if (inventoryForDescent < 0) inventoryForDescent = 0;
-
-  // --- PHASE A: DESCENT (High Doses) ---
-  const reductionRate = 0.10 * speedModifier; 
+  const pillsForEssentialTail = (cyclesT1 * tailUnit) + (cyclesT2 * tailUnit);
   
-  while (currentDose > tailUnit) {
-      const idealDuration = 14; 
-      
-      // Can we afford this step with the allocated descent inventory?
-      const maxAffordableDays = Math.floor(inventoryForDescent / currentDose);
-      let actualDuration = Math.min(idealDuration, maxAffordableDays);
-      
-      if (actualDuration > 0) {
-          descentPlan.push({ dose: currentDose, days: actualDuration });
-          inventoryForDescent -= (currentDose * actualDuration);
-      } else {
-          // Can't afford descent at this high dose, skip to lower dose immediately to save pills
-      }
-
-      // Next Dose
-      let nextDose = roundToSplit(currentDose * (1 - reductionRate));
-      if (nextDose >= currentDose) nextDose = roundToSplit(currentDose - MIN_SPLIT);
-      if (nextDose < tailUnit) nextDose = tailUnit;
-      
-      currentDose = nextDose;
+  // Calculate what's left for the "Descent" (coming down from high dose)
+  let inventoryForDescent = totalPills - pillsForEssentialTail;
+  
+  // If we are critically low, we still prioritize tail, but maybe shorten it slightly
+  // rather than cutting the descent entirely.
+  let isCriticalLow = false;
+  if (inventoryForDescent < 0) {
+      isCriticalLow = true;
+      inventoryForDescent = 0; // We will just use whatever we have for the tail
   }
 
-  // Recalculate true remaining for the tail
-  remainingInventory = totalPills - descentPlan.reduce((acc, p) => acc + (p.dose * p.days), 0);
-
-  // --- PHASE B: SMART TAIL (Elastic) ---
-  if (remainingInventory > 0) {
+  // --- 3. BUILD THE DESCENTS (From StartDose down to TailUnit) ---
+  let descentPlan: { dose: number, days: number }[] = [];
+  
+  // Only calculate descent if we are above the tail unit
+  if (currentDose > tailUnit && !isCriticalLow) {
+      // Reduction rate per step (e.g. 10%)
+      const reductionRate = 0.10 * speedModifier; 
       
-      // 1. Daily Stabilization Phase at lowest dose
-      // Only if we have surplus above the essential tail needs
-      const essentialCostRemaining = essentialTailCost; 
-      const surplusForDaily = remainingInventory - essentialCostRemaining;
-      
-      if (surplusForDaily > 0) {
-          const maxDailyDays = 14; 
-          const affordableDaily = Math.floor(surplusForDaily / tailUnit);
-          const actualDaily = Math.min(maxDailyDays, affordableDaily);
+      while (currentDose > tailUnit) {
+          // Calculate cost for one full phase at this dose
+          const costForFullPhase = currentDose * basePhaseDuration;
           
-          if (actualDaily > 0) {
-              tailPlan.push({ dose: tailUnit, days: actualDaily });
-              remainingInventory -= (tailUnit * actualDaily);
+          // Determine actual days we can afford at this dose
+          let actualDays = basePhaseDuration;
+          
+          // Smart Logic: If pills are tight, shrink high-dose days to save them for later
+          if (inventoryForDescent < costForFullPhase) {
+              actualDays = Math.floor(inventoryForDescent / currentDose);
+          }
+          
+          if (actualDays > 0) {
+              descentPlan.push({ dose: currentDose, days: actualDays });
+              inventoryForDescent -= (currentDose * actualDays);
+          } else {
+              // We can't afford any days at this high dose, force reduce to save pills
+              // This acts like a "Rapid Detox" for the start to ensure soft landing
+          }
+          
+          // Calculate Next Dose
+          let nextDose = roundToSplit(currentDose * (1 - reductionRate));
+          // Ensure we don't get stuck or go up
+          if (nextDose >= currentDose) nextDose = roundToSplit(currentDose - MIN_SPLIT);
+          // Don't go below tail unit in the descent phase
+          if (nextDose < tailUnit) nextDose = tailUnit;
+          
+          // Break loop if we hit the tail unit
+          if (currentDose === tailUnit) break;
+          currentDose = nextDose;
+      }
+  } else if (currentDose > tailUnit && isCriticalLow) {
+      // Critical Scenario: User has high dose but NO pills. 
+      // Strategy: Immediate drop to Tail Unit to stretch supplies (Emergency Mode)
+      currentDose = tailUnit; 
+  }
+
+  // --- 4. BUILD THE TAIL (Smart Extension) ---
+  // Now we use ALL remaining pills to build the best possible tail.
+  
+  // Re-calculate true remaining (Total - Used in Descent)
+  const usedInDescent = descentPlan.reduce((acc, p) => acc + (p.dose * p.days), 0);
+  let remainingForTail = totalPills - usedInDescent;
+  
+  const tailPlan: { dose: number, days: number }[] = [];
+  
+  if (remainingForTail > 0) {
+      // A. Stabilization at lowest dose (Daily)
+      // Only if we have surplus. If critical, skip straight to spacing.
+      const costForDaily = tailUnit * basePhaseDuration;
+      if (remainingForTail > (pillsForEssentialTail + costForDaily)) {
+          // We have plenty! Do a full daily phase
+          tailPlan.push({ dose: tailUnit, days: basePhaseDuration });
+          remainingForTail -= costForDaily;
+      } else if (remainingForTail > pillsForEssentialTail) {
+          // We have some extra, do a partial daily phase
+          const affordableDays = Math.floor((remainingForTail - pillsForEssentialTail) / tailUnit);
+          if (affordableDays > 0) {
+               tailPlan.push({ dose: tailUnit, days: affordableDays });
+               remainingForTail -= (tailUnit * affordableDays);
           }
       }
 
-      // 2. Skip 1 Day Phase (Day ON, Day OFF)
-      // Iterate cycles until base reached OR inventory runs out
-      let cycles1 = 0;
-      while (remainingInventory >= tailUnit && cycles1 < baseTailCycles) {
+      // B. Level 1: Skip 1 Day (1 On, 1 Off)
+      // Loop until we reach base duration OR run out
+      let daysCount1 = 0;
+      // We want to reach at least baseDuration * 2 (total days passed)
+      // Cycle is 2 days.
+      while (remainingForTail >= tailUnit && daysCount1 < basePhaseDuration) {
           tailPlan.push({ dose: tailUnit, days: 1 });
           tailPlan.push({ dose: 0, days: 1 });
-          remainingInventory -= tailUnit;
-          cycles1++;
+          remainingForTail -= tailUnit;
+          daysCount1 += 2; // 2 days passed in calendar
       }
 
-      // 3. Skip 2 Days Phase (Day ON, 2 Days OFF)
-      let cycles2 = 0;
-      while (remainingInventory >= tailUnit && cycles2 < baseTailCycles) {
+      // C. Level 2: Skip 2 Days (1 On, 2 Off)
+      let daysCount2 = 0;
+      while (remainingForTail >= tailUnit && daysCount2 < basePhaseDuration) {
           tailPlan.push({ dose: tailUnit, days: 1 });
           tailPlan.push({ dose: 0, days: 2 });
-          remainingInventory -= tailUnit;
-          cycles2++;
+          remainingForTail -= tailUnit;
+          daysCount2 += 3;
       }
 
-      // --- PHASE C: EXTENDED SURPLUS TAIL ---
-      // If we STILL have pills (User has big stash), we extend smoothly instead of stopping.
-      
-      // Level 3: Skip 3 Days (Day ON, 3 Days OFF)
-      while (remainingInventory >= tailUnit) {
+      // D. Level 3 (Extended): Skip 3 Days (1 On, 3 Off) - ONLY IF SURPLUS
+      while (remainingForTail >= tailUnit) {
           tailPlan.push({ dose: tailUnit, days: 1 });
           tailPlan.push({ dose: 0, days: 3 });
-          remainingInventory -= tailUnit;
+          remainingForTail -= tailUnit;
           
-          // Check if we can do Level 4: Skip 4 Days
-          if (remainingInventory >= tailUnit) {
+          // E. Level 4 (Super Extended): Skip 4 Days - If HUGE surplus
+          if (remainingForTail >= tailUnit) {
              tailPlan.push({ dose: tailUnit, days: 1 });
              tailPlan.push({ dose: 0, days: 4 });
-             remainingInventory -= tailUnit;
+             remainingForTail -= tailUnit;
           }
       }
   }
 
-  // --- FINAL ASSEMBLY ---
+  // --- 5. ASSEMBLE ---
   const finalSteps = [...descentPlan, ...tailPlan];
   const plan: PlanDay[] = [];
-  let currentDate = startDateStr.split('T')[0];
+  let currDate = startDateStr.split('T')[0];
 
   finalSteps.forEach(step => {
     for (let i = 0; i < step.days; i++) {
       plan.push({
-        date: currentDate,
+        date: currDate,
         plannedDose: step.dose,
         isPast: false
       });
-      currentDate = addDays(currentDate, 1);
+      currDate = addDays(currDate, 1);
     }
   });
 
@@ -199,6 +227,7 @@ export const generatePlan = (
 
 /**
  * RE-CALCULATE PLAN DYNAMICALLY
+ * Adjusted to ensure it recalculates based on remaining inventory correctly.
  */
 export const adjustPlan = (
   originalPlan: PlanDay[],
@@ -207,9 +236,9 @@ export const adjustPlan = (
   speedModifier: number = 1.0 
 ): PlanDay[] => {
   
-  // A. Sort logs
   const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  // Base Case: No logs yet
   if (sortedLogs.length === 0) {
       if (originalPlan.length === 0) return [];
       return generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier);
@@ -218,12 +247,11 @@ export const adjustPlan = (
   const lastLog = sortedLogs[sortedLogs.length - 1];
   const lastLogDate = lastLog.date;
 
-  // B. Calculate Remaining Inventory accurately
+  // Calculate REAL remaining inventory
   const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
   const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
 
-  // C. Keep History
-  // We use the original plan up to the last log date to maintain the 'view'
+  // Preserve History
   const historyDays = originalPlan
     .filter(day => day.date <= lastLogDate)
     .map(day => {
@@ -235,9 +263,17 @@ export const adjustPlan = (
         };
     });
   
-  // D. Generate Future
+  // Generate Future from TOMORROW
+  // Use the last dose taken as the new start point (or the planned next if today was skipped/0)
+  // If last dose was 0 (skip day), we need to find the last active dose to know where we are.
+  let newStartDose = lastLog.doseTaken;
+  if (newStartDose === 0) {
+      // Find last non-zero dose
+      const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
+      newStartDose = lastActive ? lastActive.doseTaken : originalPlan[0].plannedDose;
+  }
+
   const nextDayStr = addDays(lastLogDate, 1);
-  const newStartDose = lastLog.doseTaken;
 
   const futureDays = generatePlan(
       remainingInventory,

@@ -1,5 +1,4 @@
 export type MedType = 'narcotic' | 'psychiatric' | 'normal' | null;
-// New: Medication Form & Unit
 export type MedForm = 'tablet' | 'liquid'; 
 export type MedUnit = 'mg' | 'g' | 'ml' | 'l';
 
@@ -9,14 +8,17 @@ export interface UserProfile {
   name: string;
   medType: MedType;
   
-  // New Fields for Dosage Form
+  // Medication Details
   medForm?: MedForm;
   medUnit?: MedUnit;
   
   durationMonths: number;
   setupComplete: boolean;
   
+  // Smart System Flags
   planType?: 'algorithm' | 'manual';
+  speedModifier?: number; // 0.8 (Slow), 1.0 (Normal), 1.2 (Fast)
+  
   isBanned?: boolean;
   isAdmin?: boolean;
   lastActive?: string; 
@@ -28,12 +30,10 @@ export interface UserProfile {
 }
 
 export interface Inventory {
-  // We keep the logic "Boxes" vs "Single units" but concepts change for liquid
-  // For liquid: boxes = bottles, pillsPerBox = ml per bottle, etc.
   boxes: number;
-  pillsPerBox: number; // Represents: Pills per box OR Volume (ml) per bottle
-  loosePills: number;  // Represents: Loose pills OR Loose ml remaining
-  totalPills: number;  // Represents: Total amount in Base Unit (mg or ml)
+  pillsPerBox: number; // Volume or Count
+  loosePills: number;  // Remaining Volume or Count
+  totalPills: number;  // Calculated Total
 }
 
 export interface ManualPhase {
@@ -64,7 +64,7 @@ export interface PlanDay {
   log?: DailyLog;
 }
 
-// ... (No changes needed for Chat/Admin interfaces below)
+// --- Chat & Admin Types ---
 
 export interface ChatRoom {
   id: string;
@@ -82,14 +82,6 @@ export interface ChatMessage {
   senderName: string;
   timestamp: number;
   isAdmin?: boolean; 
-}
-
-export interface AdminMessage {
-  id: string;
-  text: string;
-  fromAdmin: boolean;
-  timestamp: number;
-  read: boolean;
 }
 
 export interface Article {

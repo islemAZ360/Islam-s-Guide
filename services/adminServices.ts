@@ -1,10 +1,11 @@
 import { 
-    collection, addDoc, updateDoc, doc, getDocs, query, where, orderBy, getDoc, setDoc 
+    collection, addDoc, updateDoc, doc, getDocs, query, orderBy, getDoc 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { AuditLog, Ticket, Article, UserProfile } from '../types';
 
-// --- Audit Logger ---
+// --- Audit Logger (نظام المراقبة) ---
+// يسجل كل حركة يقوم بها الأدمن لضمان عدم التلاعب
 export const logAdminAction = async (adminUser: UserProfile, action: string, details: string, targetId?: string) => {
     if (!adminUser.isAdmin || !adminUser.uid) return;
     
@@ -22,24 +23,29 @@ export const logAdminAction = async (adminUser: UserProfile, action: string, det
     }
 };
 
-// --- User Management Extras ---
+// --- User Management (إدارة المستخدمين) ---
+
+// وضع علامة "خطر" على المستخدم لمراقبته
 export const flagUser = async (admin: UserProfile, targetUid: string, isFlagged: boolean) => {
     await updateDoc(doc(db, 'users', targetUid), { isFlagged });
-    await logAdminAction(admin, 'FLAG_USER', `User flagged status set to ${isFlagged}`, targetUid);
+    await logAdminAction(admin, 'FLAG_USER', `Set flagged status to ${isFlagged}`, targetUid);
 };
 
+// حفظ ملاحظات الطبيب السرية
 export const saveDoctorNotes = async (targetUid: string, notes: string) => {
     await updateDoc(doc(db, 'users', targetUid), { doctorNotes: notes });
 };
 
-// --- CMS (Articles) ---
+// --- CMS (نظام إدارة المحتوى) ---
+
 export const publishArticle = async (admin: UserProfile, article: Omit<Article, 'id' | 'createdAt' | 'authorName'>) => {
     await addDoc(collection(db, 'articles'), {
         ...article,
         createdAt: Date.now(),
-        authorName: admin.name
+        authorName: admin.name,
+        isPublished: true
     });
-    await logAdminAction(admin, 'CREATE_ARTICLE', `Created article: ${article.title}`);
+    await logAdminAction(admin, 'CREATE_ARTICLE', `Published article: ${article.title}`);
 };
 
 export const fetchArticles = async () => {
@@ -48,14 +54,8 @@ export const fetchArticles = async () => {
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
 };
 
-export const deleteArticle = async (admin: UserProfile, articleId: string) => {
-    // Note: Actual delete logic requires deleteDoc imported
-    // For safety, generally we might just archive, but here is concept
-    // await deleteDoc(doc(db, 'articles', articleId));
-    // await logAdminAction(admin, 'DELETE_ARTICLE', `Deleted article ${articleId}`);
-};
+// --- Support Tickets (نظام الدعم الفني) ---
 
-// --- Support Tickets ---
 export const fetchAllTickets = async () => {
     const q = query(collection(db, 'tickets'), orderBy('lastUpdate', 'desc'));
     const snapshot = await getDocs(q);
@@ -76,12 +76,12 @@ export const replyToTicket = async (admin: UserProfile, ticketId: string, text: 
         senderName: admin.name,
         text,
         timestamp: Date.now(),
-        isAdmin: true
+        isAdmin: true // This flags the message as coming from Support
     };
     
     await updateDoc(doc(db, 'tickets', ticketId), {
         messages: [...currentMessages, newMessage],
         lastUpdate: Date.now(),
-        status: 'pending' // Usually admin reply puts it in pending user response
+        status: 'pending' // انتظار رد المستخدم
     });
 };

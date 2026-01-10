@@ -20,7 +20,7 @@ export const MobileNav = ({ currentView, setCurrentView }: MobileNavProps) => {
     { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
     { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
     
-    // New Items
+    // الأقسام الجديدة
     { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
     { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
     
@@ -30,7 +30,7 @@ export const MobileNav = ({ currentView, setCurrentView }: MobileNavProps) => {
   return (
     <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
       
-      {/* Scrollable Container with Hiding Scrollbar */}
+      {/* حاوية قابلة للتمرير الأفقي مع إخفاء شريط التمرير */}
       <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;

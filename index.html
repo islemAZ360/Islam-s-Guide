@@ -2,17 +2,32 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- Meta Tags for SEO & Social Sharing -->
     <title>Islam's Guide - رفيق التعافي الذكي</title>
+    <meta name="description" content="نظام ذكي للتعافي التدريجي الآمن، مدعوم بالخوارزميات وعلم الأعصاب.">
+    <meta name="theme-color" content="#020617">
+
+    <!-- Fonts: Tajawal for Arabic, Inter for English -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CDN (Optional fallback, usually handled by build process) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Base Styles to ensure dark theme loads immediately -->
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
       body {
-        font-family: 'Tajawal', sans-serif;
         background-color: #020617; /* Slate 950 */
         color: #e2e8f0;
+        font-family: 'Tajawal', sans-serif;
+        overflow-x: hidden; /* Prevent horizontal scroll on mobile */
       }
-      /* Custom Dark Scrollbar */
+      
+      /* Scrollbar Styling for Webkit */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -27,57 +42,10 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #475569; 
       }
-
-      /* --- Animation Utility Polyfills (mimics tailwindcss-animate) --- */
-      .animate-in { animation-duration: 150ms; --tw-enter-opacity: initial; --tw-enter-scale: initial; --tw-enter-rotate: initial; --tw-enter-translate-x: initial; --tw-enter-translate-y: initial; animation-name: enter; }
-      .fade-in { --tw-enter-opacity: 0; }
-      .zoom-in { --tw-enter-scale: 0.95; }
-      
-      .slide-in-from-top-1 { --tw-enter-translate-y: -0.25rem; }
-      .slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
-      .slide-in-from-top-4 { --tw-enter-translate-y: -1rem; }
-      .slide-in-from-top-8 { --tw-enter-translate-y: -2rem; }
-      
-      .slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
-      .slide-in-from-bottom-8 { --tw-enter-translate-y: 2rem; }
-      .slide-in-from-bottom-12 { --tw-enter-translate-y: 3rem; }
-      .slide-in-from-bottom-20 { --tw-enter-translate-y: 5rem; }
-      
-      .slide-in-from-left-4 { --tw-enter-translate-x: -1rem; }
-      .slide-in-from-right-8 { --tw-enter-translate-x: 2rem; }
-      
-      .duration-300 { animation-duration: 300ms; }
-      .duration-500 { animation-duration: 500ms; }
-      .duration-700 { animation-duration: 700ms; }
-      .duration-1000 { animation-duration: 1000ms; }
-      
-      .delay-200 { animation-delay: 200ms; }
-
-      @keyframes enter {
-        from {
-          opacity: var(--tw-enter-opacity, 1);
-          transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1) rotate(var(--tw-enter-rotate, 0));
-        }
-      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "firebase/": "https://esm.sh/firebase@^12.7.0/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
 </html>

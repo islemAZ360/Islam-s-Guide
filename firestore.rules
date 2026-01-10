@@ -1,54 +1,54 @@
---- START OF FILE firestore.rules ---
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // --- دوال مساعدة (Helper Functions) ---
     
+    // التحقق من تسجيل الدخول
     function isSignedIn() {
       return request.auth != null;
     }
     
+    // التحقق من ملكية الحساب
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
-    // التحقق من أن المستخدم أدمن
+    // التحقق من صلاحيات الأدمن (عن طريق قراءة مستند المستخدم)
     function isAdmin() {
       return isSignedIn() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
-    // --- Users Collection ---
+    // --- 1. مجموعة المستخدمين (Users) ---
     match /users/{userId} {
+      // الجميع يقرأ (لأجل لوحة المتصدرين)، الكتابة للمالك أو الأدمن
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isOwner(userId);
+      // الأدمن فقط يستطيع تعديل حقول حساسة مثل الحظر (isBanned)
       allow update: if isSignedIn() && (
         isAdmin() || 
         (isOwner(userId) && 
+         // منع المستخدم من منح نفسه صلاحيات أدمن أو فك الحظر عن نفسه
          request.resource.data.isAdmin == resource.data.isAdmin && 
          request.resource.data.isBanned == resource.data.isBanned
         )
       );
-      
-      match /admin_messages/{msgId} {
-        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
-        allow create: if isAdmin();
-        allow update, delete: if isAdmin();
-      }
     }
 
-    // --- Chat Rooms ---
+    // --- 2. غرف الدردشة (Chat Rooms) ---
     match /rooms/{roomId} {
       allow read, create: if isSignedIn();
+      // الحذف لصاحب الغرفة أو الأدمن فقط
       allow delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      
       match /messages/{msgId} {
         allow read, create: if isSignedIn();
       }
     }
 
-    // --- NEW: CMS (Articles) ---
+    // --- 3. نظام إدارة المحتوى (Articles) ---
     match /articles/{articleId} {
       // الجميع يقرأ المقالات المنشورة
       allow read: if isSignedIn();
@@ -56,23 +56,22 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // --- NEW: Support Tickets ---
+    // --- 4. نظام الدعم الفني (Support Tickets) ---
     match /tickets/{ticketId} {
       // المستخدم يرى تذاكره فقط، الأدمن يرى الكل
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       // المستخدم ينشئ تذكرة
       allow create: if isSignedIn();
-      // التعديل (مثل الرد أو تغيير الحالة)
+      // التعديل (مثل الرد أو تغيير الحالة) متاح للطرفين
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // --- NEW: Audit Logs ---
+    // --- 5. سجلات التدقيق (Audit Logs) ---
     match /audit_logs/{logId} {
       // الأدمن فقط يقرأ ويكتب السجلات
       allow read, create: if isAdmin();
-      // لا يسمح بالحذف أو التعديل لضمان النزاهة
+      // لا يسمح بالحذف أو التعديل لضمان نزاهة السجلات
       allow update, delete: if false;
     }
   }
 }
---- END OF FILE firestore.rules ---

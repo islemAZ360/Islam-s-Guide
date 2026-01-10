@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, Auth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB9_8yeOazYKhzHiHvyzBaIoDQiNduMnS0",
@@ -12,10 +12,10 @@ const firebaseConfig = {
   measurementId: "G-VNVJGFXLN4"
 };
 
-// Initialize Firebase
+// تهيئة Firebase (مع معالجة الأخطاء في حال عدم وجود الإنترنت)
 let app;
 let auth: Auth | undefined;
-let db: any; // Firestore instance
+let db: Firestore; 
 const googleProvider = new GoogleAuthProvider();
 
 try {
@@ -23,7 +23,8 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
 } catch (error) {
-  console.warn("Firebase initialization failed.", error);
+  console.warn("Firebase initialization failed or pending network connection.", error);
+  // يمكن إضافة منطق هنا للعمل بوضع عدم الاتصال (Offline Mode)
 }
 
 export { auth, db, googleProvider };
