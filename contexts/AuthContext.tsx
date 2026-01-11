@@ -2,11 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   User, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, // دالة إنشاء الحساب
   signInWithPopup, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  updateProfile // لتحديث اسم المستخدم فوراً
 } from 'firebase/auth';
-import { auth, googleProvider } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore'; // للكتابة في قاعدة البيانات
+import { auth, googleProvider, db } from '../services/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -14,6 +17,8 @@ interface AuthContextType {
   error: string | null;
   isDemoMode: boolean;
   loginWithEmail: (e: string, p: string) => Promise<void>;
+  // الدالة الجديدة لإنشاء الحساب
+  signupWithEmail: (e: string, p: string, name: string, data: { age: number, weight: number, height: number }) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   enableDemoMode: () => void;
@@ -30,10 +35,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // مراقبة حالة المستخدم (Firebase Listener)
   useEffect(() => {
-    // التحقق من وجود auth لضمان عدم حدوث أخطاء إذا لم يتم تهيئة Firebase
     if (!auth) {
         setLoading(false);
-        // لا نقوم بضبط خطأ هنا حتى لا يظهر للمستخدم العادي في حالة الديمو
         return;
     }
 
@@ -47,6 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [isDemoMode]);
 
+  // تسجيل الدخول
   const loginWithEmail = async (email: string, password: string) => {
     if (!auth) {
         setError("Authentication service is not initialized.");
@@ -60,31 +64,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       let errorMessage = 'Login Error';
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'User not found. Please check your email.';
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format.';
-      } else {
-        errorMessage = err.message;
-      }
+      if (err.code === 'auth/user-not-found') errorMessage = 'User not found.';
+      else if (err.code === 'auth/wrong-password') errorMessage = 'Incorrect password.';
+      else if (err.code === 'auth/invalid-email') errorMessage = 'Invalid email format.';
+      else errorMessage = err.message;
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const loginWithGoogle = async () => {
-    if (!auth) {
-        setError("Authentication service is not initialized.");
-        return;
-    }
+  // --- دالة إنشاء الحساب الجديدة ---
+  const signupWithEmail = async (email: string, password: string, name: string, data: { age: number, weight: number, height: number }) => {
+    if (!auth) return;
+    
+    setLoading(true);
+    setError(null);
 
+    try {
+        // 1. إنشاء الحساب في Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. تحديث الاسم في ملف Auth الشخصي
+        await updateProfile(user, { displayName: name });
+
+        // 3. إنشاء ملف المستخدم في قاعدة البيانات (Firestore) مع البيانات الفيزيائية
+        await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: email,
+            name: name,
+            role: 'normal_user', // افتراضياً مستخدم عادي
+            age: data.age,
+            weight: data.weight,
+            height: data.height,
+            setupComplete: false, // لا يزال يحتاج لإعداد الدواء
+            createdAt: new Date().toISOString(),
+            // تهيئة القيم الفارغة لتجنب الأخطاء لاحقاً
+            plan: [],
+            logs: [],
+            inventory: { boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 }
+        });
+
+    } catch (err: any) {
+        let errorMessage = 'Signup Error';
+        if (err.code === 'auth/email-already-in-use') errorMessage = 'Email already registered.';
+        else if (err.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters.';
+        else errorMessage = err.message;
+        setError(errorMessage);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    if (!auth) return;
     setLoading(true);
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
+      // ملاحظة: مع جوجل قد نحتاج خطوة إضافية لطلب العمر والوزن إذا كان مستخدماً جديداً، 
+      // لكن سنكتفي بالدخول المباشر حالياً للتبسيط.
     } catch (err: any) {
       setError('Google Login Error: ' + err.message);
     } finally {
@@ -99,7 +139,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setIsDemoMode(false);
       setCurrentUser(null);
-      // مسح التخزين المحلي لضمان خروج نظيف
       localStorage.removeItem('taper_profile');
       localStorage.removeItem('taper_plan');
       window.location.reload();
@@ -110,7 +149,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const enableDemoMode = () => {
     setIsDemoMode(true);
-    // التصحيح هنا: استخدام as unknown as User لإجبار التايب سكربت على قبول الكائن الناقص
     setCurrentUser({ 
       uid: 'demo-user', 
       email: 'demo@example.com', 
@@ -141,6 +179,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       error, 
       isDemoMode,
       loginWithEmail, 
+      signupWithEmail, // تصدير الدالة الجديدة
       loginWithGoogle, 
       logout,
       enableDemoMode,

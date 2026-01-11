@@ -47,6 +47,13 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
+  
+  // --- بيانات فيزيائية جديدة ---
+  age?: number;
+  weight?: number; // kg
+  height?: number; // cm
+  // ---------------------------
+
   role: UserRole; 
   
   doctorData?: DoctorProfileData;   
