@@ -4,12 +4,18 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
-import { LayoutContainer, Card, Button, Badge } from '../components/UI';
-import { useLanguage } from '../contexts/LanguageContext';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
     ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock 
 } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CommunityViewProps {
     currentUser: UserProfile;

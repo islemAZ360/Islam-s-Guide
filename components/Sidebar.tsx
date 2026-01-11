@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LanguageSwitcher } from './UI';
+// المسار الصحيح حيث أن Sidebar داخل components و LanguageSwitcher داخل components/ui
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
 
 interface SidebarProps {
   currentView: AppView;
@@ -27,7 +28,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     if (role === 'admin') {
       items.push(
         { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
-        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') }, // استخدام مفاتيح الترجمة
+        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') },
         { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
@@ -37,25 +38,24 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     else if (role === 'doctor') {
       items.push(
         { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, // "Patient Files Management"
+        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, 
         { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
-        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, // "Chat Rooms"
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, 
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
-      // الإعدادات للطبيب
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 
     // 3. PATIENT / NORMAL USER MENU
     else {
-      // إذا كان مريضاً وينتظر الخطة، نعرض له المجتمع والدعم فقط
+      // إذا كان المريض في انتظار الخطة، نعرض له فقط المجتمع والدعم
       if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
          items.push(
             { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       } else {
-         // القائمة القياسية للمستخدم العادي والمريض المعتمد
+         // المستخدم العادي أو المريض الذي لديه خطة
          items.push(
             { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
             { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
@@ -65,7 +65,6 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       }
-      // الإعدادات للمستخدم العادي والمريض
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
 

@@ -1,10 +1,16 @@
 import React, { useMemo } from 'react';
-import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
-import { DailyLog, PlanDay, UserProfile } from '../types';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine
 } from 'recharts';
 import { Smile, Activity, Zap, Moon, Shield, Award } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface StatsViewProps {

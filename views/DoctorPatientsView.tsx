@@ -4,7 +4,6 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
     Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock
 } from 'lucide-react';
@@ -12,6 +11,13 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 export const DoctorPatientsView = () => {
     const { t } = useLanguage();

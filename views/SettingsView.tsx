@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    FileText, User, Award, Clock
+    User, Award, Clock
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SettingsViewProps {

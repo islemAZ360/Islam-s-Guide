@@ -4,9 +4,16 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
-import { PageHeader, LayoutContainer, Card, Button, Badge } from '../components/UI';
-import { useLanguage } from '../contexts/LanguageContext';
 import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, Stethoscope } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SupportViewProps {
     user: UserProfile;

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
+  CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
+// 👇 تحديث المسارات هنا
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
+import { Badge } from '../components/ui/Badge';
+
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';

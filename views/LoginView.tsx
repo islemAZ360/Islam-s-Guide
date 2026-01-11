@@ -1,6 +1,9 @@
 import React from 'react';
 import { Activity, Chrome, LogIn } from 'lucide-react';
-import { Button, Card, LanguageSwitcher } from '../components/UI';
+// 👇 تحديث المسارات هنا
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface LoginViewProps {

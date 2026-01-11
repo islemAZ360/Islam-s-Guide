@@ -2,16 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ArticlesViewProps {
     userProfile?: UserProfile | null;
 }
 
 export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
-    const { t, language } = useLanguage(); // تفعيل الترجمة
+    const { t, language } = useLanguage();
     const [articles, setArticles] = useState<Article[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<'all' | ArticleCategory>('all');
     const [readingArticle, setReadingArticle] = useState<Article | null>(null);

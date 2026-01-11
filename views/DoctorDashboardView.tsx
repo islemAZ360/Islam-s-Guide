@@ -4,7 +4,6 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, ManualPhase } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
     Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
     ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser 
@@ -14,6 +13,13 @@ import {
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 export const DoctorDashboardView = () => {
     const { t } = useLanguage();

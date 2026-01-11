@@ -1,7 +1,13 @@
 import React from 'react';
-import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
+import { Check, X, Stethoscope, BrainCircuit } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
 import { PlanDay, DailyLog, UserProfile } from '../types';
-import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface CalendarViewProps {

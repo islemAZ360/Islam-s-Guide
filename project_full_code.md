@@ -1,23 +1,50 @@
 # Project Code Dump
-Generated: 10/1/2026, 23:05:42
+Generated: 11/1/2026, 03:25:07
 
 ## 🌳 Project Structure
 ```text
 ├── components
+  ├── charts
+    └── ProgressRing.tsx
+  ├── modals
+    ├── BreathingModal.tsx
+    ├── DoctorReportModal.tsx
+    └── ScientificPlanModal.tsx
+  ├── ui
+    ├── Badge.tsx
+    ├── Button.tsx
+    ├── Card.tsx
+    ├── LanguageSwitcher.tsx
+    ├── LayoutContainer.tsx
+    ├── PageHeader.tsx
+    └── ProgressRing.tsx
   ├── MobileNav.tsx
-  ├── Sidebar.tsx
-  └── UI.tsx
+  └── Sidebar.tsx
 ├── contexts
+  ├── AuthContext.tsx
+  ├── DataContext.tsx
   └── LanguageContext.tsx
 ├── services
+  ├── locales
+    ├── ar.ts
+    ├── en.ts
+    └── ru.ts
   ├── adminServices.ts
   ├── firebase.ts
   ├── taperingEngine.ts
   └── translations.ts
 ├── views
+  ├── admin
+    ├── AdminCMS.tsx
+    ├── AdminDoctors.tsx
+    ├── AdminOverview.tsx
+    └── AdminUsers.tsx
+  ├── dashboard
+    ├── DailyCheckIn.tsx
+    ├── DashboardCharts.tsx
+    └── DashboardHeader.tsx
   ├── AdminView.tsx
   ├── ArticlesView.tsx
-  ├── CalendarStatsView.tsx
   ├── CalendarView.tsx
   ├── CommunityView.tsx
   ├── DashboardView.tsx
@@ -46,316 +73,118 @@ Generated: 10/1/2026, 23:05:42
 
 ## 📄 File Contents
 
-### File: `components\MobileNav.tsx`
+### File: `components\charts\ProgressRing.tsx`
 ```tsx
-import React from 'react';
-import { 
-  LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, Users, 
-  LifeBuoy, BookOpen, ShieldAlert, MessageSquare 
-} from 'lucide-react';
-import { AppView, UserProfile } from '../types';
-import { useLanguage } from '../contexts/LanguageContext';
 
-interface MobileNavProps {
-  currentView: AppView;
-  setCurrentView: (view: AppView) => void;
-  userProfile?: UserProfile | null;
-}
-
-export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNavProps) => {
-  const { t } = useLanguage();
-
-  const getMenuItems = () => {
-    const role = userProfile?.role;
-    const items = [];
-
-    // 1. ADMIN MENU
-    if (role === 'admin') {
-       items.push(
-        { id: AppView.ADMIN, icon: ShieldAlert, label: 'Admin' },
-        { id: AppView.COMMUNITY, icon: Users, label: 'Users' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'Tickets' },
-       );
-    } 
-    // 2. DOCTOR MENU
-    else if (role === 'doctor') {
-        items.push(
-            { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
-            { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
-            { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
-            // Articles & Support can be accessed via sidebar or specific pages linked internally
-        );
-    } 
-    // 3. PATIENT / NORMAL USER MENU
-    else {
-        // Patient Waiting for Plan
-        if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
-             items.push(
-                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-                { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-             );
-        } else {
-             // Standard User
-             items.push(
-                { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-                { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
-                { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
-                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-             );
-        }
-    }
-    
-    // Common settings icon at the end
-    items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
-    
-    return items;
-  };
-
-  const menuItems = getMenuItems();
-
-  return (
-    <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
-      
-      <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
-        {menuItems.map((item) => {
-          const isActive = currentView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400 -translate-y-3' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <div className={`p-3 rounded-full transition-all duration-300 ${
-                  isActive 
-                  ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-[0_8px_20px_rgba(99,102,241,0.4)] ring-4 ring-[#020617]' 
-                  : 'bg-transparent group-hover:bg-white/5'
-              }`}>
-                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              </div>
-              
-              <span className={`absolute -bottom-5 text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
-                  isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 -translate-y-2 text-slate-500'
-              }`}>
-                  {item.label}
-              </span>
-              
-              {isActive && (
-                  <span className="absolute -bottom-7 w-1 h-1 bg-indigo-500 rounded-full"></span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
 ```
 ---
 
-### File: `components\Sidebar.tsx`
-```tsx
-import React from 'react';
-import { 
-  LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, LogOut, 
-  Users, ShieldAlert, User as UserIcon, LifeBuoy, BookOpen, Stethoscope, 
-  MessageSquare
-} from 'lucide-react';
-import { AppView, UserProfile } from '../types';
-import { useLanguage } from '../contexts/LanguageContext';
-import { LanguageSwitcher } from './UI';
-
-interface SidebarProps {
-  currentView: AppView;
-  setCurrentView: (view: AppView) => void;
-  handleLogout: () => void;
-  userProfile?: UserProfile | null;
-}
-
-export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
-  const { t, language } = useLanguage();
-
-  // تحديد القوائم بناءً على الدور
-  const getMenuItems = () => {
-    const role = userProfile?.role;
-    const items = [];
-
-    // 1. ADMIN MENU
-    if (role === 'admin') {
-      items.push(
-        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
-        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') }, // استخدام مفاتيح الترجمة
-        { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-      );
-    }
-    
-    // 2. DOCTOR MENU
-    else if (role === 'doctor') {
-      items.push(
-        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, // "Patient Files Management"
-        { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
-        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, // "Chat Rooms"
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-      );
-      // الإعدادات للطبيب
-      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
-    }
-
-    // 3. PATIENT / NORMAL USER MENU
-    else {
-      // إذا كان مريضاً وينتظر الخطة، نعرض له المجتمع والدعم فقط
-      if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
-         items.push(
-            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-         );
-      } else {
-         // القائمة القياسية للمستخدم العادي والمريض المعتمد
-         items.push(
-            { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
-            { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
-            { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
-            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-            { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
-            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
-         );
-      }
-      // الإعدادات للمستخدم العادي والمريض
-      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
-    }
-
-    return items;
-  };
-
-  const menuItems = getMenuItems();
-
-  return (
-    <div className="hidden md:flex flex-col w-80 bg-slate-950/80 backdrop-blur-2xl border-l border-white/5 h-screen fixed right-0 top-0 overflow-y-auto z-50 shadow-2xl transition-all">
-      {/* Header */}
-      <div className="p-10 border-b border-white/5 relative overflow-hidden shrink-0">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
-        
-        <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
-          Islam's Guide
-        </h2>
-        
-        <div className="mr-[3.25rem] mt-2">
-            {userProfile?.role === 'doctor' && (
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    {language === 'ar' ? 'نسخة الأطباء' : 'Doctor Edition'}
-                </span>
-            )}
-            {userProfile?.role === 'admin' && (
-                <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
-                </span>
-            )}
-            {(userProfile?.role === 'patient' || userProfile?.role === 'normal_user') && (
-                <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
-                    Smart Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                </span>
-            )}
-        </div>
-      </div>
-      
-      {/* Menu */}
-      <nav className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
-        {menuItems.map((item) => (
-          <button 
-            key={item.id}
-            onClick={() => setCurrentView(item.id)}
-            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
-              currentView === item.id 
-              ? 'bg-gradient-to-r from-indigo-600/10 to-transparent text-indigo-400 border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]' 
-              : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'
-            }`}
-          >
-            {currentView === item.id && (
-              <div className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_indigo]"></div>
-            )}
-            <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
-            <span className="font-bold text-lg tracking-wide truncate">{item.label}</span>
-            
-            {item.id === AppView.ADMIN && (
-                <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
-            )}
-          </button>
-        ))}
-      </nav>
-      
-      {/* Footer */}
-      <div className="p-6 border-t border-white/5 shrink-0 space-y-6">
-        <LanguageSwitcher />
-        
-        <div className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex items-center gap-3 group hover:border-indigo-500/30 transition-all">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30">
-                {userProfile?.role === 'doctor' ? <Stethoscope size={18} /> : (userProfile?.name?.charAt(0).toUpperCase() || <UserIcon size={18} />)}
-            </div>
-            <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-bold text-white truncate">{userProfile?.name || 'Guest'}</p>
-                <p className="text-[10px] text-slate-500 truncate">{userProfile?.role?.toUpperCase()}</p>
-            </div>
-            <button 
-                onClick={handleLogout} 
-                className="p-2 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-colors"
-                title={t('logout')}
-            >
-                <LogOut size={18} />
-            </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-```
----
-
-### File: `components\UI.tsx`
+### File: `components\modals\BreathingModal.tsx`
 ```tsx
 import React, { useEffect, useState } from 'react';
-import { Globe, X, Printer, FileText, ArrowRight, Snowflake, Eye, ShieldCheck, Wind, Activity } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { UserProfile, DailyLog, PlanDay } from '../types';
+import { X, ShieldCheck, Eye, Snowflake, Wind, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { Button } from '../ui/Button';
 
-// --- Language Switcher ---
-export const LanguageSwitcher = () => {
-  const { language, setLanguage } = useLanguage();
+interface BreathingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const BreathingModal = ({ isOpen, onClose }: BreathingModalProps) => {
+  const { t } = useLanguage();
+  const [step, setStep] = useState(0); 
+  const [breathePhase, setBreathePhase] = useState<'in' | 'hold' | 'out'>('in');
   
+  useEffect(() => {
+    if (!isOpen) { setStep(0); return; }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (step === 3) {
+        const cycle = () => {
+        setBreathePhase('in');
+        setTimeout(() => {
+            setBreathePhase('hold');
+            setTimeout(() => { setBreathePhase('out'); }, 2000); 
+        }, 4000); 
+        };
+        cycle();
+        const interval = setInterval(cycle, 10000);
+        return () => clearInterval(interval);
+    }
+  }, [step]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="flex bg-slate-800/40 backdrop-blur-md rounded-xl p-1 border border-white/10 shadow-lg">
-      {(['ar', 'en', 'ru'] as const).map((lang) => (
-        <button
-          key={lang}
-          onClick={() => setLanguage(lang)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-300 ${
-            language === lang 
-              ? 'bg-indigo-600/90 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' 
-              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-          }`}
-        >
-          {lang}
-        </button>
-      ))}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="relative w-full max-w-lg mx-4 bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center shadow-2xl overflow-hidden min-h-[500px] flex flex-col justify-center">
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors z-20"><X size={24} /></button>
+
+        {step === 0 && (
+            <div className="animate-in slide-in-from-bottom-8 duration-500 space-y-8">
+                <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><ShieldCheck size={40} className="text-rose-500" /></div>
+                <h2 className="text-4xl font-black text-white">{t('sos_phase_1_title')}</h2>
+                <p className="text-lg text-slate-300 leading-relaxed font-medium">{t('sos_phase_1_text')}</p>
+                <Button variant="primary" onClick={() => setStep(1)} className="w-full text-lg py-6 shadow-indigo-500/30">{t('sos_btn_ground')} <ArrowRight /></Button>
+            </div>
+        )}
+        {step === 1 && (
+            <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
+                <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Eye size={40} className="text-blue-500" /></div>
+                <h2 className="text-3xl font-bold text-white">{t('sos_phase_2_title')}</h2>
+                <p className="text-xl text-white font-bold bg-slate-800/50 p-6 rounded-2xl border border-white/5">{t('sos_phase_2_text')}</p>
+                <div className="flex gap-2 justify-center"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-20"></span></div>
+                <Button variant="secondary" onClick={() => setStep(2)} className="w-full text-lg py-6">{t('sos_btn_next')}</Button>
+            </div>
+        )}
+        {step === 2 && (
+            <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
+                <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Snowflake size={40} className="text-cyan-400" /></div>
+                <h2 className="text-3xl font-bold text-white">{t('sos_phase_3_title')}</h2>
+                <p className="text-lg text-slate-300 leading-relaxed">{t('sos_phase_3_text')}</p>
+                <Button variant="primary" onClick={() => setStep(3)} className="w-full text-lg py-6 shadow-cyan-500/20 border-cyan-500/20">{t('sos_btn_breathe')}</Button>
+            </div>
+        )}
+        {step === 3 && (
+            <div className="animate-in fade-in duration-1000">
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2"><Wind className="text-indigo-400" />{t('sos_phase_4_title')}</h2>
+                <p className="text-slate-400 text-sm mb-12">{t('sos_phase_4_subtitle')}</p>
+                <div className="relative h-64 flex items-center justify-center mb-8">
+                <div className={`absolute w-32 h-32 bg-indigo-500/20 rounded-full blur-xl transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.5] opacity-60' : breathePhase === 'hold' ? 'scale-[2.5] opacity-60' : 'scale-100 opacity-20'}`}></div>
+                <div className={`absolute w-32 h-32 bg-indigo-500/10 rounded-full border-2 border-indigo-500/30 transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.2]' : breathePhase === 'hold' ? 'scale-[2.2]' : 'scale-100'}`}></div>
+                <div className="relative z-10 text-3xl font-black text-indigo-100 transition-all duration-500">{breathePhase === 'in' && t('breathe_in')}{breathePhase === 'hold' && t('breathe_hold')}{breathePhase === 'out' && t('breathe_out')}</div>
+                </div>
+                <Button variant="secondary" onClick={onClose} className="w-full">{t('close')}</Button>
+            </div>
+        )}
+      </div>
     </div>
   );
 };
+```
+---
 
-// --- Doctor Report Modal (Smart Update) ---
+### File: `components\modals\DoctorReportModal.tsx`
+```tsx
+import React from 'react';
+import { FileText, Printer, X } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { UserProfile, DailyLog, PlanDay } from '../../types';
+import { Button } from '../ui/Button';
+
+interface DoctorReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userProfile: UserProfile | null;
+  logs: DailyLog[];
+  plan: PlanDay[];
+}
+
 export const DoctorReportModal = ({ 
   isOpen, onClose, userProfile, logs, plan 
-}: { 
-  isOpen: boolean, 
-  onClose: () => void,
-  userProfile: UserProfile | null,
-  logs: DailyLog[],
-  plan: PlanDay[]
-}) => {
+}: DoctorReportModalProps) => {
   const { t } = useLanguage();
   
   // Determine Unit Label
@@ -477,90 +306,163 @@ export const DoctorReportModal = ({
     </div>
   );
 };
+```
+---
 
-// --- SOS MODAL (Breathing) ---
-export const BreathingModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  const { t } = useLanguage();
-  const [step, setStep] = useState(0); 
-  const [breathePhase, setBreathePhase] = useState<'in' | 'hold' | 'out'>('in');
-  
-  useEffect(() => {
-    if (!isOpen) { setStep(0); return; }
-  }, [isOpen]);
+### File: `components\modals\ScientificPlanModal.tsx`
+```tsx
 
-  useEffect(() => {
-    if (step === 3) {
-        const cycle = () => {
-        setBreathePhase('in');
-        setTimeout(() => {
-            setBreathePhase('hold');
-            setTimeout(() => { setBreathePhase('out'); }, 2000); 
-        }, 4000); 
-        };
-        cycle();
-        const interval = setInterval(cycle, 10000);
-        return () => clearInterval(interval);
-    }
-  }, [step]);
+```
+---
 
-  if (!isOpen) return null;
+### File: `components\ui\Badge.tsx`
+```tsx
+import React from 'react';
+
+interface BadgeProps {
+  children: React.ReactNode;
+  color?: 'indigo' | 'green' | 'emerald' | 'red' | 'rose' | 'amber' | 'blue';
+  className?: string;
+}
+
+export const Badge = ({ children, color = 'indigo', className = '' }: BadgeProps) => {
+  const colors: Record<string, string> = {
+    indigo: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]',
+    green: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
+    emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
+    red: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
+    rose: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
+    amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]',
+    blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]',
+  };
+
+  const selectedColor = colors[color] || colors.indigo;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="relative w-full max-w-lg mx-4 bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center shadow-2xl overflow-hidden min-h-[500px] flex flex-col justify-center">
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors z-20"><X size={24} /></button>
+    <span className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${selectedColor} backdrop-blur-md flex items-center gap-1.5 animate-in fade-in zoom-in duration-300 whitespace-nowrap w-fit ${className}`}>
+      {children}
+    </span>
+  );
+};
+```
+---
 
-        {step === 0 && (
-            <div className="animate-in slide-in-from-bottom-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><ShieldCheck size={40} className="text-rose-500" /></div>
-                <h2 className="text-4xl font-black text-white">{t('sos_phase_1_title')}</h2>
-                <p className="text-lg text-slate-300 leading-relaxed font-medium">{t('sos_phase_1_text')}</p>
-                <Button variant="primary" onClick={() => setStep(1)} className="w-full text-lg py-6 shadow-indigo-500/30">{t('sos_btn_ground')} <ArrowRight /></Button>
-            </div>
-        )}
-        {step === 1 && (
-            <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Eye size={40} className="text-blue-500" /></div>
-                <h2 className="text-3xl font-bold text-white">{t('sos_phase_2_title')}</h2>
-                <p className="text-xl text-white font-bold bg-slate-800/50 p-6 rounded-2xl border border-white/5">{t('sos_phase_2_text')}</p>
-                <div className="flex gap-2 justify-center"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span><span className="w-3 h-3 rounded-full bg-blue-500 opacity-20"></span></div>
-                <Button variant="secondary" onClick={() => setStep(2)} className="w-full text-lg py-6">{t('sos_btn_next')}</Button>
-            </div>
-        )}
-        {step === 2 && (
-            <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
-                <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><Snowflake size={40} className="text-cyan-400" /></div>
-                <h2 className="text-3xl font-bold text-white">{t('sos_phase_3_title')}</h2>
-                <p className="text-lg text-slate-300 leading-relaxed">{t('sos_phase_3_text')}</p>
-                <Button variant="primary" onClick={() => setStep(3)} className="w-full text-lg py-6 shadow-cyan-500/20 border-cyan-500/20">{t('sos_btn_breathe')}</Button>
-            </div>
-        )}
-        {step === 3 && (
-            <div className="animate-in fade-in duration-1000">
-                <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2"><Wind className="text-indigo-400" />{t('sos_phase_4_title')}</h2>
-                <p className="text-slate-400 text-sm mb-12">{t('sos_phase_4_subtitle')}</p>
-                <div className="relative h-64 flex items-center justify-center mb-8">
-                <div className={`absolute w-32 h-32 bg-indigo-500/20 rounded-full blur-xl transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.5] opacity-60' : breathePhase === 'hold' ? 'scale-[2.5] opacity-60' : 'scale-100 opacity-20'}`}></div>
-                <div className={`absolute w-32 h-32 bg-indigo-500/10 rounded-full border-2 border-indigo-500/30 transition-all duration-[4000ms] ease-in-out ${breathePhase === 'in' ? 'scale-[2.2]' : breathePhase === 'hold' ? 'scale-[2.2]' : 'scale-100'}`}></div>
-                <div className="relative z-10 text-3xl font-black text-indigo-100 transition-all duration-500">{breathePhase === 'in' && t('breathe_in')}{breathePhase === 'hold' && t('breathe_hold')}{breathePhase === 'out' && t('breathe_out')}</div>
-                </div>
-                <Button variant="secondary" onClick={onClose} className="w-full">{t('close')}</Button>
-            </div>
-        )}
-      </div>
+### File: `components\ui\Button.tsx`
+```tsx
+import React from 'react';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'panic';
+  children: React.ReactNode;
+}
+
+export const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, ...props }: ButtonProps) => {
+  const baseStyle = "relative overflow-hidden px-6 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale group select-none cursor-pointer";
+  
+  const variants = {
+    primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] border border-indigo-400/20",
+    secondary: "bg-slate-800/40 backdrop-blur-md text-slate-300 border border-white/5 hover:bg-slate-700/50 hover:text-white hover:border-white/10",
+    danger: "bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]",
+    success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_25px_rgba(16,185,129,0.3)] border border-emerald-400/20",
+    ghost: "text-slate-400 hover:text-white hover:bg-white/5",
+    panic: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse"
+  };
+
+  const selectedVariant = variants[variant] || variants.primary;
+
+  return (
+    <button 
+      onClick={onClick} 
+      disabled={disabled} 
+      className={`${baseStyle} ${selectedVariant} ${className}`}
+      {...props}
+    >
+      <span className="relative z-10 flex items-center gap-2">{children}</span>
+      {variant === 'primary' && (
+        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-20 transition-opacity duration-300 mix-blend-overlay"></div>
+      )}
+    </button>
+  );
+};
+```
+---
+
+### File: `components\ui\Card.tsx`
+```tsx
+import React from 'react';
+
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  noPadding?: boolean;
+}
+
+export const Card = ({ children, className = '', noPadding = false }: CardProps) => (
+  <div className={`bg-slate-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.2)] relative overflow-hidden group hover:border-white/10 transition-all duration-500 ${!noPadding ? 'p-6 md:p-10' : ''} ${className}`}>
+    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+    {children}
+  </div>
+);
+```
+---
+
+### File: `components\ui\LanguageSwitcher.tsx`
+```tsx
+import React from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+export const LanguageSwitcher = () => {
+  const { language, setLanguage } = useLanguage();
+  
+  return (
+    <div className="flex bg-slate-800/40 backdrop-blur-md rounded-xl p-1 border border-white/10 shadow-lg">
+      {(['ar', 'en', 'ru'] as const).map((lang) => (
+        <button
+          key={lang}
+          onClick={() => setLanguage(lang)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-300 ${
+            language === lang 
+              ? 'bg-indigo-600/90 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' 
+              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+          }`}
+        >
+          {lang}
+        </button>
+      ))}
     </div>
   );
 };
+```
+---
 
-// --- Standard UI Components ---
+### File: `components\ui\LayoutContainer.tsx`
+```tsx
+import React from 'react';
 
-export const LayoutContainer = ({ children, className = '' }: any) => (
+interface LayoutContainerProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const LayoutContainer = ({ children, className = '' }: LayoutContainerProps) => (
   <div className={`max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 ${className}`}>
     {children}
   </div>
 );
+```
+---
 
-export const PageHeader = ({ title, subtitle, action }: { title: string, subtitle?: string, action?: React.ReactNode }) => (
+### File: `components\ui\PageHeader.tsx`
+```tsx
+import React from 'react';
+
+interface PageHeaderProps {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}
+
+export const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
   <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 pb-6 md:pb-8 relative">
     <div className="relative z-10 w-full lg:w-auto">
       <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight drop-shadow-lg">{title}</h1>
@@ -574,53 +476,27 @@ export const PageHeader = ({ title, subtitle, action }: { title: string, subtitl
     <div className="absolute left-0 top-0 w-64 h-64 bg-indigo-500/10 blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen"></div>
   </header>
 );
+```
+---
 
-export const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }: any) => {
-  const baseStyle = "relative overflow-hidden px-6 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale group select-none cursor-pointer";
-  const variants: any = {
-    primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] border border-indigo-400/20",
-    secondary: "bg-slate-800/40 backdrop-blur-md text-slate-300 border border-white/5 hover:bg-slate-700/50 hover:text-white hover:border-white/10",
-    danger: "bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]",
-    success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_25px_rgba(16,185,129,0.3)] border border-emerald-400/20",
-    ghost: "text-slate-400 hover:text-white hover:bg-white/5",
-    panic: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse"
-  };
-  return (
-    <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
-      <span className="relative z-10 flex items-center gap-2">{children}</span>
-      {variant === 'primary' && <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-20 transition-opacity duration-300 mix-blend-overlay"></div>}
-    </button>
-  );
-};
+### File: `components\ui\ProgressRing.tsx`
+```tsx
+import React from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-export const Card = ({ children, className = '', noPadding = false }: any) => (
-  <div className={`bg-slate-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.2)] relative overflow-hidden group hover:border-white/10 transition-all duration-500 ${!noPadding ? 'p-6 md:p-10' : ''} ${className}`}>
-    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-    {children}
-  </div>
-);
+interface ProgressRingProps {
+  radius: number;
+  stroke: number;
+  progress: number;
+  totalSteps: number;
+}
 
-export const Badge = ({ children, color = 'indigo', className = '' }: any) => {
-  const colors: any = {
-    indigo: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]',
-    green: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
-    emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
-    red: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
-    rose: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
-    amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]',
-    blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]',
-  };
-  const selectedColor = colors[color] || colors.indigo;
-  return (
-    <span className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${selectedColor} backdrop-blur-md flex items-center gap-1.5 animate-in fade-in zoom-in duration-300 whitespace-nowrap w-fit ${className}`}>{children}</span>
-  );
-};
-
-export const ProgressRing = ({ radius, stroke, progress, totalSteps }: { radius: number, stroke: number, progress: number, totalSteps: number }) => {
+export const ProgressRing = ({ radius, stroke, progress, totalSteps }: ProgressRingProps) => {
   const normalizedRadius = radius - stroke * 2;
   const circumference = normalizedRadius * 2 * Math.PI;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
   const { t } = useLanguage();
+
   return (
     <div className="relative flex items-center justify-center group cursor-default">
       <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
@@ -636,6 +512,623 @@ export const ProgressRing = ({ radius, stroke, progress, totalSteps }: { radius:
       </div>
     </div>
   );
+};
+```
+---
+
+### File: `components\MobileNav.tsx`
+```tsx
+import React from 'react';
+import { 
+  LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, Users, 
+  LifeBuoy, BookOpen, ShieldAlert, MessageSquare 
+} from 'lucide-react';
+import { AppView, UserProfile } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
+
+interface MobileNavProps {
+  currentView: AppView;
+  setCurrentView: (view: AppView) => void;
+  userProfile?: UserProfile | null;
+}
+
+export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNavProps) => {
+  const { t } = useLanguage();
+
+  const getMenuItems = () => {
+    const role = userProfile?.role;
+    const items = [];
+
+    // 1. ADMIN MENU
+    if (role === 'admin') {
+       items.push(
+        { id: AppView.ADMIN, icon: ShieldAlert, label: 'Admin' },
+        { id: AppView.COMMUNITY, icon: Users, label: 'Users' },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'Tickets' },
+       );
+    } 
+    // 2. DOCTOR MENU
+    else if (role === 'doctor') {
+        items.push(
+            { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
+            { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
+            { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
+            // Articles & Support can be accessed via sidebar or specific pages linked internally
+        );
+    } 
+    // 3. PATIENT / NORMAL USER MENU
+    else {
+        // Patient Waiting for Plan
+        if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
+             items.push(
+                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+                { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+             );
+        } else {
+             // Standard User
+             items.push(
+                { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+                { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
+                { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+                { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+             );
+        }
+    }
+    
+    // Common settings icon at the end
+    items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
+    
+    return items;
+  };
+
+  const menuItems = getMenuItems();
+
+  return (
+    <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
+      
+      <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
+        {menuItems.map((item) => {
+          const isActive = currentView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setCurrentView(item.id)}
+              className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
+                  isActive ? 'text-indigo-400 -translate-y-3' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <div className={`p-3 rounded-full transition-all duration-300 ${
+                  isActive 
+                  ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-[0_8px_20px_rgba(99,102,241,0.4)] ring-4 ring-[#020617]' 
+                  : 'bg-transparent group-hover:bg-white/5'
+              }`}>
+                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              </div>
+              
+              <span className={`absolute -bottom-5 text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
+                  isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 -translate-y-2 text-slate-500'
+              }`}>
+                  {item.label}
+              </span>
+              
+              {isActive && (
+                  <span className="absolute -bottom-7 w-1 h-1 bg-indigo-500 rounded-full"></span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+```
+---
+
+### File: `components\Sidebar.tsx`
+```tsx
+import React from 'react';
+import { 
+  LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, LogOut, 
+  Users, ShieldAlert, User as UserIcon, LifeBuoy, BookOpen, Stethoscope, 
+  MessageSquare
+} from 'lucide-react';
+import { AppView, UserProfile } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
+// 👇 تحديث المسار هنا
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
+
+interface SidebarProps {
+  currentView: AppView;
+  setCurrentView: (view: AppView) => void;
+  handleLogout: () => void;
+  userProfile?: UserProfile | null;
+}
+
+export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
+  const { t, language } = useLanguage();
+
+  // تحديد القوائم بناءً على الدور
+  const getMenuItems = () => {
+    const role = userProfile?.role;
+    const items = [];
+
+    // 1. ADMIN MENU
+    if (role === 'admin') {
+      items.push(
+        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
+        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') },
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+      );
+    }
+    
+    // 2. DOCTOR MENU
+    else if (role === 'doctor') {
+      items.push(
+        { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+        { id: AppView.DOCTOR_PATIENTS, icon: Users, label: t('manage_patients_title') }, 
+        { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('comm_rooms') }, 
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+      );
+      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
+    }
+
+    // 3. PATIENT / NORMAL USER MENU
+    else {
+      if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
+         items.push(
+            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+         );
+      } else {
+         items.push(
+            { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
+            { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
+            { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+            { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+            { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
+            { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
+         );
+      }
+      items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
+    }
+
+    return items;
+  };
+
+  const menuItems = getMenuItems();
+
+  return (
+    <div className="hidden md:flex flex-col w-80 bg-slate-950/80 backdrop-blur-2xl border-l border-white/5 h-screen fixed right-0 top-0 overflow-y-auto z-50 shadow-2xl transition-all">
+      {/* Header */}
+      <div className="p-10 border-b border-white/5 relative overflow-hidden shrink-0">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+        
+        <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10">
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+          Islam's Guide
+        </h2>
+        
+        <div className="mr-[3.25rem] mt-2">
+            {userProfile?.role === 'doctor' && (
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    {language === 'ar' ? 'نسخة الأطباء' : 'Doctor Edition'}
+                </span>
+            )}
+            {userProfile?.role === 'admin' && (
+                <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    {language === 'ar' ? 'لوحة الإدارة' : 'Admin Panel'}
+                </span>
+            )}
+            {(userProfile?.role === 'patient' || userProfile?.role === 'normal_user') && (
+                <span className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold flex items-center gap-2">
+                    Smart Edition <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </span>
+            )}
+        </div>
+      </div>
+      
+      {/* Menu */}
+      <nav className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
+        {menuItems.map((item) => (
+          <button 
+            key={item.id}
+            onClick={() => setCurrentView(item.id)}
+            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+              currentView === item.id 
+              ? 'bg-gradient-to-r from-indigo-600/10 to-transparent text-indigo-400 border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]' 
+              : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            {currentView === item.id && (
+              <div className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_indigo]"></div>
+            )}
+            <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
+            <span className="font-bold text-lg tracking-wide truncate">{item.label}</span>
+            
+            {item.id === AppView.ADMIN && (
+                <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
+            )}
+          </button>
+        ))}
+      </nav>
+      
+      {/* Footer */}
+      <div className="p-6 border-t border-white/5 shrink-0 space-y-6">
+        <LanguageSwitcher />
+        
+        <div className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex items-center gap-3 group hover:border-indigo-500/30 transition-all">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30">
+                {userProfile?.role === 'doctor' ? <Stethoscope size={18} /> : (userProfile?.name?.charAt(0).toUpperCase() || <UserIcon size={18} />)}
+            </div>
+            <div className="flex-1 overflow-hidden">
+                <p className="text-sm font-bold text-white truncate">{userProfile?.name || 'Guest'}</p>
+                <p className="text-[10px] text-slate-500 truncate">{userProfile?.role?.toUpperCase()}</p>
+            </div>
+            <button 
+                onClick={handleLogout} 
+                className="p-2 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-colors"
+                title={t('logout')}
+            >
+                <LogOut size={18} />
+            </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+---
+
+### File: `contexts\AuthContext.tsx`
+```tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  User, 
+  signInWithEmailAndPassword, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { auth, googleProvider } from '../services/firebase';
+
+interface AuthContextType {
+  currentUser: User | null;
+  loading: boolean;
+  error: string | null;
+  isDemoMode: boolean;
+  loginWithEmail: (e: string, p: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  enableDemoMode: () => void;
+  clearError: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  // مراقبة حالة المستخدم (Firebase Listener)
+  useEffect(() => {
+    // التحقق من وجود auth لضمان عدم حدوث أخطاء إذا لم يتم تهيئة Firebase
+    if (!auth) {
+        setLoading(false);
+        setError("Firebase Auth not initialized");
+        return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!isDemoMode) {
+        setCurrentUser(user);
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isDemoMode]);
+
+  const loginWithEmail = async (email: string, password: string) => {
+    if (!auth) {
+        setError("Authentication service is not initialized.");
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // تسجيل الدخول القياسي عبر Firebase
+      // تمت إزالة الكود القديم الذي كان يحتوي على كلمة مرور الأدمن الصلبة لأسباب أمنية
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      let errorMessage = 'Login Error';
+      if (err.code === 'auth/user-not-found') {
+        errorMessage = 'User not found. Please check your email.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format.';
+      } else {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    if (!auth) {
+        setError("Authentication service is not initialized.");
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      setError('Google Login Error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      if (!isDemoMode && auth) {
+        await signOut(auth);
+      }
+      setIsDemoMode(false);
+      setCurrentUser(null);
+      // مسح التخزين المحلي لضمان خروج نظيف
+      localStorage.removeItem('taper_profile');
+      localStorage.removeItem('taper_plan');
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Logout Error:", err);
+    }
+  };
+
+  const enableDemoMode = () => {
+    setIsDemoMode(true);
+    setCurrentUser({ 
+      uid: 'demo-user', 
+      email: 'demo@example.com', 
+      displayName: 'Demo User',
+      emailVerified: true,
+      isAnonymous: true,
+      metadata: {},
+      providerData: [],
+      refreshToken: '',
+      tenantId: null,
+      delete: async () => {},
+      getIdToken: async () => '',
+      getIdTokenResult: async () => ({} as any),
+      reload: async () => {},
+      toJSON: () => ({}),
+      phoneNumber: null,
+      photoURL: null,
+    } as User);
+    setLoading(false);
+  };
+
+  const clearError = () => setError(null);
+
+  return (
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      loading, 
+      error, 
+      isDemoMode,
+      loginWithEmail, 
+      loginWithGoogle, 
+      logout,
+      enableDemoMode,
+      clearError
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+```
+---
+
+### File: `contexts\DataContext.tsx`
+```tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { UserProfile, Inventory, PlanDay, DailyLog } from '../types';
+import { useAuth } from './AuthContext';
+import { useLanguage } from './LanguageContext';
+
+interface DataContextType {
+  userProfile: UserProfile | null;
+  setUserProfile: (p: UserProfile | null) => void;
+  inventory: Inventory;
+  setInventory: (i: Inventory) => void;
+  plan: PlanDay[];
+  setPlan: (p: PlanDay[]) => void;
+  logs: DailyLog[];
+  setLogs: (l: DailyLog[]) => void;
+  speedModifier: number;
+  setSpeedModifier: (s: number) => void;
+  dataLoading: boolean;
+  resyncData: () => void;
+  resetAllData: () => Promise<void>;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const DataProvider = ({ children }: { children: React.ReactNode }) => {
+  const { currentUser, isDemoMode, logout } = useAuth();
+  const { t } = useLanguage();
+
+  // -- Data State --
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [inventory, setInventory] = useState<Inventory>({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+  const [plan, setPlan] = useState<PlanDay[]>([]);
+  const [logs, setLogs] = useState<DailyLog[]>([]);
+  const [speedModifier, setSpeedModifier] = useState<number>(1.0);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // 1. Fetch Data Listener
+  useEffect(() => {
+    if (!currentUser) {
+      if (!isDemoMode) {
+        // Reset state on logout
+        setUserProfile(null);
+        setPlan([]);
+        setLogs([]);
+        setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+        setDataLoading(false);
+      } else {
+        // Demo Mode Setup (Mock Data could go here if needed)
+        // For now, we assume Onboarding handles demo setup
+        setDataLoading(false);
+      }
+      return;
+    }
+
+    setDataLoading(true);
+    const docRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
+        
+        // Merge nested object if exists (legacy support)
+        if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
+
+        setUserProfile(fetchedProfile);
+
+        if (data.plan) setPlan(data.plan);
+        if (data.logs) setLogs(data.logs);
+        if (data.inventory) setInventory(data.inventory);
+        if (data.speedModifier) setSpeedModifier(data.speedModifier);
+
+        // Security Check
+        if (data.isBanned) {
+           alert(t('banned_msg'));
+           logout();
+        }
+      } else {
+        // New User Skeleton
+        setUserProfile({
+            uid: currentUser.uid,
+            email: currentUser.email || '',
+            name: currentUser.displayName || 'New User',
+            role: 'normal_user',
+            setupComplete: false,
+            durationMonths: 0
+        });
+      }
+      setDataLoading(false);
+    }, (error) => {
+      console.error("Error fetching user data:", error);
+      setDataLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, isDemoMode]);
+
+  // 2. Sync Logic (Debounced Save)
+  useEffect(() => {
+    // Local Storage Backup
+    if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
+    if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
+    
+    // Cloud Sync
+    if (currentUser && !isDemoMode && userProfile?.setupComplete) {
+        // Don't sync if doctor doesn't have profile data yet
+        if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
+
+        const timeoutId = setTimeout(async () => {
+            try {
+                const totalDays = plan.length;
+                const daysCompleted = logs.length;
+                const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
+
+                const updateData: any = {
+                    email: currentUser.email,   
+                    uid: currentUser.uid,       
+                    lastActive: new Date().toISOString(),
+                    ...(userProfile.name ? { name: userProfile.name } : {})
+                };
+
+                // Only sync large data arrays for patients/users
+                if (userProfile.role === 'patient' || userProfile.role === 'normal_user') {
+                    updateData.plan = plan;
+                    updateData.logs = logs;
+                    updateData.inventory = inventory;
+                    updateData.speedModifier = speedModifier;
+                    updateData.progress = progressPercentage;
+                }
+
+                await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
+            } catch(e) {
+                console.error("Cloud sync failed", e);
+            }
+        }, 5000); // 5 seconds debounce
+
+        return () => clearTimeout(timeoutId);
+    }
+  }, [userProfile, plan, logs, inventory, speedModifier, currentUser, isDemoMode]);
+
+  const resyncData = () => {
+      // Manual trigger if needed
+      setDataLoading(true);
+      setTimeout(() => setDataLoading(false), 1000);
+  };
+
+  const resetAllData = async () => {
+      localStorage.clear();
+      setUserProfile(null);
+      setPlan([]);
+      setLogs([]);
+      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+      await logout();
+  };
+
+  return (
+    <DataContext.Provider value={{ 
+      userProfile, setUserProfile,
+      inventory, setInventory,
+      plan, setPlan,
+      logs, setLogs,
+      speedModifier, setSpeedModifier,
+      dataLoading,
+      resyncData,
+      resetAllData
+    }}>
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
 };
 ```
 ---
@@ -715,443 +1208,9 @@ export const useLanguage = () => {
 ```
 ---
 
-### File: `services\adminServices.ts`
+### File: `services\locales\ar.ts`
 ```ts
-import { 
-    collection, addDoc, updateDoc, doc, getDocs, query, orderBy 
-} from 'firebase/firestore';
-import { db } from './firebase';
-import { AuditLog, Ticket, Article, UserProfile } from '../types';
-
-// --- Audit Logger (نظام المراقبة) ---
-// يسجل كل حركة يقوم بها الأدمن لضمان عدم التلاعب
-export const logAdminAction = async (adminUser: UserProfile, action: string, details: string, targetId?: string) => {
-    if (adminUser.role !== 'admin' || !adminUser.uid) return;
-    
-    try {
-        await addDoc(collection(db, 'audit_logs'), {
-            adminId: adminUser.uid,
-            adminName: adminUser.name,
-            action,
-            details,
-            targetId: targetId || null,
-            timestamp: Date.now()
-        } as AuditLog);
-    } catch (e) {
-        console.error("Failed to log audit:", e);
-    }
-};
-
-// --- User Management (إدارة المستخدمين) ---
-
-// وضع علامة "خطر" على المستخدم لمراقبته
-export const flagUser = async (admin: UserProfile, targetUid: string, isFlagged: boolean) => {
-    await updateDoc(doc(db, 'users', targetUid), { isFlagged });
-    await logAdminAction(admin, 'FLAG_USER', `Set flagged status to ${isFlagged}`, targetUid);
-};
-
-// حفظ ملاحظات سرية عن المستخدم (لا يراها المستخدم)
-export const saveDoctorNotes = async (targetUid: string, notes: string) => {
-    // نستخدم حقل doctorNotes لهذا الغرض، سواء كتبها طبيب أو أدمن
-    await updateDoc(doc(db, 'users', targetUid), { doctorNotes: notes });
-};
-
-// --- CMS (نظام إدارة المحتوى) ---
-
-export const publishArticle = async (admin: UserProfile, article: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
-    if (!admin.uid) return;
-    
-    await addDoc(collection(db, 'articles'), {
-        ...article,
-        createdAt: Date.now(),
-        authorName: admin.name,
-        authorId: admin.uid,
-        authorRole: 'admin',
-        isPublished: true
-    });
-    await logAdminAction(admin, 'CREATE_ARTICLE', `Published article: ${article.title}`);
-};
-
-export const fetchArticles = async () => {
-    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
-};
-
-// --- Support Tickets (نظام الدعم الفني) ---
-
-export const fetchAllTickets = async () => {
-    const q = query(collection(db, 'tickets'), orderBy('lastUpdate', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Ticket));
-};
-
-export const updateTicketStatus = async (admin: UserProfile, ticketId: string, status: string) => {
-    await updateDoc(doc(db, 'tickets', ticketId), { 
-        status,
-        lastUpdate: Date.now()
-    });
-    await logAdminAction(admin, 'UPDATE_TICKET', `Changed ticket status to ${status}`, ticketId);
-};
-
-export const replyToTicket = async (admin: UserProfile, ticketId: string, text: string, currentMessages: any[]) => {
-    if (!admin.uid) return;
-
-    const newMessage = {
-        senderId: admin.uid,
-        senderName: admin.name,
-        text,
-        timestamp: Date.now(),
-        isAdmin: true // This flags the message as coming from Support/Admin
-    };
-    
-    await updateDoc(doc(db, 'tickets', ticketId), {
-        messages: [...currentMessages, newMessage],
-        lastUpdate: Date.now(),
-        status: 'pending' // انتظار رد المستخدم
-    });
-};
-```
----
-
-### File: `services\firebase.ts`
-```ts
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
-
-// --- إعدادات الاتصال ---
-// يجب استبدال هذه القيم بالقيم الخاصة بمشروعك من Firebase Console
-const firebaseConfig = {
-  apiKey: "AIzaSyB9_8yeOazYKhzHiHvyzBaIoDQiNduMnS0", // Placeholder Key
-  authDomain: "islam-s-guide.firebaseapp.com",
-  projectId: "islam-s-guide",
-  storageBucket: "islam-s-guide.firebasestorage.app",
-  messagingSenderId: "176137497336",
-  appId: "1:176137497336:web:d763f34c2c632f1317e90d",
-  measurementId: "G-VNVJGFXLN4"
-};
-
-// تهيئة المتغيرات
-let app;
-let auth: Auth | undefined;
-let db: Firestore; 
-const googleProvider = new GoogleAuthProvider();
-
-try {
-  // محاولة تهيئة التطبيق
-  app = initializeApp(firebaseConfig);
-  
-  // تهيئة خدمات المصادقة وقاعدة البيانات
-  auth = getAuth(app);
-  db = getFirestore(app);
-  
-  console.log("Firebase initialized successfully.");
-} catch (error) {
-  console.error("Firebase initialization failed:", error);
-  // في حالة فشل الاتصال، يمكن هنا تفعيل "وضع عدم الاتصال" أو إظهار رسالة خطأ
-  // لكن بما أن التطبيق يعتمد كلياً على البيانات السحابية الآن، سنكتفي بتسجيل الخطأ
-}
-
-// تصدير الخدمات لاستخدامها في باقي الملفات
-export { auth, db, googleProvider };
-```
----
-
-### File: `services\taperingEngine.ts`
-```ts
-import { Inventory, PlanDay, DailyLog, ManualPhase } from '../types';
-
-/**
- * Helper to add days safely to a date string
- */
-const addDays = (dateStr: string, days: number): string => {
-  const date = new Date(dateStr);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().split('T')[0];
-};
-
-/**
- * Calculates total inventory based on form type (Pills or Liquid)
- */
-export const calculateTotalInventory = (inv: Inventory): number => {
-  // If pillsPerBox is 0, we assume raw count in loosePills or boxes
-  const total = (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
-  return Math.max(0, total);
-};
-
-// Minimum cut unit. For tablets usually 0.5 or 0.25. For liquid 0.1.
-const MIN_SPLIT = 0.1; 
-
-const roundToSplit = (num: number): number => {
-  if (num <= 0.05) return 0;
-  return Math.round(num * 10) / 10;
-};
-
-/**
- * --- 1. MANUAL PLAN GENERATOR (For Doctors) ---
- * Converts doctor's phases (e.g., "5mg for 7 days", "2.5mg for 7 days")
- * into a full calendar array.
- */
-export const generateManualPlan = (
-  phases: ManualPhase[], 
-  startDateStr: string = new Date().toISOString()
-): PlanDay[] => {
-  const plan: PlanDay[] = [];
-  let currentDate = startDateStr.split('T')[0];
-
-  phases.forEach(phase => {
-    for (let i = 0; i < phase.days; i++) {
-      plan.push({
-        date: currentDate,
-        plannedDose: phase.dose,
-        isPast: false
-      });
-      // Move to next day
-      currentDate = addDays(currentDate, 1);
-    }
-  });
-
-  return plan;
-};
-
-/**
- * --- 2. SMART INTELLIGENT ALGORITHM (For Normal Users) ---
- * Philosophy:
- * 1. "Safety First": Always reserve pills for the 'Tail' (Stopping Phase).
- * 2. If Inventory is LOW: Shorten the high-dose duration, but keep the tail long.
- * 3. If Inventory is HIGH: Extend the tail (add skip-3-days, skip-4-days cycles).
- */
-export const generatePlan = (
-  totalPills: number, 
-  startDose: number, 
-  startDateStr: string,
-  speedModifier: number = 1.0 // 0.8 (Slow), 1.0 (Normal), 1.2 (Fast)
-): PlanDay[] => {
-  
-  if (totalPills <= 0 || startDose <= 0) return [];
-
-  // --- A. SETUP & DEFINITIONS ---
-  let currentDose = roundToSplit(startDose);
-  
-  // Define the "Tail Unit" (The smallest dose before stopping)
-  // Usually 0.5mg for tablets, or equal to current dose if already small.
-  const tailUnit = currentDose <= 0.5 ? currentDose : 0.5;
-
-  // Base duration for a phase (e.g., 2 weeks), scaled by user preference.
-  // Slower speed (0.8) means LONGER duration.
-  // Faster speed (1.2) means SHORTER duration.
-  const basePhaseDuration = Math.max(7, Math.round(14 / speedModifier));
-
-  // --- B. RESERVE INVENTORY FOR THE "ESSENTIAL TAIL" ---
-  // We MUST guarantee these phases exist to prevent shock.
-  // Phase T1: Every Other Day (1 On, 1 Off) -> Needs (basePhaseDuration / 2) pills
-  // Phase T2: Every 3rd Day (1 On, 2 Off)   -> Needs (basePhaseDuration / 3) pills
-  
-  const cyclesT1 = Math.ceil(basePhaseDuration / 2); // Count of doses needed
-  const cyclesT2 = Math.ceil(basePhaseDuration / 3); // Count of doses needed
-  
-  const pillsForEssentialTail = (cyclesT1 * tailUnit) + (cyclesT2 * tailUnit);
-  
-  // Calculate what's left for the "Descent" (coming down from high dose)
-  let inventoryForDescent = totalPills - pillsForEssentialTail;
-  
-  // If we are critically low, we still prioritize tail, but maybe shorten it slightly
-  // rather than cutting the descent entirely.
-  let isCriticalLow = false;
-  if (inventoryForDescent < 0) {
-      isCriticalLow = true;
-      inventoryForDescent = 0; // We will just use whatever we have for the tail
-  }
-
-  // --- C. BUILD THE DESCENTS (From StartDose down to TailUnit) ---
-  let descentPlan: { dose: number, days: number }[] = [];
-  
-  // Only calculate descent if we are above the tail unit
-  if (currentDose > tailUnit && !isCriticalLow) {
-      // Reduction rate per step (e.g. 10%)
-      const reductionRate = 0.10 * speedModifier; 
-      
-      while (currentDose > tailUnit) {
-          // Calculate cost for one full phase at this dose
-          const costForFullPhase = currentDose * basePhaseDuration;
-          
-          // Determine actual days we can afford at this dose
-          let actualDays = basePhaseDuration;
-          
-          // Smart Logic: If pills are tight, shrink high-dose days to save them for later
-          if (inventoryForDescent < costForFullPhase) {
-              actualDays = Math.floor(inventoryForDescent / currentDose);
-          }
-          
-          if (actualDays > 0) {
-              descentPlan.push({ dose: currentDose, days: actualDays });
-              inventoryForDescent -= (currentDose * actualDays);
-          } 
-          
-          // Calculate Next Dose
-          let nextDose = roundToSplit(currentDose * (1 - reductionRate));
-          // Ensure we don't get stuck or go up
-          if (nextDose >= currentDose) nextDose = roundToSplit(currentDose - MIN_SPLIT);
-          // Don't go below tail unit in the descent phase
-          if (nextDose < tailUnit) nextDose = tailUnit;
-          
-          // Break loop if we hit the tail unit
-          if (currentDose === tailUnit) break;
-          currentDose = nextDose;
-      }
-  } else if (currentDose > tailUnit && isCriticalLow) {
-      // Critical Scenario: User has high dose but NO pills. 
-      // Strategy: Immediate drop to Tail Unit to stretch supplies (Emergency Mode)
-      currentDose = tailUnit; 
-  }
-
-  // --- D. BUILD THE TAIL (Smart Extension) ---
-  // Now we use ALL remaining pills to build the best possible tail.
-  
-  // Re-calculate true remaining (Total - Used in Descent)
-  const usedInDescent = descentPlan.reduce((acc, p) => acc + (p.dose * p.days), 0);
-  let remainingForTail = totalPills - usedInDescent;
-  
-  const tailPlan: { dose: number, days: number }[] = [];
-  
-  if (remainingForTail > 0) {
-      // A. Stabilization at lowest dose (Daily)
-      // Only if we have surplus. If critical, skip straight to spacing.
-      const costForDaily = tailUnit * basePhaseDuration;
-      if (remainingForTail > (pillsForEssentialTail + costForDaily)) {
-          // We have plenty! Do a full daily phase
-          tailPlan.push({ dose: tailUnit, days: basePhaseDuration });
-          remainingForTail -= costForDaily;
-      } else if (remainingForTail > pillsForEssentialTail) {
-          // We have some extra, do a partial daily phase
-          const affordableDays = Math.floor((remainingForTail - pillsForEssentialTail) / tailUnit);
-          if (affordableDays > 0) {
-               tailPlan.push({ dose: tailUnit, days: affordableDays });
-               remainingForTail -= (tailUnit * affordableDays);
-          }
-      }
-
-      // B. Level 1: Skip 1 Day (1 On, 1 Off)
-      // Loop until we reach base duration OR run out
-      let daysCount1 = 0;
-      while (remainingForTail >= tailUnit && daysCount1 < basePhaseDuration) {
-          tailPlan.push({ dose: tailUnit, days: 1 });
-          tailPlan.push({ dose: 0, days: 1 });
-          remainingForTail -= tailUnit;
-          daysCount1 += 2; 
-      }
-
-      // C. Level 2: Skip 2 Days (1 On, 2 Off)
-      let daysCount2 = 0;
-      while (remainingForTail >= tailUnit && daysCount2 < basePhaseDuration) {
-          tailPlan.push({ dose: tailUnit, days: 1 });
-          tailPlan.push({ dose: 0, days: 2 });
-          remainingForTail -= tailUnit;
-          daysCount2 += 3;
-      }
-
-      // D. Level 3 (Extended): Skip 3 Days (1 On, 3 Off) - ONLY IF SURPLUS
-      while (remainingForTail >= tailUnit) {
-          tailPlan.push({ dose: tailUnit, days: 1 });
-          tailPlan.push({ dose: 0, days: 3 });
-          remainingForTail -= tailUnit;
-          
-          // E. Level 4 (Super Extended): Skip 4 Days - If HUGE surplus
-          if (remainingForTail >= tailUnit) {
-             tailPlan.push({ dose: tailUnit, days: 1 });
-             tailPlan.push({ dose: 0, days: 4 });
-             remainingForTail -= tailUnit;
-          }
-      }
-  }
-
-  // --- E. ASSEMBLE FINAL PLAN ---
-  const finalSteps = [...descentPlan, ...tailPlan];
-  const plan: PlanDay[] = [];
-  let currDate = startDateStr.split('T')[0];
-
-  finalSteps.forEach(step => {
-    for (let i = 0; i < step.days; i++) {
-      plan.push({
-        date: currDate,
-        plannedDose: step.dose,
-        isPast: false
-      });
-      currDate = addDays(currDate, 1);
-    }
-  });
-
-  return plan;
-};
-
-/**
- * --- 3. RE-CALCULATE DYNAMICALLY ---
- * Used by the algorithm to adjust the future based on real usage.
- */
-export const adjustPlan = (
-  originalPlan: PlanDay[],
-  logs: DailyLog[],
-  totalInitialInventory: number, 
-  speedModifier: number = 1.0 
-): PlanDay[] => {
-  
-  const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  // Base Case: No logs yet
-  if (sortedLogs.length === 0) {
-      if (originalPlan.length === 0) return [];
-      return generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier);
-  }
-
-  const lastLog = sortedLogs[sortedLogs.length - 1];
-  const lastLogDate = lastLog.date;
-
-  // Calculate REAL remaining inventory based on what was actually taken
-  const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
-  const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
-
-  // Preserve History (Past days remain as they were logged/planned)
-  const historyDays = originalPlan
-    .filter(day => day.date <= lastLogDate)
-    .map(day => {
-        const log = sortedLogs.find(l => l.date === day.date);
-        return {
-            ...day,
-            isPast: true,
-            log: log || undefined,
-        };
-    });
-  
-  // Generate Future from TOMORROW
-  let newStartDose = lastLog.doseTaken;
-  
-  // If last dose was 0 (skip day), find the last active dose to know our level
-  if (newStartDose === 0) {
-      const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
-      newStartDose = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0);
-  }
-
-  const nextDayStr = addDays(lastLogDate, 1);
-
-  const futureDays = generatePlan(
-      remainingInventory,
-      newStartDose,
-      nextDayStr,
-      speedModifier
-  );
-
-  return [...historyDays, ...futureDays];
-};
-```
----
-
-### File: `services\translations.ts`
-```ts
-export type Language = 'ar' | 'en' | 'ru';
-
-export const translations = {
-  ar: {
+export const ar = {
     // Auth
     welcome: "مرحباً بك",
     subtitle: "نظام التعافي الذكي القائم على علم الأعصاب",
@@ -1267,7 +1326,6 @@ export const translations = {
     pace_fast: "سريع (مكثف)",
     danger_zone: "منطقة الخطر",
     factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
-    // New Profile Translations
     profile_title: "الملف الشخصي",
     photo_url_label: "رابط الصورة الشخصية",
     save_changes: "حفظ التغييرات",
@@ -1303,7 +1361,7 @@ export const translations = {
     // Doctor Selection
     doc_select_title: "اختر طبيبك المعالج",
     doc_search_placeholder: "بحث باسم الطبيب...",
-    doc_select_btn: "اختيار هذا الطبيب",
+    doc_select_btn: "إرسال طلب انضمام", 
 
     // Algorithm Setup
     med_type_title: "نوع الدواء",
@@ -1320,7 +1378,7 @@ export const translations = {
     form_liquid: "سائل / قطرات",
     unit_title: "وحدة القياس",
 
-    // Doctor Dashboard
+    // Doctor Dashboard & Plan Builder (NEW)
     stat_total_patients: "إجمالي المرضى",
     stat_new_requests: "طلبات جديدة",
     stat_recovered: "حالات التعافي",
@@ -1330,6 +1388,21 @@ export const translations = {
     plan_phases: "مراحل التخفيض",
     duration_days: "المدة (أيام)",
     submit_plan: "اعتماد وإرسال",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "منشئ الأنماط",
+    pattern_sequence: "النمط (مثال: 0.5, 0, 0.5, 0)",
+    repeat_count: "عدد التكرار",
+    days_per_dose: "أيام لكل جرعة",
+    apply_pattern: "تطبيق النمط",
+    clear_phases: "مسح الكل",
+    
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "طلبات المرضى الجدد",
+    accept_patient: "قبول",
+    reject_patient: "رفض",
+    no_requests: "لا توجد طلبات معلقة",
+    req_sent_msg: "تم إرسال طلبك للطبيب. يرجى الانتظار لحين الموافقة.",
 
     // Admin & Management
     admin_title: "غرفة التحكم المركزية",
@@ -1346,9 +1419,9 @@ export const translations = {
     approved_docs_list: "قائمة الأطباء المعتمدين",
     ban_user: "حظر",
     unban_user: "فك الحظر",
-    delete_user: "حذف نهائي", // NEW
-    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", // NEW
-    view_details: "عرض التفاصيل", // NEW
+    delete_user: "حذف نهائي", 
+    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", 
+    view_details: "عرض التفاصيل", 
     search_user_placeholder: "بحث عن مستخدم...",
     
     // Patient Management
@@ -1366,10 +1439,13 @@ export const translations = {
     article_cat_label: "التصنيف",
     article_content_label: "المحتوى",
     publish_now: "نشر الآن",
-    cat_medical: "طبي",
+    cat_medical: "طبي وعلمي",
     cat_motivation: "دعم نفسي",
-    cat_tip: "نصائح",
+    cat_tip: "نصائح عملية",
+    cat_all: "الكل",
     cancel_btn: "إلغاء",
+    read_more: "قراءة المزيد",
+    author_by: "بقلم",
 
     // Support & Tickets
     support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
@@ -1390,8 +1466,29 @@ export const translations = {
     me: "أنا",
     support_team: "الدعم الفني",
     current_account: "حسابك الحالي",
-  },
-  en: {
+
+    // Scientific Modal (New)
+    sci_title: "تم بناء خطتك على أسس علمية",
+    sci_subtitle: "تعتمد هذه الخوارزمية على أحدث البروتوكولات الطبية العالمية لعام 2024.",
+    sci_principle_1_title: "التخفيض الزائدي (Hyperbolic Tapering)",
+    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ في الجرعات الصغيرة.",
+    sci_principle_2_title: "التكيف العصبي (Neuro-Adaptation)",
+    sci_principle_2_desc: "الخطة ليست ثابتة. النظام يحلل نومك ومزاجك يومياً ويقوم بتعديل سرعة التخفيض تلقائياً لحمايتك من الأعراض الانسحابية.",
+    sci_principle_3_title: "محاكاة المخزون (Inventory Optimization)",
+    sci_principle_3_desc: "تم حساب كل حبة متبقية لديك لضمان عدم انقطاع الدواء فجأة قبل الوصول لخط النهاية الآمن.",
+    sci_sources_title: "المصادر والمراجع العلمية:",
+    sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
+    sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
+    sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
+    sci_trust_msg: "هذا النظام مصمم ليكون مساعداً، لكنه لا يستبدل استشارة طبيبك الخاص.",
+    sci_btn_understood: "فهمت، ابدأ الخطة",
+};
+```
+---
+
+### File: `services\locales\en.ts`
+```ts
+export const en = {
     welcome: "Welcome",
     subtitle: "Neuro-Scientific Recovery System",
     email: "Email",
@@ -1490,7 +1587,6 @@ export const translations = {
     pace_fast: "Fast (Intense)",
     danger_zone: "Danger Zone",
     factory_reset_btn: "Factory Reset",
-    // New Profile Translations
     profile_title: "My Profile",
     photo_url_label: "Profile Photo URL",
     save_changes: "Save Changes",
@@ -1519,7 +1615,8 @@ export const translations = {
     path_doctor_desc: "I will choose a doctor from the platform and wait for them to assign a plan.",
     doc_select_title: "Select Your Doctor",
     doc_search_placeholder: "Search by doctor name...",
-    doc_select_btn: "Choose this Doctor",
+    doc_select_btn: "Request to Join", 
+
     med_type_title: "Medication Type",
     med_type_narcotic: "Narcotics (Schedule I)",
     med_type_narcotic_desc: "Requires Rehab Center",
@@ -1542,6 +1639,22 @@ export const translations = {
     plan_phases: "Tapering Phases",
     duration_days: "Duration (Days)",
     submit_plan: "Approve & Send",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "Pattern Builder",
+    pattern_sequence: "Sequence (e.g. 0.5, 0, 0.5, 0)",
+    repeat_count: "Repeat Count",
+    days_per_dose: "Days per Dose",
+    apply_pattern: "Apply Pattern",
+    clear_phases: "Clear All",
+
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "Patient Requests",
+    accept_patient: "Accept",
+    reject_patient: "Reject",
+    no_requests: "No pending requests",
+    req_sent_msg: "Request sent. Waiting for doctor approval.",
+
     admin_title: "Central Control Room",
     admin_subtitle: "Integrated Management System",
     tab_overview: "Overview",
@@ -1556,9 +1669,9 @@ export const translations = {
     approved_docs_list: "Approved Doctors List",
     ban_user: "Ban",
     unban_user: "Unban",
-    delete_user: "Delete User", // NEW
-    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", // NEW
-    view_details: "View Details", // NEW
+    delete_user: "Delete User", 
+    delete_confirm_msg: "Are you sure you want to permanently delete this user? This cannot be undone.", 
+    view_details: "View Details", 
     search_user_placeholder: "Search user...",
     manage_patients_title: "Patient Files Management",
     add_patient_btn: "Add New Patient",
@@ -1575,7 +1688,10 @@ export const translations = {
     cat_medical: "Medical",
     cat_motivation: "Motivation",
     cat_tip: "Tip",
+    cat_all: "All",
     cancel_btn: "Cancel",
+    read_more: "Read More",
+    author_by: "By",
 
     // Support & Tickets
     support_desc: "Contact the support team directly.",
@@ -1596,8 +1712,29 @@ export const translations = {
     me: "Me",
     support_team: "Support",
     current_account: "Current Account",
-  },
-  ru: {
+
+    // Scientific Modal (New)
+    sci_title: "Your Plan is Scientifically Grounded",
+    sci_subtitle: "This algorithm is based on the latest global medical protocols of 2024.",
+    sci_principle_1_title: "Hyperbolic Tapering",
+    sci_principle_1_desc: "A system that reduces the cut rate as the dose gets lower. This prevents 'receptor shock' that occurs with sudden stops at low doses.",
+    sci_principle_2_title: "Neuro-Adaptation",
+    sci_principle_2_desc: "The plan is not static. The system analyzes your sleep and mood daily and automatically adjusts the tapering speed to protect you from withdrawal symptoms.",
+    sci_principle_3_title: "Inventory Optimization",
+    sci_principle_3_desc: "Every remaining pill has been calculated to ensure the medication doesn't run out suddenly before reaching the safe finish line.",
+    sci_sources_title: "Scientific Sources & References:",
+    sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
+    sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
+    sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
+    sci_trust_msg: "This system is designed to be an assistant, but it does not replace the advice of your personal doctor.",
+    sci_btn_understood: "Understood, Start Plan",
+};
+```
+---
+
+### File: `services\locales\ru.ts`
+```ts
+export const ru = {
     welcome: "Добро пожаловать",
     subtitle: "Нейро-система восстановления",
     email: "Email",
@@ -1696,7 +1833,6 @@ export const translations = {
     pace_fast: "Быстро",
     danger_zone: "Опасно",
     factory_reset_btn: "Сброс",
-    // New Profile Translations
     profile_title: "Профиль",
     photo_url_label: "URL фото",
     save_changes: "Сохранить",
@@ -1725,7 +1861,8 @@ export const translations = {
     path_doctor_desc: "Я выберу врача и буду ждать план лечения.",
     doc_select_title: "Выберите врача",
     doc_search_placeholder: "Поиск врача...",
-    doc_select_btn: "Выбрать",
+    doc_select_btn: "Отправить запрос", 
+
     med_type_title: "Тип лекарства",
     med_type_narcotic: "Наркотические",
     med_type_narcotic_desc: "Нужен стационар",
@@ -1748,6 +1885,22 @@ export const translations = {
     plan_phases: "Фазы снижения",
     duration_days: "Длительность (дни)",
     submit_plan: "Утвердить и отправить",
+    
+    // NEW KEYS FOR PLAN BUILDER
+    pattern_builder: "Конструктор шаблонов",
+    pattern_sequence: "Шаблон (напр: 0.5, 0)",
+    repeat_count: "Повторить (раз)",
+    days_per_dose: "Дней на дозу",
+    apply_pattern: "Применить",
+    clear_phases: "Очистить все",
+
+    // NEW KEYS FOR PATIENT REQUESTS
+    patient_requests_title: "Заявки пациентов",
+    accept_patient: "Принять",
+    reject_patient: "Отклонить",
+    no_requests: "Нет заявок",
+    req_sent_msg: "Запрос отправлен врачу.",
+
     admin_title: "Центральная панель управления",
     admin_subtitle: "Интегрированная система управления",
     tab_overview: "Обзор",
@@ -1762,9 +1915,9 @@ export const translations = {
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
-    delete_user: "Удалить", // NEW
-    delete_confirm_msg: "Вы уверены? Это действие необратимо.", // NEW
-    view_details: "Подробнее", // NEW
+    delete_user: "Удалить", 
+    delete_confirm_msg: "Вы уверены? Это действие необратимо.", 
+    view_details: "Подробнее", 
     search_user_placeholder: "Поиск пользователя...",
     manage_patients_title: "Управление пациентами",
     add_patient_btn: "Добавить пациента",
@@ -1781,7 +1934,10 @@ export const translations = {
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
     cat_tip: "Советы",
+    cat_all: "Все",
     cancel_btn: "Отмена",
+    read_more: "Читать",
+    author_by: "Автор",
 
     // Support & Tickets
     support_desc: "Свяжитесь с командой поддержки напрямую.",
@@ -1802,26 +1958,1247 @@ export const translations = {
     me: "Я",
     support_team: "Поддержка",
     current_account: "Текущий аккаунт",
+};
+```
+---
+
+### File: `services\adminServices.ts`
+```ts
+import { 
+    collection, addDoc, updateDoc, doc, getDocs, query, orderBy 
+} from 'firebase/firestore';
+import { db } from './firebase';
+import { AuditLog, Ticket, Article, UserProfile } from '../types';
+
+// --- Audit Logger (نظام المراقبة) ---
+// يسجل كل حركة يقوم بها الأدمن لضمان عدم التلاعب
+export const logAdminAction = async (adminUser: UserProfile, action: string, details: string, targetId?: string) => {
+    if (adminUser.role !== 'admin' || !adminUser.uid) return;
+    
+    try {
+        await addDoc(collection(db, 'audit_logs'), {
+            adminId: adminUser.uid,
+            adminName: adminUser.name,
+            action,
+            details,
+            targetId: targetId || null,
+            timestamp: Date.now()
+        } as AuditLog);
+    } catch (e) {
+        console.error("Failed to log audit:", e);
+    }
+};
+
+// --- User Management (إدارة المستخدمين) ---
+
+// وضع علامة "خطر" على المستخدم لمراقبته
+export const flagUser = async (admin: UserProfile, targetUid: string, isFlagged: boolean) => {
+    await updateDoc(doc(db, 'users', targetUid), { isFlagged });
+    await logAdminAction(admin, 'FLAG_USER', `Set flagged status to ${isFlagged}`, targetUid);
+};
+
+// حفظ ملاحظات سرية عن المستخدم (لا يراها المستخدم)
+export const saveDoctorNotes = async (targetUid: string, notes: string) => {
+    // نستخدم حقل doctorNotes لهذا الغرض، سواء كتبها طبيب أو أدمن
+    await updateDoc(doc(db, 'users', targetUid), { doctorNotes: notes });
+};
+
+// --- CMS (نظام إدارة المحتوى) ---
+
+export const publishArticle = async (admin: UserProfile, article: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
+    if (!admin.uid) return;
+    
+    await addDoc(collection(db, 'articles'), {
+        ...article,
+        createdAt: Date.now(),
+        authorName: admin.name,
+        authorId: admin.uid,
+        authorRole: 'admin',
+        isPublished: true
+    });
+    await logAdminAction(admin, 'CREATE_ARTICLE', `Published article: ${article.title}`);
+};
+
+export const fetchArticles = async () => {
+    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+};
+
+// --- Support Tickets (نظام الدعم الفني) ---
+
+export const fetchAllTickets = async () => {
+    const q = query(collection(db, 'tickets'), orderBy('lastUpdate', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Ticket));
+};
+
+export const updateTicketStatus = async (admin: UserProfile, ticketId: string, status: string) => {
+    await updateDoc(doc(db, 'tickets', ticketId), { 
+        status,
+        lastUpdate: Date.now()
+    });
+    await logAdminAction(admin, 'UPDATE_TICKET', `Changed ticket status to ${status}`, ticketId);
+};
+
+export const replyToTicket = async (admin: UserProfile, ticketId: string, text: string, currentMessages: any[]) => {
+    if (!admin.uid) return;
+
+    const newMessage = {
+        senderId: admin.uid,
+        senderName: admin.name,
+        text,
+        timestamp: Date.now(),
+        isAdmin: true // This flags the message as coming from Support/Admin
+    };
+    
+    await updateDoc(doc(db, 'tickets', ticketId), {
+        messages: [...currentMessages, newMessage],
+        lastUpdate: Date.now(),
+        status: 'pending' // انتظار رد المستخدم
+    });
+};
+```
+---
+
+### File: `services\firebase.ts`
+```ts
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
+
+// قراءة المتغيرات البيئية من Vercel (أو ملف .env محلياً)
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+// تهيئة المتغيرات
+let app;
+let auth: Auth | undefined;
+let db: Firestore; 
+const googleProvider = new GoogleAuthProvider();
+
+try {
+  // التحقق من أن المفاتيح موجودة قبل التهيئة
+  if (!firebaseConfig.apiKey) {
+    throw new Error("Firebase API keys are missing. Check Vercel Environment Variables.");
   }
+
+  // محاولة تهيئة التطبيق
+  app = initializeApp(firebaseConfig);
+  
+  // تهيئة خدمات المصادقة وقاعدة البيانات
+  auth = getAuth(app);
+  db = getFirestore(app);
+  
+  console.log("Firebase initialized successfully.");
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+  // في حالة وجود خطأ، نقوم بتهيئة كائنات وهمية لتجنب تحطم التطبيق بالكامل
+  // هذا يسمح للتطبيق بالعمل جزئياً (مثل عرض رسالة خطأ للمستخدم)
+}
+
+// تصدير الخدمات لاستخدامها في باقي الملفات
+// نستخدم الـ assertion (!) هنا لأننا تأكدنا من التهيئة أو رمينا خطأ
+export { auth, db, googleProvider };
+```
+---
+
+### File: `services\taperingEngine.ts`
+```ts
+import { Inventory, PlanDay, DailyLog, ManualPhase } from '../types';
+
+// ============================================================================
+// 1. PRECISION KERNEL (النواة الدقيقة)
+// ============================================================================
+// نستخدم وحدة "الميكرو" (1/1000) لتجنب مشاكل الفاصلة العائمة في الجافاسكربت
+// هذا يضمن أن 0.1 + 0.2 يساوي 0.3 دائماً ولا يساوي 0.300000004
+const PRECISION = 1000; 
+const MIN_SPLIT_MICRO = 250; // يعادل 0.25mg (ربع حبة) كأقل وحدة فيزيائية
+
+const toMicro = (val: number) => Math.round(val * PRECISION);
+const fromMicro = (val: number) => val / PRECISION;
+
+/**
+ * دالة "التقريب الذكي": تحاول الوصول لأدق جرعة ممكنة فيزيائياً
+ */
+const smartRound = (microVal: number, form: 'tablet' | 'liquid' = 'tablet'): number => {
+    // للسائل الدقة 0.1ml (100 micro)
+    // للأقراص الدقة 0.25mg (250 micro)
+    const step = form === 'liquid' ? 100 : MIN_SPLIT_MICRO; 
+    const remainder = microVal % step;
+    if (remainder === 0) return microVal;
+    
+    // التقريب لأقرب وحدة قابلة للقياس
+    return remainder < step / 2 
+        ? microVal - remainder 
+        : microVal + (step - remainder);
+};
+
+// ============================================================================
+// 2. NEURO-SCIENCE LOGIC (المنطق العصبي العلمي)
+// ============================================================================
+
+/**
+ * معادلة هورويتز-تايلور (Horowitz-Taylor Hyperbolic Decay)
+ * المبدأ: "كلما انخفضت الجرعة، زادت صعوبة الخصم"
+ * المصدر: The Maudsley Deprescribing Guidelines
+ */
+const getHyperbolicReductionRate = (currentMicro: number, startMicro: number): number => {
+    if (startMicro === 0) return 0.1;
+    
+    // نسبة إشغال المستقبلات التقريبية
+    const ratio = currentMicro / startMicro;
+
+    if (ratio > 0.75) return 0.10; // الجرعات العالية: خصم 10%
+    if (ratio > 0.40) return 0.07; // الجرعات المتوسطة: خصم 7%
+    if (ratio > 0.15) return 0.05; // الجرعات المنخفضة: خصم 5%
+    return 0.025;                  // الجرعات الأخيرة (الخطر): خصم 2.5% فقط
+};
+
+/**
+ * تحليل الاستقرار العصبي (Neuro-Stability Score)
+ * يحلل آخر 5 أيام ليقرر هل المريض مستعد للنزول أم يحتاج للتثبيت
+ */
+const calculateNeuroReadiness = (logs: DailyLog[]): number => {
+    if (logs.length < 3) return 1.0; // لا يوجد سجل كافٍ، نفترض الجاهزية
+
+    const recent = logs.slice(-5);
+    
+    // 1. استقرار النوم (وزن 50%)
+    const sleepAvg = recent.reduce((a, b) => a + (b.sleepHours || 0), 0) / recent.length;
+    // أقل من 5 ساعات نوم يعني مشكلة، 7 ساعات ممتاز
+    const sleepFactor = Math.min(1, Math.max(0.5, sleepAvg / 7)); 
+
+    // 2. حدة الأعراض (وزن 50%)
+    const symptomSeverity = recent.reduce((a, b) => a + (b.symptoms?.length || 0), 0);
+    // كل عرض يخصم من النتيجة
+    const symptomFactor = Math.max(0.4, 1 - (symptomSeverity * 0.1));
+
+    // النتيجة: 1.0 تعني جاهز تماماً، أقل من ذلك يعني إبطاء الخطة
+    const score = (sleepFactor * 0.5) + (symptomFactor * 0.5);
+    return Math.max(0.5, score); // لا ننزل تحت نصف السرعة
+};
+
+// ============================================================================
+// 3. ENGINE CORE (محرك المحاكاة)
+// ============================================================================
+
+const addDays = (dateStr: string, days: number): string => {
+    const date = new Date(dateStr);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().split('T')[0];
+};
+
+export const calculateTotalInventory = (inv: Inventory): number => {
+    return (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
+};
+
+// --- المولد اليدوي (ثابت للأطباء) ---
+export const generateManualPlan = (phases: ManualPhase[], startDateStr: string): PlanDay[] => {
+    const plan: PlanDay[] = [];
+    let currentDate = startDateStr.split('T')[0];
+    phases.forEach(phase => {
+        for (let i = 0; i < phase.days; i++) {
+            plan.push({ date: currentDate, plannedDose: phase.dose, isPast: false });
+            currentDate = addDays(currentDate, 1);
+        }
+    });
+    return plan;
+};
+
+// --- المولد الذكي العلمي (Scientific Generator) ---
+export const generatePlan = (
+    totalPills: number, 
+    startDose: number, 
+    startDateStr: string,
+    speedModifier: number = 1.0,
+    recentLogs: DailyLog[] = []
+): PlanDay[] => {
+    
+    // تهيئة البيانات الدقيقة
+    const totalInvMicro = toMicro(totalPills);
+    const startMicro = toMicro(startDose);
+    
+    if (totalInvMicro <= 0 || startMicro <= 0) return [];
+
+    // تحليل حالة المريض الحالية (Neuro-Check)
+    const readiness = calculateNeuroReadiness(recentLogs);
+    // السرعة الفعالة = رغبة المستخدم * حالته الصحية
+    const effectiveSpeed = speedModifier * readiness;
+
+    // --- محاكي الميزانية (The Economy Simulator) ---
+    // الهدف: العثور على أفضل منحنى هبوط (Curve) يناسب المخزون
+    // نبدأ بمنحنى مثالي (Quality 1.0) ونقلله تدريجياً إذا لم يكفِ المخزون
+    
+    let bestSteps: number[] = [];
+    let quality = 1.0;
+    let foundSolution = false;
+
+    // حلقة البحث عن الحل (تتكرر حتى تجد خطة تناسب المخزون)
+    while (quality > 0.1 && !foundSolution) {
+        const steps: number[] = [];
+        let currentMicro = startMicro;
+        let simulatedInventory = totalInvMicro;
+        let isFeasible = true;
+
+        // حلقة النزول (Descent Loop)
+        while (currentMicro > 0) {
+            // 1. حساب نسبة الخصم العلمية (Hyperbolic)
+            let reductionRate = getHyperbolicReductionRate(currentMicro, startMicro);
+            
+            // تعديل النسبة حسب "الجودة" و "السرعة الفعالة"
+            // Quality أقل = سرعة أكبر (اضطرارياً)
+            reductionRate = reductionRate / (quality * effectiveSpeed);
+            
+            // حساب الهدف القادم
+            let targetMicro = Math.round(currentMicro * (1 - reductionRate));
+            targetMicro = smartRound(targetMicro); // تقريب فيزيائي
+
+            // منع التوقف (Stagnation Loop Breaker)
+            if (targetMicro >= currentMicro) {
+                targetMicro = smartRound(currentMicro - MIN_SPLIT_MICRO);
+            }
+            if (targetMicro < 0) targetMicro = 0;
+
+            // 2. تحديد مدة الثبات (Plateau Duration)
+            // علمياً: يحتاج الدماغ 2-4 أسابيع في التخفيضات الكبيرة، و 1-2 أسبوع في الصغيرة
+            // نستخدم 14 يوم كأساس، ونضربه في الجودة
+            let daysOnDose = Math.round(14 * quality); 
+            if (daysOnDose < 4) daysOnDose = 4; // أمان: لا يقل عن 4 أيام (Half-life clearance)
+
+            // 3. إضافة الخطوات للمحاكاة
+            for (let i = 0; i < daysOnDose; i++) {
+                steps.push(currentMicro);
+                simulatedInventory -= currentMicro;
+            }
+
+            // 4. استراتيجية "الذيل" (The Tail Strategy)
+            // التذبذب (Oscillation) كحل أخير لتخفيف الصدمة عند الوصول للصفر
+            if (targetMicro === 0) {
+                const tailCycles = Math.max(2, Math.round(4 * quality)); // عدد دورات التذبذب
+                
+                // النمط: يوم إيه / يوم لا
+                for(let i=0; i < tailCycles; i++) {
+                    steps.push(currentMicro); simulatedInventory -= currentMicro;
+                    steps.push(0);
+                }
+                
+                // النمط: يوم إيه / يومين لا (فقط إذا الجودة > 50%)
+                if (quality > 0.5) {
+                    for(let i=0; i < tailCycles; i++) {
+                        steps.push(currentMicro); simulatedInventory -= currentMicro;
+                        steps.push(0); steps.push(0);
+                    }
+                }
+                break; // انتهى النزول
+            }
+
+            // التحقق من الميزانية (هل نفد المخزون؟)
+            if (simulatedInventory < 0) {
+                isFeasible = false;
+                break;
+            }
+
+            currentMicro = targetMicro;
+            if (steps.length > 5000) break; // أمان ضد الحلقات اللانهائية
+        }
+
+        if (isFeasible && simulatedInventory >= 0) {
+            bestSteps = steps;
+            foundSolution = true;
+        } else {
+            // تقليل الجودة بنسبة 5% والمحاولة مرة أخرى للعثور على حل أرخص
+            quality -= 0.05;
+        }
+    }
+
+    // إذا فشلت كل المحاولات (مخزون حرج جداً)، نستخدم "التخفيض الخطي الطارئ"
+    if (!foundSolution) {
+        let budget = totalInvMicro;
+        let emergencyDose = startMicro;
+        while (budget >= emergencyDose && emergencyDose > 0) {
+            bestSteps.push(emergencyDose);
+            budget -= emergencyDose;
+            emergencyDose = smartRound(emergencyDose - MIN_SPLIT_MICRO);
+        }
+    }
+
+    // تحويل الخطوات إلى خطة نهائية
+    const finalPlan: PlanDay[] = [];
+    let currDate = startDateStr.split('T')[0];
+
+    bestSteps.forEach(microDose => {
+        finalPlan.push({
+            date: currDate,
+            plannedDose: fromMicro(microDose),
+            isPast: false
+        });
+        currDate = addDays(currDate, 1);
+    });
+
+    return finalPlan;
+};
+
+// --- إعادة الحساب الديناميكي (Dynamic Re-Calculation) ---
+export const adjustPlan = (
+    originalPlan: PlanDay[],
+    logs: DailyLog[],
+    totalInitialInventory: number, 
+    speedModifier: number = 1.0 
+): PlanDay[] => {
+    
+    const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (sortedLogs.length === 0) {
+        return originalPlan.length > 0 
+            ? generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier, [])
+            : [];
+    }
+
+    const lastLog = sortedLogs[sortedLogs.length - 1];
+    
+    // حساب المتبقي الحقيقي
+    const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
+    const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
+
+    // الأيام الماضية تثبت كما هي
+    const historyDays = originalPlan.filter(day => day.date <= lastLog.date).map(day => {
+        const log = sortedLogs.find(l => l.date === day.date);
+        return { ...day, isPast: true, log: log || undefined };
+    });
+
+    // تحديد نقطة البداية للمستقبل
+    let startPoint = lastLog.doseTaken;
+    if (startPoint === 0) {
+        // إذا كان في يوم راحة، نرجع لآخر جرعة فعالة
+        const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
+        startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0);
+    }
+
+    // توليد المستقبل باستخدام المحرك العلمي
+    const futureDays = generatePlan(
+        remainingInventory,
+        startPoint,
+        addDays(lastLog.date, 1),
+        speedModifier,
+        sortedLogs // نمرر السجل للتحليل العصبي
+    );
+
+    return [...historyDays, ...futureDays];
+};
+```
+---
+
+### File: `services\translations.ts`
+```ts
+import { ar } from './locales/ar';
+import { en } from './locales/en';
+import { ru } from './locales/ru';
+
+export type Language = 'ar' | 'en' | 'ru';
+
+export const translations = {
+  ar,
+  en,
+  ru
+};
+```
+---
+
+### File: `views\admin\AdminCMS.tsx`
+```tsx
+import React, { useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { Article, ArticleCategory } from '../../types';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+interface AdminCMSProps {
+    articles: Article[];
+    publishArticle: (article: any) => void;
+    deleteArticle: (id: string) => void;
+}
+
+export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSProps) => {
+    const { t } = useLanguage();
+    const [showArticleModal, setShowArticleModal] = useState(false);
+    const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
+
+    const handlePublish = () => {
+        publishArticle(newArticle);
+        setShowArticleModal(false);
+        setNewArticle({ title: '', content: '', category: 'tip' });
+    };
+
+    return (
+        <div className="animate-in fade-in space-y-4">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-white">{t('tab_cms')}</h2>
+                <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
+                    <Plus size={16}/> {t('new_article_btn')}
+                </Button>
+            </div>
+
+            {showArticleModal && (
+                 <Card className="bg-slate-900 border-indigo-500/30 mb-6">
+                     <div className="space-y-4">
+                         <input 
+                             className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 outline-none focus:border-indigo-500" 
+                             placeholder={t('article_title_label')}
+                             value={newArticle.title} 
+                             onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
+                         />
+                         
+                         <div>
+                             <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">{t('article_cat_label')}</label>
+                             <div className="flex gap-2">
+                                 {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
+                                     <button 
+                                        key={cat}
+                                        onClick={() => setNewArticle({...newArticle, category: cat})}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${newArticle.category === cat ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
+                                     >
+                                         {cat.toUpperCase()}
+                                     </button>
+                                 ))}
+                             </div>
+                         </div>
+
+                         <textarea 
+                             className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32 outline-none focus:border-indigo-500" 
+                             placeholder={t('article_content_label')}
+                             value={newArticle.content} 
+                             onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
+                         />
+                         
+                         <div className="flex justify-end gap-2">
+                             <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
+                             <Button variant="success" onClick={handlePublish}>{t('publish_now')}</Button>
+                         </div>
+                     </div>
+                 </Card>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {articles.map(art => (
+                    <div key={art.id} className="bg-slate-900 p-5 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all group relative">
+                        <button 
+                            onClick={() => art.id && deleteArticle(art.id)}
+                            className="absolute top-4 left-4 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <Trash2 size={16}/>
+                        </button>
+
+                        <Badge color="blue" className="mb-3">{art.category}</Badge>
+                        <h3 className="font-bold text-white mb-2 line-clamp-1">{art.title}</h3>
+                        <p className="text-xs text-slate-500 line-clamp-3 mb-4">{art.content}</p>
+                        <div className="text-[10px] text-slate-600 font-mono">
+                            {new Date(art.createdAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\admin\AdminDoctors.tsx`
+```tsx
+import React from 'react';
+import { Lock, AlertCircle, Stethoscope, Eye, Ban, Trash2 } from 'lucide-react';
+import { UserProfile } from '../../types';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+interface AdminDoctorsProps {
+    users: UserProfile[];
+    setSelectedDoctor: (doc: UserProfile) => void;
+    toggleBan: (user: UserProfile) => void;
+    deleteUser: (uid: string) => void;
+}
+
+export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }: AdminDoctorsProps) => {
+    const { t } = useLanguage();
+    
+    // فلترة القوائم
+    const doctorsList = users.filter(u => u.role === 'doctor');
+    const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
+    const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
+
+    return (
+        <div className="animate-in fade-in space-y-8">
+             {/* 1. Pending Approvals */}
+             <div className="space-y-4">
+                 <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
+                     <Lock className="text-amber-500" /> {t('pending_approvals')}
+                     <Badge color="amber">{pendingDoctors.length}</Badge>
+                 </h2>
+                 
+                 {pendingDoctors.length === 0 ? (
+                     <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500">
+                         <AlertCircle className="mx-auto mb-2 opacity-50" size={32} />
+                         <p>لا توجد طلبات انضمام معلقة حالياً.</p>
+                     </div>
+                 ) : (
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {pendingDoctors.map(doc => (
+                            <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
+                                <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
+                                
+                                <div className="flex items-center gap-4 mb-4">
+                                    {doc.doctorData?.photoUrl ? (
+                                        <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-full object-cover border border-white/10" />
+                                    ) : (
+                                        <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
+                                    )}
+                                    <div>
+                                        <h3 className="font-bold text-white text-lg">{doc.name}</h3>
+                                        <p className="text-sm text-slate-400">{doc.doctorData?.specialty}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-2 mt-6">
+                                    <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="flex-1 !py-2">
+                                        <Eye size={16} className="mr-2"/> {t('view_details')}
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                 )}
+             </div>
+
+             {/* 2. Active Doctors List */}
+             <div>
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                     <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
+                </h2>
+                <Card className="bg-slate-900 border-white/5 overflow-hidden !p-0">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right text-sm text-slate-400">
+                            <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
+                                <tr>
+                                    <th className="p-4">Doctor</th>
+                                    <th className="p-4">Specialty</th>
+                                    <th className="p-4 text-center">Patients</th>
+                                    <th className="p-4 text-center">Level</th>
+                                    <th className="p-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                                {approvedDoctors.length === 0 && (
+                                    <tr><td colSpan={5} className="p-6 text-center">No approved doctors yet.</td></tr>
+                                )}
+                                {approvedDoctors.map(doc => {
+                                    // حساب عدد المرضى غير المتعافين لهذا الطبيب
+                                    const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
+                                    const level = Math.floor((doc.doctorData?.recoveredCount || 0) / 5) + 1;
+
+                                    return (
+                                        <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
+                                            <td className="p-4 font-bold text-white flex items-center gap-3">
+                                                {doc.doctorData?.photoUrl ? (
+                                                    <img src={doc.doctorData.photoUrl} className="w-8 h-8 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">Dr</div>
+                                                )}
+                                                {doc.name}
+                                            </td>
+                                            <td className="p-4">{doc.doctorData?.specialty}</td>
+                                            <td className="p-4 text-center text-indigo-400 font-bold">{patientCount}</td>
+                                            <td className="p-4 text-center"><Badge color="amber">LVL {level}</Badge></td>
+                                            <td className="p-4 text-center flex justify-center gap-2">
+                                                <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded hover:bg-blue-500/20" title={t('view_details')}><Eye size={16}/></button>
+                                                <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}><Ban size={16}/></button>
+                                                <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded hover:bg-rose-500/20" title={t('delete_user')}><Trash2 size={16}/></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+             </div>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\admin\AdminOverview.tsx`
+```tsx
+import React, { useMemo } from 'react';
+import { Lock, CheckCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { UserProfile } from '../../types';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+interface AdminOverviewProps {
+    users: UserProfile[];
+    setActiveTab: (tab: any) => void;
+}
+
+export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
+    const { t } = useLanguage();
+
+    const doctorsList = users.filter(u => u.role === 'doctor');
+    const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
+    const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
+    const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
+    const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
+
+    const stats = useMemo(() => {
+        return [
+            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
+            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981' },
+            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b' },
+            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e' },
+        ];
+    }, [users, t]);
+
+    return (
+        <div className="space-y-6 animate-in fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {stats.map((stat, idx) => (
+                    <Card key={idx} className="bg-slate-900 border-white/5 p-6 flex flex-col justify-between">
+                        <h3 className="text-slate-500 text-xs font-bold uppercase mb-2">{stat.name}</h3>
+                        <div className="text-4xl font-black" style={{color: stat.color}}>{stat.value}</div>
+                    </Card>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-slate-900 border-white/5 min-h-[300px]">
+                    <h3 className="text-white font-bold mb-4">{t('stat_overview')}</h3>
+                    <ResponsiveContainer width="100%" height="250px">
+                        <BarChart data={stats}>
+                            <XAxis dataKey="name" stroke="#475569" fontSize={10} tick={false} />
+                            <Tooltip contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px'}} cursor={{fill: 'transparent'}} />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                                {stats.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </Card>
+                
+                <Card className="bg-slate-900 border-white/5">
+                    <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                        <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
+                    </h3>
+                    {pendingDoctors.length === 0 ? (
+                        <div className="text-center text-slate-500 py-10 flex flex-col items-center">
+                            <CheckCircle size={32} className="mb-2 opacity-20"/>
+                            <p>No pending approvals.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {pendingDoctors.slice(0, 3).map(doc => (
+                                <div key={doc.uid} className="flex justify-between items-center bg-slate-950 p-3 rounded-lg border border-white/5">
+                                    <div>
+                                        <div className="font-bold text-white text-sm">{doc.name}</div>
+                                        <div className="text-xs text-slate-500">{doc.doctorData?.specialty}</div>
+                                    </div>
+                                    <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">{t('review_btn')}</Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            </div>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\admin\AdminUsers.tsx`
+```tsx
+import React, { useState } from 'react';
+import { Search, Ban, Trash2 } from 'lucide-react';
+import { UserProfile } from '../../types';
+import { Badge } from '../../components/ui/Badge';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+interface AdminUsersProps {
+    users: UserProfile[];
+    toggleBan: (user: UserProfile) => void;
+    deleteUser: (uid: string) => void;
+}
+
+export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) => {
+    const { t } = useLanguage();
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // تصفية المستخدمين (نستبعد الأطباء والأدمن)
+    const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
+
+    return (
+        <div className="space-y-4 animate-in fade-in">
+            {/* شريط البحث */}
+            <div className="flex bg-slate-900 p-4 rounded-2xl border border-white/5 mb-4">
+                <Search className="text-slate-500 ml-4" size={20} />
+                <input 
+                    className="bg-transparent w-full text-white outline-none"
+                    placeholder={t('search_user_placeholder')}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+            </div>
+
+            {/* شبكة المستخدمين */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {normalUsers
+                    .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map(user => (
+                    <div key={user.uid} className="bg-slate-900/80 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">
+                                {user.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-white flex items-center gap-2">
+                                    {user.name} 
+                                    {user.isBanned && <Ban size={12} className="text-rose-500"/>}
+                                </h4>
+                                <div className="flex gap-2 mt-1">
+                                    <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? t('role_patient') : 'User'}</Badge>
+                                    {user.patientData?.assignedDoctorName && (
+                                        <span className="text-[9px] text-slate-500 flex items-center">Dr: {user.patientData.assignedDoctorName}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => toggleBan(user)} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" title={user.isBanned ? t('unban_user') : t('ban_user')}>
+                                <Ban size={16} />
+                            </button>
+                            <button onClick={() => user.uid && deleteUser(user.uid)} className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20" title={t('delete_user')}>
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\dashboard\DailyCheckIn.tsx`
+```tsx
+import React, { useState } from 'react';
+import { Edit3, Frown, Meh, Smile, Moon } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { UserProfile, PlanDay } from '../../types';
+
+interface DailyCheckInProps {
+    userProfile: UserProfile | null;
+    todayPlan: PlanDay | undefined;
+    selectedDose: number | null;
+    setSelectedDose: (n: number | null) => void;
+    selectedMood: 'bad' | 'normal' | 'good' | null;
+    setSelectedMood: (m: 'bad' | 'normal' | 'good' | null) => void;
+    submitDailyLog: (sleep: number, symptoms: string[]) => void;
+}
+
+export const DailyCheckIn = ({
+    userProfile,
+    todayPlan,
+    selectedDose,
+    setSelectedDose,
+    selectedMood,
+    setSelectedMood,
+    submitDailyLog
+}: DailyCheckInProps) => {
+    const { t } = useLanguage();
+    const [isCustomDose, setIsCustomDose] = useState(false);
+    const [customDoseValue, setCustomDoseValue] = useState<string>('');
+    const [sleepHours, setSleepHours] = useState(7);
+    const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+
+    const unitLabel = userProfile?.medUnit || 'mg';
+    const isLiquid = userProfile?.medForm === 'liquid';
+
+    const symptomOptions = [
+        { id: 'insomnia', label: t('sym_insomnia') },
+        { id: 'anxiety', label: t('sym_anxiety') },
+        { id: 'sweating', label: t('sym_sweating') },
+        { id: 'shake', label: t('sym_shake') },
+        { id: 'nausea', label: t('sym_nausea') },
+        { id: 'headache', label: t('sym_headache') },
+    ];
+
+    const toggleSymptom = (sym: string) => {
+        if (selectedSymptoms.includes(sym)) {
+            setSelectedSymptoms(prev => prev.filter(s => s !== sym));
+        } else {
+            setSelectedSymptoms(prev => [...prev, sym]);
+        }
+    };
+
+    // Calculate Dose Options
+    const target = todayPlan?.plannedDose || 0;
+    const baseStep = isLiquid ? 0.1 : 0.5;
+    const doseOptions = Array.from({ length: 7 }, (_, i) => {
+        const val = target - (3 * baseStep) + (i * baseStep);
+        return Math.max(0, parseFloat(val.toFixed(2)));
+    }).filter((v, i, a) => a.indexOf(v) === i && v >= 0);
+
+    if (!doseOptions.includes(target)) doseOptions.push(target);
+    doseOptions.sort((a,b) => a - b);
+
+    return (
+        <div className="space-y-8">
+            {/* Step 1: Dose Selector */}
+            <div>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedDose !== null ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>1</span>
+                    {t('step_1')}
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {!isCustomDose && doseOptions.map(val => (
+                        <button
+                            key={val}
+                            onClick={() => setSelectedDose(val)}
+                            className={`min-w-[5rem] h-16 rounded-xl border transition-all font-mono font-bold text-lg flex items-center justify-center relative group overflow-hidden ${
+                                selectedDose === val
+                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105 z-10'
+                                : 'bg-slate-800/30 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-indigo-500/30 hover:text-indigo-300'
+                            }`}
+                        >
+                            <span className="relative z-10">{val}</span>
+                            {val === todayPlan?.plannedDose && (
+                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_10px_indigo]"></span>
+                            )}
+                        </button>
+                    ))}
+
+                    <button
+                         onClick={() => setIsCustomDose(!isCustomDose)}
+                         className={`min-w-[5rem] h-16 rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
+                             isCustomDose
+                             ? 'bg-slate-800 border-indigo-500 text-indigo-400'
+                             : 'bg-transparent border-slate-700 text-slate-600 hover:border-slate-500'
+                         }`}
+                    >
+                        <Edit3 size={18} />
+                    </button>
+
+                    {isCustomDose && (
+                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4">
+                            <input
+                                type="number"
+                                className="w-20 h-16 bg-slate-800 border border-indigo-500 rounded-xl text-center text-lg font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                placeholder="0.0"
+                                value={customDoseValue}
+                                onChange={(e) => {
+                                    setCustomDoseValue(e.target.value);
+                                    const val = parseFloat(e.target.value);
+                                    if(!isNaN(val)) setSelectedDose(val);
+                                }}
+                            />
+                            <span className="text-slate-500 font-bold text-xs">{unitLabel}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Step 2: Mood & Details */}
+            <div className={`transition-all duration-700 transform ${selectedDose !== null ? 'opacity-100 translate-y-0' : 'opacity-20 translate-y-8 pointer-events-none blur-sm'}`}>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedMood ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>2</span>
+                    {t('step_2')}
+                </p>
+
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[
+                        { id: 'bad', label: t('bad'), icon: Frown, color: 'rose' },
+                        { id: 'normal', label: t('stable'), icon: Meh, color: 'amber' },
+                        { id: 'good', label: t('excellent'), icon: Smile, color: 'emerald' }
+                    ].map((m: any) => (
+                        <button
+                            key={m.id}
+                            onClick={() => setSelectedMood(m.id)}
+                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 group ${
+                                selectedMood === m.id
+                                ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg scale-105`
+                                : 'bg-slate-800/30 border-white/5 text-slate-600 hover:bg-slate-800'
+                            }`}
+                        >
+                            <m.icon className={`w-6 h-6 ${selectedMood === m.id ? 'fill-current' : ''}`} />
+                            <span className="text-[9px] font-bold uppercase">{m.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {selectedMood && (
+                    <div className="bg-slate-900/40 p-4 rounded-2xl border border-white/5 space-y-4 animate-in fade-in slide-in-from-top-4">
+                        <div>
+                            <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase mb-2">
+                                <Moon size={12} /> {t('sleep_label')}: <span className="text-white text-sm font-mono">{sleepHours}h</span>
+                            </label>
+                            <input
+                                type="range" min="0" max="12" step="0.5"
+                                value={sleepHours}
+                                onChange={(e) => setSleepHours(parseFloat(e.target.value))}
+                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            {symptomOptions.map(sym => (
+                                <button
+                                    key={sym.id}
+                                    onClick={() => toggleSymptom(sym.label)}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                                        selectedSymptoms.includes(sym.label)
+                                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                                        : 'bg-slate-800 text-slate-500 border-transparent hover:border-slate-600'
+                                    }`}
+                                >
+                                    {sym.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Step 3: Confirm */}
+            <div className={`transition-all duration-700 ${selectedDose !== null && selectedMood ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+                 <Button
+                    variant="success"
+                    className="w-full py-4 text-lg rounded-2xl shadow-emerald-500/20"
+                    onClick={() => submitDailyLog(sleepHours, selectedSymptoms)}
+                 >
+                    {t('confirm_log')}
+                 </Button>
+            </div>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\dashboard\DashboardCharts.tsx`
+```tsx
+import React from 'react';
+import { FlaskConical, Clock, Info } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { Card } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/Badge';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { UserProfile, PlanDay } from '../../types';
+
+interface DashboardChartsProps {
+    userProfile: UserProfile | null;
+    plan: PlanDay[];
+}
+
+export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => {
+    const { t } = useLanguage();
+    
+    const isLiquid = userProfile?.medForm === 'liquid';
+    const isPatient = userProfile?.role === 'patient';
+    const doctorName = userProfile?.patientData?.assignedDoctorName;
+
+    return (
+        <div className="space-y-6">
+            {/* Plan Info Card */}
+            <Card className="flex flex-col items-center justify-center text-center py-10 bg-slate-900/40">
+                 <div className="w-20 h-20 rounded-full bg-slate-950 flex items-center justify-center mb-4 relative border border-white/5">
+                     <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping duration-[3000ms]"></div>
+                     {isLiquid ? (
+                        <FlaskConical className="w-8 h-8 text-indigo-400" />
+                     ) : (
+                        <Clock className="w-8 h-8 text-indigo-400" />
+                     )}
+                 </div>
+                 
+                 {isPatient ? (
+                     <>
+                        <h3 className="text-white font-bold text-lg mb-1">الخطة العلاجية الحالية</h3>
+                        <p className="text-slate-500 text-xs px-4 leading-relaxed mb-3">
+                            هذه الخطة تم وضعها بواسطة <strong>د. {doctorName}</strong>. أي تغيير في الجرعات يجب أن يتم بعد استشارته.
+                        </p>
+                        <Badge color="indigo" className="mx-auto">Fixed Plan</Badge>
+                     </>
+                 ) : (
+                     <>
+                        <h3 className="text-white font-bold text-lg mb-1">{t('algo_active')}</h3>
+                        <p className="text-slate-500 text-xs px-4 leading-relaxed">
+                          {t('algo_desc')}
+                        </p>
+                     </>
+                 )}
+            </Card>
+
+            {/* Projection Chart Card */}
+            <Card className="min-h-[250px] relative overflow-hidden bg-indigo-950/10" noPadding>
+                <div className="p-6 pb-0 relative z-10">
+                   <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+                       {t('recovery_path')} <Info size={12} className="text-slate-500"/>
+                   </h2>
+                   <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">Projection</p>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 top-16 opacity-60 hover:opacity-100 transition-opacity duration-500">
+                    <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={plan.slice(0, 14)}>
+                        <defs>
+                        <linearGradient id="colorDose" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                        </defs>
+                        <Area 
+                            type="monotone" 
+                            dataKey="plannedDose" 
+                            stroke="#818cf8" 
+                            strokeWidth={3} 
+                            fillOpacity={1} 
+                            fill="url(#colorDose)" 
+                            animationDuration={2000}
+                        />
+                    </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
+        </div>
+    );
+};
+```
+---
+
+### File: `views\dashboard\DashboardHeader.tsx`
+```tsx
+import React from 'react';
+import { ShieldCheck, CheckCircle } from 'lucide-react';
+import { Card } from '../../components/ui/Card';
+import { ProgressRing } from '../../components/ui/ProgressRing';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { PlanDay, DailyLog, UserProfile } from '../../types';
+
+interface DashboardHeaderProps {
+    todayPlan: PlanDay | undefined;
+    todayLog: DailyLog | undefined;
+    progressPercentage: number;
+    totalDays: number;
+    daysCompleted: number;
+    userProfile: UserProfile | null;
+    children?: React.ReactNode; // For the DailyCheckIn component injection
+}
+
+export const DashboardHeader = ({
+    todayPlan,
+    todayLog,
+    progressPercentage,
+    totalDays,
+    daysCompleted,
+    userProfile,
+    children
+}: DashboardHeaderProps) => {
+    const { t } = useLanguage();
+    const unitLabel = userProfile?.medUnit || 'mg';
+
+    return (
+        <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-8 md:!p-10 border-indigo-500/10 shadow-2xl relative overflow-hidden">
+            {/* Background Effect */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                {/* Top Section: Target Dose & Progress */}
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4" /> {t('target_dose')}
+                        </h2>
+                        <div className="flex items-baseline gap-2 group cursor-default">
+                            <span className="text-7xl md:text-9xl font-black text-white tracking-tighter drop-shadow-2xl group-hover:text-indigo-100 transition-colors duration-500">
+                                {todayPlan ? todayPlan.plannedDose : 0}
+                            </span>
+                            <span className="text-2xl text-slate-600 font-bold group-hover:text-slate-500 transition-colors">{unitLabel}</span>
+                        </div>
+                    </div>
+
+                    <div className="hidden md:block scale-110">
+                        <ProgressRing 
+                            radius={70} 
+                            stroke={8} 
+                            progress={progressPercentage} 
+                            totalSteps={totalDays - daysCompleted} 
+                        />
+                    </div>
+                </div>
+
+                {/* Interaction Section OR Logged State */}
+                {todayLog ? (
+                    <div className="mt-8 bg-emerald-500/5 border border-emerald-500/10 p-8 rounded-[2rem] flex items-center justify-between backdrop-blur-md animate-in zoom-in slide-in-from-bottom-4 duration-700">
+                        <div>
+                            <p className="text-emerald-400 font-bold text-2xl mb-2">{t('documented')}</p>
+                            <div className="space-y-1 text-sm">
+                                <p className="text-slate-400 font-medium">{t('dose')}: <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span></p>
+                                <p className="text-slate-400 font-medium">{t('mood')}: <span className="text-white">{todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}</span></p>
+                            </div>
+                        </div>
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-4 ring-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                            <CheckCircle className="text-emerald-500 w-8 h-8" />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-8">
+                        {children}
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
 };
 ```
 ---
 
 ### File: `views\AdminView.tsx`
 ```tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
     collection, updateDoc, doc, addDoc, query, orderBy, deleteDoc, onSnapshot 
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
-import { LayoutContainer, PageHeader, Card, Badge, Button } from '../components/UI';
-import { 
-    Ban, Activity, Search, Users, Lock, FileText, Stethoscope, CheckCircle, XCircle, Trash2, Plus, AlertCircle, Eye, X
-} from 'lucide-react';
-import { 
-    BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell 
-} from 'recharts';
+import { Activity, Users, FileText, Stethoscope, MessageSquareWarning, X } from 'lucide-react';
+
+// المكونات الأساسية
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge'; // تأكد من استدعاء Badge إذا كنت تستخدمه في المودال
+
+// المكونات الفرعية الجديدة للإدارة
+import { AdminOverview } from './admin/AdminOverview';
+import { AdminDoctors } from './admin/AdminDoctors';
+import { AdminUsers } from './admin/AdminUsers';
+import { AdminCMS } from './admin/AdminCMS';
+
 import { useLanguage } from '../contexts/LanguageContext';
 
 export const AdminView = () => {
@@ -1835,19 +3212,15 @@ export const AdminView = () => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [articles, setArticles] = useState<Article[]>([]);
 
-    // -- CMS State --
-    const [showArticleModal, setShowArticleModal] = useState(false);
-    const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
-
-    // -- Doctor View State --
+    // -- Doctor View/Reject State (Shared Modals) --
     const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
-
-    // -- Search --
-    const [searchTerm, setSearchTerm] = useState("");
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     // -- 1. REAL-TIME DATA FETCHING --
     useEffect(() => {
         setLoading(true);
+        // جلب المستخدمين
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -1859,6 +3232,7 @@ export const AdminView = () => {
             setLoading(false);
         });
 
+        // جلب المقالات
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
@@ -1876,19 +3250,33 @@ export const AdminView = () => {
         if (!confirm("Are you sure you want to approve this doctor?")) return;
         try {
             await updateDoc(doc(db, "users", docUid), {
-                "doctorData.accountStatus": "approved"
+                "doctorData.accountStatus": "approved",
+                "doctorData.rejectionReason": null 
             });
             if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
         } catch (e) { console.error(e); }
     };
 
-    const rejectDoctor = async (docUid: string) => {
-        if (!confirm("Rejecting will prevent login. Continue?")) return;
+    const handleRejectClick = (doctor: UserProfile) => {
+        setSelectedDoctor(doctor);
+        setShowRejectModal(true);
+        setRejectionReason("");
+    };
+
+    const confirmReject = async () => {
+        if (!selectedDoctor?.uid || !rejectionReason.trim()) {
+            alert("Please provide a reason for rejection.");
+            return;
+        }
+
         try {
-            await updateDoc(doc(db, "users", docUid), {
-                "doctorData.accountStatus": "rejected"
+            await updateDoc(doc(db, "users", selectedDoctor.uid), {
+                "doctorData.accountStatus": "rejected",
+                "doctorData.rejectionReason": rejectionReason
             });
-            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
+            setShowRejectModal(false);
+            setSelectedDoctor(null);
+            setRejectionReason("");
         } catch (e) { console.error(e); }
     };
 
@@ -1902,13 +3290,11 @@ export const AdminView = () => {
         }
     };
 
-    // NEW: Delete User Permanently
     const deleteUser = async (targetUid: string) => {
-        if (!confirm(t('delete_confirm_msg'))) return;
+        if (!confirm("Are you sure you want to permanently delete this user?")) return;
         try {
             await deleteDoc(doc(db, "users", targetUid));
-            // Note: This only deletes Firestore data. Auth account deletion requires Admin SDK or Cloud Functions.
-            // But without Firestore data, the app will treat them as non-existent or new.
+            if (selectedDoctor?.uid === targetUid) setSelectedDoctor(null);
         } catch (e) {
             console.error("Error deleting user:", e);
             alert("Failed to delete user.");
@@ -1917,21 +3303,19 @@ export const AdminView = () => {
 
     // -- CMS ACTIONS --
 
-    const publishArticle = async () => {
+    const publishArticle = async (articleData: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
         const currentUser = auth?.currentUser;
-        if (!newArticle.title || !newArticle.content) return;
+        if (!articleData.title || !articleData.content) return;
         
         try {
             await addDoc(collection(db, "articles"), {
-                ...newArticle,
+                ...articleData,
                 isPublished: true,
                 createdAt: Date.now(),
                 authorName: currentUser?.displayName || "System Admin",
                 authorRole: "admin",
                 authorId: currentUser?.uid || "ADMIN_CONSOLE"
             });
-            setShowArticleModal(false);
-            setNewArticle({ title: '', content: '', category: 'tip' });
         } catch (e) { console.error(e); }
     };
 
@@ -1941,26 +3325,13 @@ export const AdminView = () => {
         }
     }
 
-    // -- DERIVED DATA --
-    const doctorsList = users.filter(u => u.role === 'doctor');
-    const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
-    const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
-    const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
-    const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
-
-    const stats = useMemo(() => {
-        return [
-            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
-            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981' },
-            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b' },
-            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e' },
-        ];
-    }, [users, t]);
+    const pendingDoctorsCount = users.filter(u => u.role === 'doctor' && u.doctorData?.accountStatus === 'pending').length;
 
     return (
         <LayoutContainer>
             <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
 
+            {/* Navigation Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
                 {[
                     { id: 'overview', icon: Activity, label: t('tab_overview') },
@@ -1979,284 +3350,47 @@ export const AdminView = () => {
                     >
                         <tab.icon size={16} />
                         {tab.label}
-                        {tab.id === 'doctors' && pendingDoctors.length > 0 && (
-                             <span className="ml-2 bg-rose-500 text-white text-[10px] px-1.5 rounded-full animate-pulse">{pendingDoctors.length}</span>
+                        {tab.id === 'doctors' && pendingDoctorsCount > 0 && (
+                             <span className="ml-2 bg-rose-500 text-white text-[10px] px-1.5 rounded-full animate-pulse">{pendingDoctorsCount}</span>
                         )}
                     </button>
                 ))}
             </div>
 
-            {/* --- TAB: OVERVIEW --- */}
+            {/* Main Content Area */}
             {activeTab === 'overview' && (
-                <div className="space-y-6 animate-in fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {stats.map((stat, idx) => (
-                            <Card key={idx} className="bg-slate-900 border-white/5 p-6 flex flex-col justify-between">
-                                <h3 className="text-slate-500 text-xs font-bold uppercase mb-2">{stat.name}</h3>
-                                <div className="text-4xl font-black" style={{color: stat.color}}>{stat.value}</div>
-                            </Card>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="bg-slate-900 border-white/5 min-h-[300px]">
-                            <h3 className="text-white font-bold mb-4">{t('stat_overview')}</h3>
-                            <ResponsiveContainer width="100%" height="250px">
-                                <BarChart data={stats}>
-                                    <XAxis dataKey="name" stroke="#475569" fontSize={10} tick={false} />
-                                    <Tooltip contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px'}} cursor={{fill: 'transparent'}} />
-                                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                                        {stats.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Card>
-                        
-                        <Card className="bg-slate-900 border-white/5">
-                            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                                <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
-                            </h3>
-                            {pendingDoctors.length === 0 ? (
-                                <div className="text-center text-slate-500 py-10 flex flex-col items-center">
-                                    <CheckCircle size={32} className="mb-2 opacity-20"/>
-                                    <p>No pending approvals.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {pendingDoctors.slice(0, 3).map(doc => (
-                                        <div key={doc.uid} className="flex justify-between items-center bg-slate-950 p-3 rounded-lg border border-white/5">
-                                            <div>
-                                                <div className="font-bold text-white text-sm">{doc.name}</div>
-                                                <div className="text-xs text-slate-500">{doc.doctorData?.specialty}</div>
-                                            </div>
-                                            <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">{t('review_btn')}</Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </Card>
-                    </div>
-                </div>
+                <AdminOverview users={users} setActiveTab={setActiveTab} />
             )}
 
-            {/* --- TAB: DOCTORS MANAGEMENT --- */}
             {activeTab === 'doctors' && (
-                <div className="animate-in fade-in space-y-8">
-                     {/* 1. Pending Approvals */}
-                     <div className="space-y-4">
-                         <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
-                             <Lock className="text-amber-500" /> {t('pending_approvals')}
-                             <Badge color="amber">{pendingDoctors.length}</Badge>
-                         </h2>
-                         
-                         {pendingDoctors.length === 0 ? (
-                             <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500">
-                                 <AlertCircle className="mx-auto mb-2 opacity-50" size={32} />
-                                 <p>لا توجد طلبات انضمام معلقة حالياً.</p>
-                             </div>
-                         ) : (
-                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {pendingDoctors.map(doc => (
-                                    <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                                        <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
-                                        
-                                        <div className="flex items-center gap-4 mb-4">
-                                            {doc.doctorData?.photoUrl ? (
-                                                <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-full object-cover border border-white/10" />
-                                            ) : (
-                                                <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
-                                            )}
-                                            <div>
-                                                <h3 className="font-bold text-white text-lg">{doc.name}</h3>
-                                                <p className="text-sm text-slate-400">{doc.doctorData?.specialty}</p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex gap-2 mt-6">
-                                            <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="flex-1 !py-2">
-                                                <Eye size={16} className="mr-2"/> {t('view_details')}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                             </div>
-                         )}
-                     </div>
-
-                     {/* 2. Active Doctors List */}
-                     <div>
-                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                             <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
-                        </h2>
-                        <Card className="bg-slate-900 border-white/5 overflow-hidden !p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-right text-sm text-slate-400">
-                                    <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
-                                        <tr>
-                                            <th className="p-4">Doctor</th>
-                                            <th className="p-4">Specialty</th>
-                                            <th className="p-4 text-center">Patients</th>
-                                            <th className="p-4 text-center">Level</th>
-                                            <th className="p-4 text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800">
-                                        {approvedDoctors.length === 0 && (
-                                            <tr><td colSpan={6} className="p-6 text-center">No approved doctors yet.</td></tr>
-                                        )}
-                                        {approvedDoctors.map(doc => {
-                                            const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
-                                            const recoveredCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && u.patientData?.isRecovered).length;
-                                            const level = Math.floor(recoveredCount / 5) + 1;
-
-                                            return (
-                                                <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
-                                                    <td className="p-4 font-bold text-white flex items-center gap-3">
-                                                        {doc.doctorData?.photoUrl ? (
-                                                            <img src={doc.doctorData.photoUrl} className="w-8 h-8 rounded-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">Dr</div>
-                                                        )}
-                                                        {doc.name}
-                                                    </td>
-                                                    <td className="p-4">{doc.doctorData?.specialty}</td>
-                                                    <td className="p-4 text-center text-indigo-400 font-bold">{patientCount}</td>
-                                                    <td className="p-4 text-center"><Badge color="amber">LVL {level}</Badge></td>
-                                                    <td className="p-4 text-center flex justify-center gap-2">
-                                                        <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded hover:bg-blue-500/20" title={t('view_details')}><Eye size={16}/></button>
-                                                        <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}><Ban size={16}/></button>
-                                                        <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded hover:bg-rose-500/20" title={t('delete_user')}><Trash2 size={16}/></button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </Card>
-                     </div>
-                </div>
+                <AdminDoctors 
+                    users={users} 
+                    setSelectedDoctor={setSelectedDoctor} 
+                    toggleBan={toggleBan} 
+                    deleteUser={deleteUser} 
+                />
             )}
 
-            {/* --- TAB: USERS MANAGEMENT --- */}
             {activeTab === 'users' && (
-                <div className="space-y-4 animate-in fade-in">
-                    <div className="flex bg-slate-900 p-4 rounded-2xl border border-white/5 mb-4">
-                        <Search className="text-slate-500 ml-4" size={20} />
-                        <input 
-                            className="bg-transparent w-full text-white outline-none"
-                            placeholder={t('search_user_placeholder')}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {normalUsers
-                            .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .map(user => (
-                            <div key={user.uid} className="bg-slate-900/80 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">
-                                        {user.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white flex items-center gap-2">
-                                            {user.name} 
-                                            {user.isBanned && <Ban size={12} className="text-rose-500"/>}
-                                        </h4>
-                                        <div className="flex gap-2 mt-1">
-                                            <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? t('role_patient') : 'User'}</Badge>
-                                            {user.patientData?.assignedDoctorName && (
-                                                <span className="text-[9px] text-slate-500 flex items-center">Dr: {user.patientData.assignedDoctorName}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => toggleBan(user)} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"><Ban size={16} /></button>
-                                    <button onClick={() => user.uid && deleteUser(user.uid)} className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"><Trash2 size={16} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <AdminUsers 
+                    users={users} 
+                    toggleBan={toggleBan} 
+                    deleteUser={deleteUser} 
+                />
             )}
 
-            {/* --- TAB: CONTENT MANAGEMENT (CMS) --- */}
             {activeTab === 'cms' && (
-                <div className="animate-in fade-in space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-white">{t('tab_cms')}</h2>
-                        <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm"><Plus size={16}/> {t('new_article_btn')}</Button>
-                    </div>
-
-                    {showArticleModal && (
-                         <Card className="bg-slate-900 border-indigo-500/30 mb-6">
-                             <div className="space-y-4">
-                                 <input 
-                                     className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 outline-none focus:border-indigo-500" 
-                                     placeholder={t('article_title_label')}
-                                     value={newArticle.title} 
-                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
-                                 />
-                                 
-                                 <div>
-                                     <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">{t('article_cat_label')}</label>
-                                     <div className="flex gap-2">
-                                         {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
-                                             <button 
-                                                key={cat}
-                                                onClick={() => setNewArticle({...newArticle, category: cat})}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${newArticle.category === cat ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
-                                             >
-                                                 {cat.toUpperCase()}
-                                             </button>
-                                         ))}
-                                     </div>
-                                 </div>
-
-                                 <textarea 
-                                     className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32 outline-none focus:border-indigo-500" 
-                                     placeholder={t('article_content_label')}
-                                     value={newArticle.content} 
-                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
-                                 />
-                                 
-                                 <div className="flex justify-end gap-2">
-                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
-                                     <Button variant="success" onClick={publishArticle}>{t('publish_now')}</Button>
-                                 </div>
-                             </div>
-                         </Card>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {articles.map(art => (
-                            <div key={art.id} className="bg-slate-900 p-5 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all group relative">
-                                <button 
-                                    onClick={() => art.id && deleteArticle(art.id)}
-                                    className="absolute top-4 left-4 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Trash2 size={16}/>
-                                </button>
-
-                                <Badge color="blue" className="mb-3">{art.category}</Badge>
-                                <h3 className="font-bold text-white mb-2 line-clamp-1">{art.title}</h3>
-                                <p className="text-xs text-slate-500 line-clamp-3 mb-4">{art.content}</p>
-                                <div className="text-[10px] text-slate-600 font-mono">
-                                    {new Date(art.createdAt).toLocaleDateString()}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <AdminCMS 
+                    articles={articles} 
+                    publishArticle={publishArticle} 
+                    deleteArticle={deleteArticle} 
+                />
             )}
+
+            {/* --- SHARED MODALS --- */}
 
             {/* DOCTOR DETAILS MODAL */}
-            {selectedDoctor && (
+            {selectedDoctor && !showRejectModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-lg bg-slate-900 border-white/10 shadow-2xl relative">
                         <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
@@ -2272,12 +3406,6 @@ export const AdminView = () => {
                         </div>
 
                         <div className="space-y-4 bg-slate-950/50 p-4 rounded-xl border border-white/5 text-sm">
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-500">Status</span>
-                                <Badge color={selectedDoctor.doctorData?.accountStatus === 'approved' ? 'green' : 'amber'}>
-                                    {selectedDoctor.doctorData?.accountStatus.toUpperCase()}
-                                </Badge>
-                            </div>
                             <div className="flex justify-between border-b border-white/5 pb-2">
                                 <span className="text-slate-500">License</span>
                                 <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
@@ -2299,10 +3427,10 @@ export const AdminView = () => {
                         {selectedDoctor.doctorData?.accountStatus === 'pending' && (
                             <div className="flex gap-3 mt-6">
                                 <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1">
-                                    <CheckCircle size={18} className="mr-2"/> {t('approve_btn')}
+                                    Approve
                                 </Button>
-                                <Button onClick={() => selectedDoctor.uid && rejectDoctor(selectedDoctor.uid)} variant="danger" className="flex-1">
-                                    <XCircle size={18} className="mr-2"/> {t('reject_btn')}
+                                <Button onClick={() => handleRejectClick(selectedDoctor)} variant="danger" className="flex-1">
+                                    Reject
                                 </Button>
                             </div>
                         )}
@@ -2310,10 +3438,34 @@ export const AdminView = () => {
                         {selectedDoctor.doctorData?.accountStatus === 'approved' && (
                              <div className="mt-6 flex justify-center">
                                  <Button onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} variant="danger" className="w-full">
-                                     <Trash2 size={18} className="mr-2"/> {t('delete_user')}
+                                     <Trash2 size={18} className="mr-2"/> Delete User
                                  </Button>
                              </div>
                         )}
+                    </Card>
+                </div>
+            )}
+
+            {/* REJECTION REASON MODAL */}
+            {showRejectModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-md bg-slate-900 border-white/10 shadow-2xl relative">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <MessageSquareWarning className="text-rose-500" /> سبب الرفض
+                        </h3>
+                        <p className="text-slate-400 text-sm mb-4">يرجى توضيح سبب رفض طلب الطبيب ليتمكن من تصحيحه.</p>
+                        
+                        <textarea 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-rose-500 outline-none h-32 resize-none"
+                            placeholder="مثال: رقم الترخيص غير واضح، البيانات ناقصة..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                        />
+                        
+                        <div className="flex gap-3 mt-6">
+                            <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">إلغاء</Button>
+                            <Button onClick={confirmReject} variant="danger" className="flex-1">تأكيد الرفض</Button>
+                        </div>
                     </Card>
                 </div>
             )}
@@ -2329,14 +3481,23 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { PageHeader, LayoutContainer, Card, Badge, Button } from '../components/UI';
 import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool } from 'lucide-react';
 
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
+
 interface ArticlesViewProps {
-    userProfile?: UserProfile | null; // نحتاج البروفايل لمعرفة الصلاحيات
+    userProfile?: UserProfile | null;
 }
 
 export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
+    const { t, language } = useLanguage();
     const [articles, setArticles] = useState<Article[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<'all' | ArticleCategory>('all');
     const [readingArticle, setReadingArticle] = useState<Article | null>(null);
@@ -2370,10 +3531,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     // -- Publish Action --
     const handlePublish = async () => {
-        // FIX: Use optional chaining (?.) for auth
         const currentUser = auth?.currentUser;
 
-        // التحقق من المتغير المحلي
         if (!currentUser || !userProfile) return;
         
         if (!newArticle.title.trim() || !newArticle.content.trim()) return;
@@ -2385,20 +3544,18 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 category: newArticle.category,
                 isPublished: true,
                 createdAt: Date.now(),
-                // استخدام المتغير المحلي الآمن
                 authorId: currentUser.uid, 
                 authorName: userProfile.name,
                 authorRole: userProfile.role 
             });
             
-            // Reset and Refresh
             setShowCreateModal(false);
             setNewArticle({ title: '', content: '', category: 'tip' });
             fetchArticles();
-            alert("تم نشر المقال بنجاح!");
+            alert(language === 'ar' ? "تم نشر المقال بنجاح!" : "Article published successfully!");
         } catch (e) {
             console.error("Error publishing article:", e);
-            alert("حدث خطأ أثناء النشر.");
+            alert("Error publishing article.");
         }
     };
 
@@ -2423,18 +3580,17 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         }
     };
 
-    // هل المستخدم يملك صلاحية النشر؟
     const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
 
     return (
         <LayoutContainer>
             <PageHeader 
-                title="مركز المعرفة" 
-                subtitle="مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي."
+                title={t('knowledge_center')} 
+                subtitle={t('knowledge_desc')}
                 action={
                     canPublish && (
                         <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
-                            <PenTool size={16} /> نشر مقال جديد
+                            <PenTool size={16} /> {t('new_article_btn')}
                         </Button>
                     )
                 }
@@ -2443,10 +3599,10 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
             {/* Category Filters */}
             <div className="flex gap-3 overflow-x-auto pb-4 mb-2 scrollbar-hide">
                 {[
-                    { id: 'all', label: 'الكل', icon: BookOpen },
-                    { id: 'medical', label: 'طبي وعلمي', icon: Stethoscope },
-                    { id: 'motivation', label: 'دعم نفسي', icon: Heart },
-                    { id: 'tip', label: 'نصائح عملية', icon: Lightbulb },
+                    { id: 'all', label: t('cat_all'), icon: BookOpen },
+                    { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
+                    { id: 'motivation', label: t('cat_motivation'), icon: Heart },
+                    { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
                 ].map((cat) => (
                     <button
                         key={cat.id}
@@ -2465,11 +3621,11 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Articles Grid */}
             {loading ? (
-                <div className="text-center py-20 text-slate-500 animate-pulse">جاري تحميل المحتوى...</div>
+                <div className="text-center py-20 text-slate-500 animate-pulse">Loading...</div>
             ) : filteredArticles.length === 0 ? (
                 <div className="text-center py-20 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
                     <BookOpen size={48} className="mx-auto text-slate-700 mb-4"/>
-                    <p className="text-slate-500">لا توجد مقالات في هذا القسم حالياً.</p>
+                    <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات هنا.' : 'No articles found.'}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2504,7 +3660,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     </span>
                                 </div>
                                 <span className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
-                                    قراءة <ArrowRight size={14} />
+                                    {t('read_more')} <ArrowRight size={14} />
                                 </span>
                             </div>
                         </div>
@@ -2512,34 +3668,34 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 </div>
             )}
 
-            {/* Create Article Modal (For Admins & Doctors) */}
+            {/* Create Article Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative">
                         <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
                         
                         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <PenTool className="text-indigo-400"/> نشر مقال جديد
+                            <PenTool className="text-indigo-400"/> {t('new_article_btn')}
                         </h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">عنوان المقال</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_title_label')}</label>
                                 <input 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
-                                    placeholder="اكتب عنواناً جذاباً..."
+                                    placeholder="..."
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">التصنيف</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_cat_label')}</label>
                                 <div className="flex gap-2">
                                     {[
-                                        { id: 'medical', label: 'معلومة طبية' },
-                                        { id: 'motivation', label: 'دعم نفسي' },
-                                        { id: 'tip', label: 'نصيحة عملية' },
+                                        { id: 'medical', label: t('cat_medical') },
+                                        { id: 'motivation', label: t('cat_motivation') },
+                                        { id: 'tip', label: t('cat_tip') },
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
@@ -2557,19 +3713,19 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">المحتوى</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_content_label')}</label>
                                 <textarea 
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 h-40 resize-none"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
-                                    placeholder="اكتب محتوى المقال هنا..."
+                                    placeholder="..."
                                 />
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
-                                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>إلغاء</Button>
+                                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('cancel_btn')}</Button>
                                 <Button variant="success" onClick={handlePublish} disabled={!newArticle.title || !newArticle.content}>
-                                    نشر الآن
+                                    {t('publish_now')}
                                 </Button>
                             </div>
                         </div>
@@ -2597,9 +3753,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                 {readingArticle.title}
                             </h2>
                             <div className="flex items-center gap-3 text-xs text-slate-500">
-                                <span>بقلم: {readingArticle.authorName}</span>
-                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">طبيب</Badge>}
-                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">أدمن</Badge>}
+                                <span>{t('author_by')}: {readingArticle.authorName}</span>
+                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">Dr</Badge>}
+                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">Admin</Badge>}
                                 <span>•</span>
                                 <span>{new Date(readingArticle.createdAt).toLocaleDateString()}</span>
                             </div>
@@ -2616,9 +3772,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-white/5 bg-slate-950 flex justify-between items-center">
-                            <p className="text-xs text-slate-600">مركز المعرفة - Islam's Guide</p>
+                            <p className="text-xs text-slate-600">Islam's Guide Knowledge Center</p>
                             <Button variant="secondary" onClick={() => setReadingArticle(null)} className="!py-2 !px-4 !text-xs">
-                                إغلاق
+                                {t('close')}
                             </Button>
                         </div>
                     </Card>
@@ -2630,185 +3786,18 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 ```
 ---
 
-### File: `views\CalendarStatsView.tsx`
-```tsx
-import React from 'react';
-import { Card } from '../components/UI';
-import { PlanDay, DailyLog } from '../types';
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
-} from 'recharts';
-import { Smile, Activity } from 'lucide-react';
-
-interface CalendarViewProps {
-    plan: PlanDay[];
-    logs: DailyLog[];
-    todayDate: string;
-}
-
-export const CalendarView = ({ plan, logs, todayDate }: CalendarViewProps) => {
-    const startDate = new Date(plan[0]?.date || new Date());
-    const startDayIndex = (startDate.getDay() + 1) % 7;
-    const blanks = Array.from({ length: startDayIndex });
-
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <h1 className="text-4xl font-black text-white tracking-tight">الجدول الزمني الشامل</h1>
-        <Card className="overflow-hidden p-0 border-0 bg-transparent shadow-none !p-0">
-          <div className="grid grid-cols-7 gap-2 md:gap-4">
-            {['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'].map(d => (
-              <div key={d} className="bg-slate-900/60 p-4 text-center text-xs font-black text-slate-500 uppercase rounded-2xl">{d}</div>
-            ))}
-            
-            {blanks.map((_, i) => <div key={`blank-${i}`} />)}
-
-            {plan.map((day, idx) => {
-              const isToday = day.date === todayDate;
-              const log = logs.find(l => l.date === day.date);
-              
-              let bgClass = "bg-slate-900/40 border-white/5";
-              if (isToday) bgClass = "bg-indigo-600 border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.3)] transform scale-105 z-10";
-              else if (day.isPast) bgClass = "bg-slate-950/80 border-slate-900 opacity-40 grayscale";
-
-              return (
-                <div key={idx} className={`${bgClass} border rounded-3xl p-4 min-h-[120px] flex flex-col justify-between transition-all duration-300 hover:border-indigo-500/30 relative overflow-hidden group hover:bg-slate-900`}>
-                   {isToday && <div className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full m-3 animate-ping"></div>}
-                   {log && <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${log.mood === 'good' ? 'bg-emerald-500' : log.mood === 'bad' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>}
-                  
-                  <div className="flex justify-between items-start z-10">
-                    <span className={`text-xs font-bold ${isToday ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>
-                      {day.date.slice(8)}
-                    </span>
-                    {log && (
-                      <span className="text-xl animate-in zoom-in">{log.mood === 'good' ? '🤩' : log.mood === 'bad' ? '😖' : '😐'}</span>
-                    )}
-                  </div>
-                  <div className="text-center z-10 mt-2">
-                    <span className={`text-3xl font-black ${isToday ? 'text-white' : 'text-slate-300'}`}>
-                      {day.plannedDose}
-                    </span>
-                    <span className={`text-[9px] block uppercase tracking-wider font-bold ${isToday ? 'text-indigo-200' : 'text-slate-600'}`}>mg</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-    );
-};
-
-interface StatsViewProps {
-    logs: DailyLog[];
-}
-
-export const StatsView = ({ logs }: StatsViewProps) => {
-    const moodData = [
-        { name: 'ممتاز', value: logs.filter(l => l.mood === 'good').length, color: '#10b981' },
-        { name: 'مستقر', value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' },
-        { name: 'سيء', value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },
-    ].filter(d => d.value > 0);
-
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-          <h1 className="text-4xl font-black text-white tracking-tight">التحليل البياني</h1>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Mood Distribution */}
-              <Card className="min-h-[450px] flex flex-col">
-                  <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                          <Smile className="w-5 h-5"/>
-                      </div>
-                      الحالة المزاجية العامة
-                  </h3>
-                  <div className="flex-1 relative">
-                       {moodData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                  <Pie
-                                      data={moodData}
-                                      cx="50%"
-                                      cy="50%"
-                                      innerRadius={80}
-                                      outerRadius={140}
-                                      paddingAngle={8}
-                                      dataKey="value"
-                                      stroke="none"
-                                      cornerRadius={12}
-                                  >
-                                      {moodData.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={entry.color} />
-                                      ))}
-                                  </Pie>
-                                  <Tooltip 
-                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
-                                      itemStyle={{color: '#fff', fontWeight: 'bold'}}
-                                  />
-                              </PieChart>
-                          </ResponsiveContainer>
-                       ) : (
-                           <div className="absolute inset-0 flex items-center justify-center text-slate-600 font-medium">
-                               لا توجد بيانات كافية
-                           </div>
-                       )}
-                  </div>
-                  <div className="flex justify-center gap-8 mt-6">
-                      {moodData.map((d, i) => (
-                          <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-400">
-                              <div className="w-4 h-4 rounded-full shadow-lg" style={{backgroundColor: d.color, boxShadow: `0 0 10px ${d.color}40`}}></div>
-                              {d.name}
-                          </div>
-                      ))}
-                  </div>
-              </Card>
-
-              {/* Adherence Chart */}
-              <Card className="min-h-[450px] flex flex-col">
-                  <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                          <Activity className="w-5 h-5"/>
-                      </div>
-                       سجل الجرعات
-                  </h3>
-                  <div className="flex-1">
-                      <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={logs.slice(-14)}> {/* Last 14 logs */}
-                              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                              <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" tick={{fill: '#475569', fontSize: 10}} axisLine={false} tickLine={false} dy={10} />
-                              <YAxis stroke="#475569" tick={{fill: '#475569', fontSize: 10}} axisLine={false} tickLine={false} dx={-10} />
-                              <Tooltip 
-                                  cursor={{fill: '#1e293b', opacity: 0.5}}
-                                  contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px'}}
-                              />
-                              <Bar dataKey="doseTaken" fill="#6366f1" radius={[10, 10, 0, 0]} barSize={28}>
-                                {logs.slice(-14).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill="url(#colorGradientBar)" />
-                                ))}
-                              </Bar>
-                              <defs>
-                                <linearGradient id="colorGradientBar" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#818cf8" />
-                                </linearGradient>
-                              </defs>
-                          </BarChart>
-                      </ResponsiveContainer>
-                  </div>
-              </Card>
-          </div>
-      </div>
-    );
-};
-```
----
-
 ### File: `views\CalendarView.tsx`
 ```tsx
 import React from 'react';
-import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
+import { Check, X, Stethoscope, BrainCircuit } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
 import { PlanDay, DailyLog, UserProfile } from '../types';
-import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface CalendarViewProps {
@@ -2975,12 +3964,18 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
-import { LayoutContainer, Card, Button, Badge } from '../components/UI';
-import { useLanguage } from '../contexts/LanguageContext';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
     ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock 
 } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CommunityViewProps {
     currentUser: UserProfile;
@@ -3334,17 +4329,29 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 ### File: `views\DashboardView.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, CheckCircle, AlertTriangle, Smile, Meh, Frown, Clock, HeartPulse, Moon, FileText, PauseCircle,
-  FlaskConical, Pill, Edit3, Stethoscope, Info
-} from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Button, Card, ProgressRing, PageHeader, LayoutContainer, BreathingModal, DoctorReportModal, LanguageSwitcher, Badge } from '../components/UI';
+import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope } from 'lucide-react';
+
+// المكونات الأساسية
+import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
+
+// النوافذ المنبثقة
+import { BreathingModal } from '../components/modals/BreathingModal';
+import { DoctorReportModal } from '../components/modals/DoctorReportModal';
+
+// المكونات الفرعية الجديدة للوحة التحكم
+import { DashboardHeader } from './dashboard/DashboardHeader';
+import { DailyCheckIn } from './dashboard/DailyCheckIn';
+import { DashboardCharts } from './dashboard/DashboardCharts';
+
 import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardViewProps {
-  userProfile: UserProfile | null; // نقبل null هنا لتجنب مشاكل النوع، لكننا نتحقق منه
+  userProfile: UserProfile | null;
   plan: PlanDay[];
   logs: DailyLog[];
   todayPlan: PlanDay | undefined;
@@ -3371,52 +4378,10 @@ export const DashboardView = ({
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   
-  // Custom Dose Input State
-  const [isCustomDose, setIsCustomDose] = useState(false);
-  const [customDoseValue, setCustomDoseValue] = useState<string>('');
-  
-  const [sleepHours, setSleepHours] = useState(7);
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-
-  // Derived Values
-  const unitLabel = userProfile?.medUnit || 'mg';
-  const isLiquid = userProfile?.medForm === 'liquid';
-  
   // هل المستخدم يتبع طبيباً؟
   const isPatient = userProfile?.role === 'patient';
   const isManualPlan = userProfile?.planType === 'manual';
   const doctorName = userProfile?.patientData?.assignedDoctorName;
-
-  const toggleSymptom = (sym: string) => {
-      if (selectedSymptoms.includes(sym)) {
-          setSelectedSymptoms(prev => prev.filter(s => s !== sym));
-      } else {
-          setSelectedSymptoms(prev => [...prev, sym]);
-      }
-  };
-
-  const symptomOptions = [
-      { id: 'insomnia', label: t('sym_insomnia') },
-      { id: 'anxiety', label: t('sym_anxiety') },
-      { id: 'sweating', label: t('sym_sweating') },
-      { id: 'shake', label: t('sym_shake') },
-      { id: 'nausea', label: t('sym_nausea') },
-      { id: 'headache', label: t('sym_headache') },
-  ];
-
-  // Generate dose options smart based on current plan
-  const target = todayPlan?.plannedDose || 0;
-  
-  const baseStep = isLiquid ? 0.1 : 0.5; 
-  
-  // Create a range of options around the target dose
-  const doseOptions = Array.from({ length: 7 }, (_, i) => {
-      const val = target - (3 * baseStep) + (i * baseStep);
-      return Math.max(0, parseFloat(val.toFixed(2))); 
-  }).filter((v, i, a) => a.indexOf(v) === i && v >= 0); 
-
-  if (!doseOptions.includes(target)) doseOptions.push(target);
-  doseOptions.sort((a,b) => a - b);
 
   return (
     <LayoutContainer>
@@ -3484,239 +4449,33 @@ export const DashboardView = ({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main Action Card */}
-        <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-8 md:!p-10 border-indigo-500/10 shadow-2xl">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-          
-          <div className="relative z-10 h-full flex flex-col justify-between">
-            {/* Top Section */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" /> {t('target_dose')}
-                    </h2>
-                    <div className="flex items-baseline gap-2 group cursor-default">
-                        <span className="text-7xl md:text-9xl font-black text-white tracking-tighter drop-shadow-2xl group-hover:text-indigo-100 transition-colors duration-500">
-                            {todayPlan ? todayPlan.plannedDose : 0}
-                        </span>
-                        <span className="text-2xl text-slate-600 font-bold group-hover:text-slate-500 transition-colors">{unitLabel}</span>
-                    </div>
-                </div>
-                
-                <div className="hidden md:block scale-110">
-                     <ProgressRing radius={70} stroke={8} progress={progressPercentage} totalSteps={totalDays - daysCompleted} />
-                </div>
-            </div>
-
-            {/* Interaction Section */}
-            {todayLog ? (
-              <div className="mt-8 bg-emerald-500/5 border border-emerald-500/10 p-8 rounded-[2rem] flex items-center justify-between backdrop-blur-md animate-in zoom-in slide-in-from-bottom-4 duration-700">
-                <div>
-                  <p className="text-emerald-400 font-bold text-2xl mb-2">{t('documented')}</p>
-                  <div className="space-y-1 text-sm">
-                     <p className="text-slate-400 font-medium">{t('dose')}: <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span></p>
-                     <p className="text-slate-400 font-medium">{t('mood')}: <span className="text-white">{todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}</span></p>
-                  </div>
-                </div>
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-4 ring-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-                    <CheckCircle className="text-emerald-500 w-8 h-8" />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-8 space-y-8">
-                 {/* Step 1: Dose Selector */}
-                 <div>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedDose ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>1</span>
-                        {t('step_1')}
-                    </p>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {/* Standard Options */}
-                        {!isCustomDose && doseOptions.map(val => (
-                        <button 
-                            key={val}
-                            onClick={() => setSelectedDose(val)}
-                            className={`min-w-[5rem] h-16 rounded-xl border transition-all font-mono font-bold text-lg flex items-center justify-center relative group overflow-hidden ${
-                                selectedDose === val 
-                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105 z-10' 
-                                : 'bg-slate-800/30 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-indigo-500/30 hover:text-indigo-300'
-                            }`}
-                        >
-                            <span className="relative z-10">{val}</span>
-                            {val === todayPlan?.plannedDose && (
-                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_10px_indigo]"></span>
-                            )}
-                        </button>
-                        ))}
-                        
-                        {/* Custom Input Toggle */}
-                        <button 
-                             onClick={() => setIsCustomDose(!isCustomDose)}
-                             className={`min-w-[5rem] h-16 rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
-                                 isCustomDose 
-                                 ? 'bg-slate-800 border-indigo-500 text-indigo-400' 
-                                 : 'bg-transparent border-slate-700 text-slate-600 hover:border-slate-500'
-                             }`}
-                        >
-                            <Edit3 size={18} />
-                        </button>
-
-                        {/* Custom Input Field */}
-                        {isCustomDose && (
-                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4">
-                                <input 
-                                    type="number" 
-                                    className="w-20 h-16 bg-slate-800 border border-indigo-500 rounded-xl text-center text-lg font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50"
-                                    placeholder="0.0"
-                                    value={customDoseValue}
-                                    onChange={(e) => {
-                                        setCustomDoseValue(e.target.value);
-                                        const val = parseFloat(e.target.value);
-                                        if(!isNaN(val)) setSelectedDose(val);
-                                    }}
-                                />
-                                <span className="text-slate-500 font-bold text-xs">{unitLabel}</span>
-                            </div>
-                        )}
-                    </div>
-                 </div>
-                 
-                 {/* Step 2: Mental & Physical State */}
-                 <div className={`transition-all duration-700 transform ${selectedDose ? 'opacity-100 translate-y-0' : 'opacity-20 translate-y-8 pointer-events-none blur-sm'}`}>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedMood ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>2</span>
-                        {t('step_2')}
-                    </p>
-                    
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                        {[
-                            { id: 'bad', label: t('bad'), icon: Frown, color: 'rose' },
-                            { id: 'normal', label: t('stable'), icon: Meh, color: 'amber' },
-                            { id: 'good', label: t('excellent'), icon: Smile, color: 'emerald' }
-                        ].map((m: any) => (
-                            <button 
-                                key={m.id}
-                                onClick={() => setSelectedMood(m.id)}
-                                className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 group ${
-                                    selectedMood === m.id
-                                    ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg scale-105`
-                                    : 'bg-slate-800/30 border-white/5 text-slate-600 hover:bg-slate-800'
-                                }`}
-                            >
-                                <m.icon className={`w-6 h-6 ${selectedMood === m.id ? 'fill-current' : ''}`} />
-                                <span className="text-[9px] font-bold uppercase">{m.label}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {selectedMood && (
-                        <div className="bg-slate-900/40 p-4 rounded-2xl border border-white/5 space-y-4 animate-in fade-in slide-in-from-top-4">
-                            <div>
-                                <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase mb-2">
-                                    <Moon size={12} /> {t('sleep_label')}: <span className="text-white text-sm font-mono">{sleepHours}h</span>
-                                </label>
-                                <input 
-                                    type="range" min="0" max="12" step="0.5" 
-                                    value={sleepHours} 
-                                    onChange={(e) => setSleepHours(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                />
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                                {symptomOptions.map(sym => (
-                                    <button 
-                                        key={sym.id}
-                                        onClick={() => toggleSymptom(sym.label)}
-                                        className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                                            selectedSymptoms.includes(sym.label) 
-                                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' 
-                                            : 'bg-slate-800 text-slate-500 border-transparent hover:border-slate-600'
-                                        }`}
-                                    >
-                                        {sym.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                 </div>
-
-                 {/* Step 3: Confirm Button */}
-                 <div className={`transition-all duration-700 ${selectedDose && selectedMood ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                     <Button 
-                        variant="success" 
-                        className="w-full py-4 text-lg rounded-2xl shadow-emerald-500/20"
-                        onClick={() => submitDailyLog(sleepHours, selectedSymptoms)}
-                     >
-                        {t('confirm_log')}
-                     </Button>
-                 </div>
-              </div>
-            )}
-          </div>
-        </Card>
+        
+        {/* Main Header & Interaction Area */}
+        <DashboardHeader
+            todayPlan={todayPlan}
+            todayLog={todayLog}
+            progressPercentage={progressPercentage}
+            totalDays={totalDays}
+            daysCompleted={daysCompleted}
+            userProfile={userProfile}
+        >
+            {/* هذا المكون سيظهر فقط إذا لم يتم التسجيل اليوم (children) */}
+            <DailyCheckIn 
+                userProfile={userProfile}
+                todayPlan={todayPlan}
+                selectedDose={selectedDose}
+                setSelectedDose={setSelectedDose}
+                selectedMood={selectedMood}
+                setSelectedMood={setSelectedMood}
+                submitDailyLog={submitDailyLog}
+            />
+        </DashboardHeader>
 
         {/* Side Info Cards */}
-        <div className="lg:col-span-4 space-y-6">
-            <Card className="flex flex-col items-center justify-center text-center py-10 bg-slate-900/40">
-                 <div className="w-20 h-20 rounded-full bg-slate-950 flex items-center justify-center mb-4 relative border border-white/5">
-                     <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping duration-[3000ms]"></div>
-                     {isLiquid ? (
-                        <FlaskConical className="w-8 h-8 text-indigo-400" />
-                     ) : (
-                        <Clock className="w-8 h-8 text-indigo-400" />
-                     )}
-                 </div>
-                 
-                 {isPatient ? (
-                     <>
-                        <h3 className="text-white font-bold text-lg mb-1">الخطة العلاجية الحالية</h3>
-                        <p className="text-slate-500 text-xs px-4 leading-relaxed mb-3">
-                            هذه الخطة تم وضعها بواسطة <strong>د. {doctorName}</strong>. أي تغيير في الجرعات يجب أن يتم بعد استشارته.
-                        </p>
-                        <Badge color="indigo" className="mx-auto">Fixed Plan</Badge>
-                     </>
-                 ) : (
-                     <>
-                        <h3 className="text-white font-bold text-lg mb-1">{t('algo_active')}</h3>
-                        <p className="text-slate-500 text-xs px-4 leading-relaxed">
-                          {t('algo_desc')}
-                        </p>
-                     </>
-                 )}
-            </Card>
-
-            <Card className="min-h-[250px] relative overflow-hidden bg-indigo-950/10" noPadding>
-                <div className="p-6 pb-0 relative z-10">
-                   <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                       {t('recovery_path')} <Info size={12} className="text-slate-500"/>
-                   </h2>
-                   <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">Projection</p>
-                </div>
-                <div className="absolute inset-x-0 bottom-0 top-16 opacity-60 hover:opacity-100 transition-opacity duration-500">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={plan.slice(0, 14)}>
-                        <defs>
-                        <linearGradient id="colorDose" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                        </linearGradient>
-                        </defs>
-                        <Area 
-                            type="monotone" 
-                            dataKey="plannedDose" 
-                            stroke="#818cf8" 
-                            strokeWidth={3} 
-                            fillOpacity={1} 
-                            fill="url(#colorDose)" 
-                            animationDuration={2000}
-                        />
-                    </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </Card>
+        <div className="lg:col-span-4">
+            <DashboardCharts userProfile={userProfile} plan={plan} />
         </div>
+
       </div>
     </LayoutContainer>
   );
@@ -3732,19 +4491,25 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, ManualPhase } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
     Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
-    ChevronRight, Save, AlertCircle 
+    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser 
 } from 'lucide-react';
 import { 
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
-import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
+import { useLanguage } from '../contexts/LanguageContext';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 export const DoctorDashboardView = () => {
-    const { t } = useLanguage(); // تفعيل الترجمة
+    const { t } = useLanguage();
     
     // -- State --
     const [loading, setLoading] = useState(true);
@@ -3755,28 +4520,34 @@ export const DoctorDashboardView = () => {
     // -- Modal State (For Plan Creation) --
     const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
     const [phases, setPhases] = useState<ManualPhase[]>([]);
+    
+    // Manual Input
     const [newDose, setNewDose] = useState('');
-    const [newDays, setNewDays] = useState('7'); // Default to 1 week
+    const [newDays, setNewDays] = useState('7');
     const [doctorNote, setDoctorNote] = useState('');
+
+    // Pattern Builder State
+    const [patternSeq, setPatternSeq] = useState('0.5, 1'); // Default example
+    const [patternRepeat, setPatternRepeat] = useState('4');
+    const [patternDaysPerDose, setPatternDaysPerDose] = useState('1');
 
     // -- Fetch Data --
     useEffect(() => {
         const fetchDoctorData = async () => {
             const currentUser = auth?.currentUser;
-            
             if (!currentUser) return;
             
             setLoading(true);
-
             try {
-                // 1. Get Doctor Profile using local currentUser variable
+                // 1. Get Doctor Profile
                 const docRef = doc(db, "users", currentUser.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     setDoctorProfile(docSnap.data() as UserProfile);
                 }
 
-                // 2. Get Assigned Patients using local currentUser variable
+                // 2. Get Assigned Patients
+                // Note: We fetch ALL assigned patients here to categorize them
                 const q = query(
                     collection(db, "users"), 
                     where("patientData.assignedDoctorId", "==", currentUser.uid)
@@ -3787,8 +4558,10 @@ export const DoctorDashboardView = () => {
                     allPatients.push({ uid: doc.id, ...doc.data() } as UserProfile);
                 });
 
-                // Separate into Pending (No Plan) and Active (Has Plan)
-                setPendingPatients(allPatients.filter(p => !p.patientData?.isPlanAssigned));
+                // Filter Logic:
+                // Pending Plan: Request approved BUT no plan assigned yet
+                // Active: Plan assigned AND not recovered
+                setPendingPatients(allPatients.filter(p => p.patientData?.requestStatus === 'approved' && !p.patientData?.isPlanAssigned));
                 setPatients(allPatients.filter(p => p.patientData?.isPlanAssigned));
 
             } catch (error) {
@@ -3802,6 +4575,7 @@ export const DoctorDashboardView = () => {
 
     // -- Actions --
 
+    // A. Add Single Phase
     const handleAddPhase = () => {
         const dose = parseFloat(newDose);
         const days = parseInt(newDays);
@@ -3811,6 +4585,27 @@ export const DoctorDashboardView = () => {
         }
     };
 
+    // B. Apply Pattern (The Fix for Complex Plans)
+    const handleApplyPattern = () => {
+        const sequence = patternSeq.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+        const repeat = parseInt(patternRepeat);
+        const days = parseInt(patternDaysPerDose);
+
+        if (sequence.length === 0 || isNaN(repeat) || repeat <= 0 || isNaN(days) || days <= 0) {
+            alert("Please check your pattern inputs.");
+            return;
+        }
+
+        const newPhases: ManualPhase[] = [];
+        for (let i = 0; i < repeat; i++) {
+            sequence.forEach(dose => {
+                newPhases.push({ dose, days });
+            });
+        }
+
+        setPhases([...phases, ...newPhases]);
+    };
+
     const handleRemovePhase = (index: number) => {
         setPhases(phases.filter((_, i) => i !== index));
     };
@@ -3818,9 +4613,9 @@ export const DoctorDashboardView = () => {
     const saveTreatmentPlan = async () => {
         if (!selectedPatient?.uid || phases.length === 0) return;
 
-        if (!confirm("Confirm sending this plan?")) return;
+        if (!confirm("Are you sure you want to activate this plan for the patient?")) return;
 
-        // Generate full calendar plan
+        // Generate full calendar plan from phases
         const fullPlan = generateManualPlan(phases, new Date().toISOString());
 
         try {
@@ -3829,26 +4624,25 @@ export const DoctorDashboardView = () => {
                 "patientData.isPlanAssigned": true,
                 "patientData.isRecovered": false,
                 doctorNotes: doctorNote,
-                planType: 'manual', // Enforce manual type so algorithm doesn't override
+                planType: 'manual', 
                 lastActive: new Date().toISOString()
             });
 
-            // Update Local State
+            // Update UI Locally
             setPendingPatients(prev => prev.filter(p => p.uid !== selectedPatient.uid));
             setPatients(prev => [...prev, { 
                 ...selectedPatient, 
                 patientData: { ...selectedPatient.patientData!, isPlanAssigned: true } 
             }]);
             
-            // Close Modal
             setSelectedPatient(null);
             setPhases([]);
             setDoctorNote('');
-            alert("Plan sent successfully.");
+            alert("Plan saved successfully!");
 
         } catch (e) {
             console.error("Error saving plan:", e);
-            alert("Error saving plan.");
+            alert("Failed to save plan. Check console.");
         }
     };
 
@@ -3861,13 +4655,11 @@ export const DoctorDashboardView = () => {
             "patientData.recoveryDate": new Date().toISOString()
         });
 
-        // Update UI locally
         setPatients(prev => prev.map(p => p.uid === patient.uid ? { 
             ...p, patientData: { ...p.patientData!, isRecovered: true } 
         } : p));
     };
 
-    // -- Stats Data for Chart --
     const statsData = [
         { name: t('stat_new_requests'), value: pendingPatients.length, color: '#f59e0b' },
         { name: 'Active', value: patients.filter(p => !p.patientData?.isRecovered).length, color: '#6366f1' },
@@ -3898,7 +4690,7 @@ export const DoctorDashboardView = () => {
                 <Card className="bg-amber-900/10 border-amber-500/20 p-5">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">{t('stat_new_requests')}</p>
+                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">{t('pending_approvals')}</p>
                             <h3 className="text-3xl font-black text-amber-500">{pendingPatients.length}</h3>
                         </div>
                         <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 animate-pulse"><Clock size={20}/></div>
@@ -3934,11 +4726,11 @@ export const DoctorDashboardView = () => {
                 </Card>
             </div>
 
-            {/* PENDING REQUESTS SECTION (Waiting for Plan) */}
+            {/* PENDING PATIENTS (Waiting for Plan) */}
             {pendingPatients.length > 0 && (
                 <div className="mb-8 animate-in slide-in-from-bottom-4">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <AlertCircle className="text-amber-500" /> {t('stat_new_requests')}
+                        <AlertCircle className="text-amber-500" /> Patients Waiting for Plan
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {pendingPatients.map(patient => (
@@ -3951,7 +4743,7 @@ export const DoctorDashboardView = () => {
                                         <h3 className="font-bold text-white">{patient.name}</h3>
                                         <p className="text-xs text-slate-500">{patient.email}</p>
                                     </div>
-                                    <Badge color="amber" className="mr-auto">New</Badge>
+                                    <Badge color="amber" className="mr-auto">Needs Plan</Badge>
                                 </div>
                                 <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 mb-4 space-y-1">
                                     <div className="flex justify-between"><span>Type:</span> <span className="text-white">{patient.medType}</span></div>
@@ -3974,7 +4766,7 @@ export const DoctorDashboardView = () => {
                         <Users className="text-indigo-400" /> {t('stat_total_patients')}
                     </h2>
                     <div className="text-sm text-slate-500">
-                        Count: {patients.length}
+                        Total: {patients.length}
                     </div>
                 </div>
 
@@ -3982,17 +4774,17 @@ export const DoctorDashboardView = () => {
                     <table className="w-full text-right text-sm text-slate-400">
                         <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
                             <tr>
-                                <th className="p-4 rounded-tr-xl">Patient</th>
+                                <th className="p-4">Patient</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">Progress</th>
                                 <th className="p-4">Last Active</th>
-                                <th className="p-4 rounded-tl-xl">Actions</th>
+                                <th className="p-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {patients.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">No active patients.</td>
+                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">No active patients with plans.</td>
                                 </tr>
                             )}
                             {patients.map(patient => (
@@ -4007,7 +4799,7 @@ export const DoctorDashboardView = () => {
                                         {patient.patientData?.isRecovered ? (
                                             <Badge color="green">Recovered</Badge>
                                         ) : (
-                                            <Badge color="indigo">Active</Badge>
+                                            <Badge color="indigo">On Plan</Badge>
                                         )}
                                     </td>
                                     <td className="p-4">
@@ -4041,7 +4833,7 @@ export const DoctorDashboardView = () => {
             {/* PLAN CREATION MODAL */}
             {selectedPatient && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col">
+                    <Card className="w-full max-w-4xl bg-slate-900 border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col">
                         <button type="button" onClick={() => setSelectedPatient(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20">
                             <X size={20} />
                         </button>
@@ -4053,7 +4845,93 @@ export const DoctorDashboardView = () => {
 
                         <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                             
-                            {/* Doctor Notes */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* LEFT: Pattern Builder (NEW) */}
+                                <div className="bg-indigo-900/10 border border-indigo-500/20 p-4 rounded-xl">
+                                    <h3 className="text-indigo-400 font-bold mb-3 flex items-center gap-2">
+                                        <Repeat size={16}/> {t('pattern_builder')}
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-[10px] text-slate-400 block mb-1">{t('pattern_sequence')}</label>
+                                            <input 
+                                                className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                placeholder="0.5, 1, 0.5, 1"
+                                                value={patternSeq}
+                                                onChange={e => setPatternSeq(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] text-slate-400 block mb-1">{t('repeat_count')}</label>
+                                                <input 
+                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                    value={patternRepeat} onChange={e => setPatternRepeat(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-[10px] text-slate-400 block mb-1">{t('days_per_dose')}</label>
+                                                <input 
+                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                    value={patternDaysPerDose} onChange={e => setPatternDaysPerDose(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <Button onClick={handleApplyPattern} className="w-full !py-2 !bg-indigo-600 !text-xs">
+                                            <Copy size={14} className="mr-2"/> {t('apply_pattern')}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT: Manual Entry */}
+                                <div className="bg-slate-950 border border-white/5 p-4 rounded-xl">
+                                    <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+                                        <Plus size={16}/> Manual Entry
+                                    </h3>
+                                    <div className="flex gap-2 mb-3">
+                                        <div className="flex-1">
+                                            <label className="text-[10px] text-slate-500 block mb-1">{t('dose')}</label>
+                                            <input type="number" className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-white" value={newDose} onChange={e => setNewDose(e.target.value)}/>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[10px] text-slate-500 block mb-1">{t('duration_days')}</label>
+                                            <input type="number" className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-white" value={newDays} onChange={e => setNewDays(e.target.value)}/>
+                                        </div>
+                                    </div>
+                                    <Button onClick={handleAddPhase} variant="secondary" className="w-full !py-2 !text-xs">Add Phase</Button>
+                                </div>
+                            </div>
+
+                            {/* Phases List */}
+                            <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-white font-bold flex items-center gap-2"><Activity size={16}/> {t('plan_phases')}</h3>
+                                    {phases.length > 0 && (
+                                        <button onClick={() => setPhases([])} className="text-rose-500 text-xs flex items-center gap-1 hover:text-rose-400">
+                                            <Eraser size={12}/> {t('clear_phases')}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">No phases added yet.</p>}
+                                    {phases.map((phase, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-white/5 animate-in slide-in-from-right-2">
+                                            <span className="text-white font-bold text-sm flex items-center gap-2">
+                                                <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px]">{idx + 1}</span>
+                                                <span className="text-indigo-400 text-lg">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> 
+                                                <span className="text-slate-500 text-xs">x {phase.days} days</span>
+                                            </span>
+                                            <button type="button" onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-white/5 flex justify-between text-sm font-bold text-slate-400">
+                                    <span>Total Duration: <span className="text-white">{phases.reduce((a,b) => a + b.days, 0)} days</span></span>
+                                    <span>Total Phases: <span className="text-white">{phases.length}</span></span>
+                                </div>
+                            </div>
+
+                            {/* Notes */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('plan_notes')}</label>
                                 <textarea 
@@ -4062,55 +4940,6 @@ export const DoctorDashboardView = () => {
                                     value={doctorNote}
                                     onChange={e => setDoctorNote(e.target.value)}
                                 />
-                            </div>
-
-                            {/* Phases Builder */}
-                            <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                                <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16}/> {t('plan_phases')}</h3>
-                                
-                                <div className="flex gap-2 mb-4">
-                                    <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 block mb-1">{t('dose')} ({selectedPatient.medUnit})</label>
-                                        <input 
-                                            type="number" 
-                                            className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
-                                            placeholder="Dose"
-                                            value={newDose}
-                                            onChange={e => setNewDose(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-[10px] text-slate-500 block mb-1">{t('duration_days')}</label>
-                                        <input 
-                                            type="number" 
-                                            className="w-full bg-slate-900 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-indigo-500"
-                                            placeholder="Days"
-                                            value={newDays}
-                                            onChange={e => setNewDays(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex items-end">
-                                        <Button onClick={handleAddPhase} className="!p-3"><Plus size={20}/></Button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">No phases added yet.</p>}
-                                    {phases.map((phase, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-white/5 animate-in slide-in-from-right-2">
-                                            <span className="text-white font-bold text-sm">
-                                                Phase {idx + 1}: <span className="text-indigo-400">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> for {phase.days} days
-                                            </span>
-                                            <button type="button" onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            {/* Summary */}
-                            <div className="flex justify-between items-center text-sm font-bold text-slate-400 bg-slate-950 p-3 rounded-lg">
-                                <span>Total Duration: {phases.reduce((a,b) => a + b.days, 0)} days</span>
-                                <span>Phases: {phases.length}</span>
                             </div>
                         </div>
 
@@ -4137,115 +4966,150 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
 import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X 
+    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { useLanguage } from '../contexts/LanguageContext'; // استيراد هوك اللغة
+import { useLanguage } from '../contexts/LanguageContext';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 export const DoctorPatientsView = () => {
-    const { t } = useLanguage(); // تفعيل الترجمة
+    const { t } = useLanguage();
 
     // -- State --
     const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
+    const [pendingRequests, setPendingRequests] = useState<UserProfile[]>([]); // New State
     const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     
     // -- UI State --
+    const [activeTab, setActiveTab] = useState<'MY_PATIENTS' | 'REQUESTS'>('MY_PATIENTS');
     const [viewMode, setViewMode] = useState<'LIST' | 'ADD_NEW'>('LIST');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
     const [patientLogs, setPatientLogs] = useState<DailyLog[]>([]);
     
-    // -- Fetch Doctor's Patients --
-    const fetchMyPatients = async () => {
+    // -- Fetch Data --
+    const fetchData = async () => {
         const currentUser = auth?.currentUser;
         if (!currentUser) return;
         
         setLoading(true);
         try {
+            // 1. Fetch Assigned Patients (Both Approved and Pending)
             const q = query(
                 collection(db, "users"), 
                 where("patientData.assignedDoctorId", "==", currentUser.uid)
             );
             const snapshot = await getDocs(q);
-            const list: UserProfile[] = [];
-            snapshot.forEach(d => list.push({ uid: d.id, ...d.data() } as UserProfile));
-            setMyPatients(list);
-        } catch (e) { console.error(e); }
+            const allAssigned: UserProfile[] = [];
+            snapshot.forEach(d => allAssigned.push({ uid: d.id, ...d.data() } as UserProfile));
+
+            // Split into buckets
+            setMyPatients(allAssigned.filter(p => p.patientData?.requestStatus === 'approved'));
+            setPendingRequests(allAssigned.filter(p => p.patientData?.requestStatus === 'pending'));
+
+        } catch (e) { console.error("Error fetching data:", e); }
         setLoading(false);
     };
 
     useEffect(() => {
-        fetchMyPatients();
+        fetchData();
     }, []);
 
-    // -- Fetch Available Users (For Adding) --
+    // -- Actions --
+
+    const handleAcceptRequest = async (patient: UserProfile) => {
+        if (!patient.uid) return;
+        if (!confirm(`Accept ${patient.name} as your patient?`)) return;
+
+        try {
+            await updateDoc(doc(db, "users", patient.uid), {
+                "patientData.requestStatus": "approved",
+                "patientData.isPlanAssigned": false // Needs plan now
+            });
+            
+            // Move from pending to active locally
+            setPendingRequests(prev => prev.filter(p => p.uid !== patient.uid));
+            setMyPatients(prev => [...prev, { 
+                ...patient, 
+                patientData: { ...patient.patientData!, requestStatus: 'approved' } 
+            }]);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleRejectRequest = async (patient: UserProfile) => {
+        if (!patient.uid) return;
+        if (!confirm(`Reject request from ${patient.name}?`)) return;
+
+        try {
+            await updateDoc(doc(db, "users", patient.uid), {
+                "patientData.requestStatus": "rejected"
+            });
+            // Remove from list locally
+            setPendingRequests(prev => prev.filter(p => p.uid !== patient.uid));
+        } catch (e) { console.error(e); }
+    };
+
+    // -- Existing Logic for Manual Add --
     const fetchAvailableUsers = async () => {
         setLoading(true);
         try {
-            const q = query(collection(db, "users")); 
-            const snapshot = await getDocs(q);
+            const q1 = query(collection(db, "users"), where("role", "==", "normal_user"));
+            const snap1 = await getDocs(q1);
+            const q2 = query(collection(db, "users"), where("role", "==", "patient"));
+            const snap2 = await getDocs(q2);
+
             const list: UserProfile[] = [];
-            
-            snapshot.forEach(d => {
+            const seenIds = new Set();
+
+            const processDoc = (d: any) => {
                 const data = d.data() as UserProfile;
-                const hasDoctor = data.patientData?.assignedDoctorId;
-                const isStaff = data.role === 'doctor' || data.role === 'admin';
-                
-                if (!hasDoctor && !isStaff) {
+                if (!data.patientData?.assignedDoctorId && !seenIds.has(d.id)) {
                     list.push({ uid: d.id, ...data });
+                    seenIds.add(d.id);
                 }
-            });
+            };
+            snap1.forEach(processDoc);
+            snap2.forEach(processDoc);
             setAvailableUsers(list);
         } catch (e) { console.error(e); }
         setLoading(false);
     };
 
-    const handleAddPatient = async (user: UserProfile) => {
+    const handleManualAdd = async (user: UserProfile) => {
         const currentUser = auth?.currentUser;
         if (!currentUser || !user.uid) return;
         
-        if (!confirm(`Add ${user.name} to your patients?`)) return;
-
         try {
             await updateDoc(doc(db, "users", user.uid), {
                 role: 'patient',
                 patientData: {
                     assignedDoctorId: currentUser.uid,
                     assignedDoctorName: currentUser.displayName || 'Doctor',
+                    requestStatus: 'approved', // Manual add is auto-approved
                     isPlanAssigned: false, 
                     isRecovered: false
                 },
             });
-            
             setAvailableUsers(prev => prev.filter(u => u.uid !== user.uid));
-            setMyPatients(prev => [...prev, { 
-                ...user, 
-                role: 'patient', 
-                patientData: { 
-                    assignedDoctorId: currentUser.uid, 
-                    assignedDoctorName: currentUser.displayName || 'Doctor', 
-                    isPlanAssigned: false, 
-                    isRecovered: false 
-                } 
-            }]);
-            
-            alert("Patient added successfully.");
+            setMyPatients(prev => [...prev, { ...user, role: 'patient', patientData: { ...user.patientData!, requestStatus: 'approved' } }]);
             setViewMode('LIST');
-        } catch (e) {
-            console.error("Error adding patient:", e);
-        }
+        } catch (e) { console.error(e); }
     };
 
     const openPatientDetails = async (patient: UserProfile) => {
         if (!patient.uid) return;
         setSelectedPatient(patient);
         setPatientLogs([]); 
-        
         try {
             const d = await getDoc(doc(db, "users", patient.uid));
             if (d.exists()) {
@@ -4255,15 +5119,8 @@ export const DoctorPatientsView = () => {
         } catch (e) { console.error(e); }
     };
 
-    const filteredAvailable = availableUsers.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const filteredMyPatients = myPatients.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredAvailable = availableUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredMyPatients = myPatients.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <LayoutContainer>
@@ -4297,28 +5154,14 @@ export const DoctorPatientsView = () => {
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            {filteredAvailable.length === 0 && (
-                                <p className="text-slate-500 text-center col-span-2 py-8">No users found.</p>
-                            )}
                             {filteredAvailable.map(user => (
                                 <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">
-                                            {user.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">{user.name}</h4>
-                                            <p className="text-xs text-slate-500">{user.email}</p>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge color="blue" className="!text-[9px] !py-0">{user.medType || 'General'}</Badge>
-                                            </div>
-                                        </div>
+                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">{user.name.charAt(0)}</div>
+                                        <div><h4 className="font-bold text-white">{user.name}</h4><p className="text-xs text-slate-500">{user.email}</p></div>
                                     </div>
-                                    <Button onClick={() => handleAddPatient(user)} variant="success" className="!py-2 !px-3 !text-xs">
-                                        <UserPlus size={14} className="mr-1"/> {t('add_btn')}
-                                    </Button>
+                                    <Button onClick={() => handleManualAdd(user)} variant="success" className="!py-2 !px-3 !text-xs"><UserPlus size={14} className="mr-1"/> {t('add_btn')}</Button>
                                 </div>
                             ))}
                         </div>
@@ -4326,152 +5169,126 @@ export const DoctorPatientsView = () => {
                 </div>
             )}
 
-            {/* --- MY PATIENTS LIST MODE --- */}
+            {/* --- LIST MODE --- */}
             {viewMode === 'LIST' && (
                 <div className="animate-in fade-in">
-                    <div className="mb-6 relative">
-                         <Search className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-500" size={18} />
-                         <input 
-                            className="w-full bg-slate-900 border border-white/5 rounded-2xl py-4 px-12 text-white outline-none focus:border-indigo-500 transition-all"
-                            placeholder={t('search_user_placeholder')}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                         />
+                    {/* TABS */}
+                    <div className="flex gap-4 mb-6 border-b border-white/10 pb-1">
+                        <button 
+                            onClick={() => setActiveTab('MY_PATIENTS')}
+                            className={`pb-3 px-4 text-sm font-bold transition-all relative ${activeTab === 'MY_PATIENTS' ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            {t('stat_total_patients')}
+                            <span className="ml-2 bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full">{myPatients.length}</span>
+                            {activeTab === 'MY_PATIENTS' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-t-full"></div>}
+                        </button>
+                        
+                        <button 
+                            onClick={() => setActiveTab('REQUESTS')}
+                            className={`pb-3 px-4 text-sm font-bold transition-all relative ${activeTab === 'REQUESTS' ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            {t('patient_requests_title')}
+                            {pendingRequests.length > 0 && <span className="ml-2 bg-amber-500 text-slate-900 text-[10px] px-2 py-0.5 rounded-full animate-pulse font-black">{pendingRequests.length}</span>}
+                            {activeTab === 'REQUESTS' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 rounded-t-full"></div>}
+                        </button>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {filteredMyPatients.map(patient => (
-                            <div 
-                                key={patient.uid} 
-                                onClick={() => openPatientDetails(patient)}
-                                className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-indigo-500/50 hover:bg-slate-800 cursor-pointer transition-all group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-bl-[4rem] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-                                
-                                <div className="flex justify-between items-start mb-4 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-xl">
-                                            {patient.name.charAt(0)}
-                                        </div>
+                    {/* TAB: REQUESTS */}
+                    {activeTab === 'REQUESTS' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-left-4">
+                            {pendingRequests.length === 0 && (
+                                <div className="col-span-full text-center py-12 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800 text-slate-500">
+                                    <Clock size={40} className="mx-auto mb-2 opacity-20"/> {t('no_requests')}
+                                </div>
+                            )}
+                            {pendingRequests.map(patient => (
+                                <div key={patient.uid} className="bg-slate-900 border border-amber-500/20 p-6 rounded-2xl relative">
+                                    <Badge color="amber" className="absolute top-4 right-4 !py-0.5 !px-2">Pending</Badge>
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold text-lg">{patient.name.charAt(0)}</div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-white">{patient.name}</h3>
-                                            <p className="text-sm text-slate-500">{patient.email}</p>
+                                            <h3 className="font-bold text-white">{patient.name}</h3>
+                                            <p className="text-xs text-slate-500">{patient.email}</p>
                                         </div>
                                     </div>
-                                    <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'}>
-                                        {patient.patientData?.isRecovered ? 'Recovered' : patient.patientData?.isPlanAssigned ? 'Active' : 'Pending Plan'}
-                                    </Badge>
-                                </div>
-                                
-                                <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">Progress</span>
-                                        <span className="block font-bold text-indigo-400">{Math.round(patient.progress || 0)}%</span>
+                                    <div className="flex gap-2 text-xs text-slate-400 bg-slate-950 p-3 rounded-lg mb-4">
+                                        <div className="flex-1 text-center border-r border-white/5"><span className="block font-bold text-white">{patient.medType}</span>Type</div>
+                                        <div className="flex-1 text-center"><span className="block font-bold text-white">{patient.medForm}</span>Form</div>
                                     </div>
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">Plan</span>
-                                        <span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'Active' : '-'}</span>
-                                    </div>
-                                    <div className="bg-slate-950 p-2 rounded-lg border border-white/5">
-                                        <span className="block text-[10px] text-slate-500 uppercase">Last Active</span>
-                                        <span className="block font-bold text-slate-300 text-[10px] mt-1">
-                                            {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
-                                        </span>
+                                    <div className="flex gap-2">
+                                        <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-2 !text-xs">
+                                            <UserCheck size={14} className="mr-1"/> {t('accept_patient')}
+                                        </Button>
+                                        <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-2 !text-xs">
+                                            <UserX size={14} className="mr-1"/> {t('reject_patient')}
+                                        </Button>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* TAB: MY PATIENTS */}
+                    {activeTab === 'MY_PATIENTS' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-in slide-in-from-right-4">
+                            {filteredMyPatients.map(patient => (
+                                <div 
+                                    key={patient.uid} 
+                                    onClick={() => openPatientDetails(patient)}
+                                    className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-indigo-500/50 hover:bg-slate-800 cursor-pointer transition-all group relative overflow-hidden"
+                                >
+                                    <div className="flex justify-between items-start mb-4 relative z-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-xl">{patient.name.charAt(0)}</div>
+                                            <div><h3 className="text-lg font-bold text-white">{patient.name}</h3><p className="text-sm text-slate-500">{patient.email}</p></div>
+                                        </div>
+                                        <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'}>
+                                            {patient.patientData?.isRecovered ? 'Recovered' : patient.patientData?.isPlanAssigned ? 'Active' : 'Needs Plan'}
+                                        </Badge>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Progress</span><span className="block font-bold text-indigo-400">{Math.round(patient.progress || 0)}%</span></div>
+                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Status</span><span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'On Track' : 'Waiting'}</span></div>
+                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Last Active</span><span className="block font-bold text-slate-300 text-[10px] mt-1">{patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}</span></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* --- PATIENT DETAILS MODAL (FULL STATS) --- */}
+            {/* --- PATIENT DETAILS MODAL --- */}
             {selectedPatient && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
                     <Card className="w-full max-w-5xl h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative !p-0 overflow-hidden">
-                        {/* Header */}
                         <div className="p-6 bg-slate-950 border-b border-white/5 flex justify-between items-center">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-                                    {selectedPatient.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2>
-                                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                                        <FileText size={12}/> {selectedPatient.medType || 'General'} • {selectedPatient.medForm} • {selectedPatient.medUnit}
-                                    </div>
-                                </div>
+                                <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">{selectedPatient.name.charAt(0)}</div>
+                                <div><h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2><div className="flex items-center gap-2 text-xs text-slate-500"><FileText size={12}/> {selectedPatient.medType || 'General'} • {selectedPatient.medForm} • {selectedPatient.medUnit}</div></div>
                             </div>
-                            <button type="button" onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white">
-                                <X size={24} />
-                            </button>
+                            <button type="button" onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={24} /></button>
                         </div>
-
-                        {/* Content */}
                         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 custom-scrollbar">
-                            {/* LEFT COLUMN: CHARTS */}
                             <div className="lg:col-span-2 space-y-6">
                                 <Card className="bg-slate-950 border-white/5">
                                     <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16} className="text-indigo-400"/> Adherence</h3>
                                     <div className="h-64 w-full">
                                         {patientLogs.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={patientLogs.slice(-30)}>
-                                                    <defs>
-                                                        <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                                    <XAxis dataKey="date" hide />
-                                                    <YAxis stroke="#475569" fontSize={10} />
-                                                    <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b'}} />
-                                                    <Area type="monotone" dataKey="doseTaken" stroke="#6366f1" fill="url(#colorDoseP)" />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-slate-600">No data available</div>
-                                        )}
+                                            <ResponsiveContainer width="100%" height="100%"><AreaChart data={patientLogs.slice(-30)}><defs><linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} /><XAxis dataKey="date" hide /><YAxis stroke="#475569" fontSize={10} /><Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b'}} /><Area type="monotone" dataKey="doseTaken" stroke="#6366f1" fill="url(#colorDoseP)" /></AreaChart></ResponsiveContainer>
+                                        ) : (<div className="h-full flex items-center justify-center text-slate-600">No data available</div>)}
                                     </div>
                                 </Card>
                             </div>
-
-                            {/* RIGHT COLUMN: STATS & LOGS */}
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">{t('sleep_label')}</span>
-                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
-                                             <Moon size={16} className="text-blue-400"/> 
-                                             {patientLogs.length > 0 
-                                                ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) 
-                                                : '-'}h
-                                         </span>
-                                     </div>
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center">
-                                         <span className="text-xs text-slate-500 uppercase block mb-1">{t('mood')}</span>
-                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-1">
-                                             <Smile size={16} className="text-emerald-400"/>
-                                             Good
-                                         </span>
-                                     </div>
+                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center"><span className="text-xs text-slate-500 uppercase block mb-1">{t('sleep_label')}</span><span className="text-xl font-bold text-white flex items-center justify-center gap-1"><Moon size={16} className="text-blue-400"/> {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'}h</span></div>
+                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center"><span className="text-xs text-slate-500 uppercase block mb-1">{t('mood')}</span><span className="text-xl font-bold text-white flex items-center justify-center gap-1"><Smile size={16} className="text-emerald-400"/>Good</span></div>
                                 </div>
-
                                 <Card className="bg-slate-900 border-white/5 flex-1 max-h-[400px] overflow-hidden flex flex-col">
                                     <h3 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-slate-950 pb-2"><Calendar size={16} className="text-indigo-400"/> Daily Logs</h3>
                                     <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
-                                        {patientLogs.slice().reverse().map((log, i) => (
-                                            <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-white/5 text-xs">
-                                                <span className="text-slate-400">{log.date}</span>
-                                                <span className="font-bold text-white">{log.doseTaken} {selectedPatient.medUnit}</span>
-                                                <span>
-                                                    {log.mood === 'good' ? <Smile size={14} className="text-emerald-500"/> : 
-                                                     log.mood === 'bad' ? <Frown size={14} className="text-rose-500"/> : 
-                                                     <Meh size={14} className="text-amber-500"/>}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        {patientLogs.slice().reverse().map((log, i) => (<div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-white/5 text-xs"><span className="text-slate-400">{log.date}</span><span className="font-bold text-white">{log.doseTaken} {selectedPatient.medUnit}</span><span>{log.mood === 'good' ? <Smile size={14} className="text-emerald-500"/> : log.mood === 'bad' ? <Frown size={14} className="text-rose-500"/> : <Meh size={14} className="text-amber-500"/>}</span></div>))}
                                     </div>
                                 </Card>
                             </div>
@@ -4489,7 +5306,10 @@ export const DoctorPatientsView = () => {
 ```tsx
 import React from 'react';
 import { Activity, Chrome, LogIn } from 'lucide-react';
-import { Button, Card, LanguageSwitcher } from '../components/UI';
+// 👇 تحديث المسارات هنا
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface LoginViewProps {
@@ -4602,12 +5422,17 @@ export const LoginView = ({
 ```tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Activity, CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
+  CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Button, Card, LanguageSwitcher, Badge } from '../components/UI';
+// 👇 تحديث المسارات هنا
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
+import { Badge } from '../components/ui/Badge';
+
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -4660,6 +5485,21 @@ export const OnboardingView = ({
   
   const totalInventory = calculateTotalInventory(inventory);
   
+  // -- Load existing data if resubmitting --
+  useEffect(() => {
+      if (userProfile.role === 'doctor' && userProfile.doctorData) {
+          setDoctorName(userProfile.name);
+          setDoctorForm({
+              specialty: userProfile.doctorData.specialty,
+              licenseNumber: userProfile.doctorData.licenseNumber,
+              clinicLocation: userProfile.doctorData.clinicLocation,
+              phoneNumber: userProfile.doctorData.phoneNumber,
+              bio: userProfile.doctorData.bio
+          });
+          setStep('DOCTOR_FORM');
+      }
+  }, [userProfile]);
+
   const NavBackBtn = ({ to }: { to?: OnboardingStep }) => (
       <button 
         onClick={() => to ? setStep(to) : handleLogout?.()}
@@ -4674,55 +5514,71 @@ export const OnboardingView = ({
 
   // 1. Submit Doctor Application
   const handleDoctorSubmit = async () => {
-      // التحقق الصارم من وجود المستخدم
       if (!auth || !auth.currentUser) {
           alert("خطأ: لم يتم التعرف على جلسة المستخدم. يرجى إعادة تسجيل الدخول.");
           return;
       }
       
       if (!doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || !doctorName) {
-          alert("يرجى ملء جميع الحقول المطلوبة (الاسم، التخصص، الترخيص، الهاتف).");
+          alert("يرجى ملء جميع الحقول المطلوبة.");
+          return;
+      }
+
+      // --- CHECK SUBMISSION LIMITS ---
+      const currentData = userProfile.doctorData;
+      let count = currentData?.submissionCount || 0;
+      const lastDate = currentData?.lastSubmissionDate ? new Date(currentData.lastSubmissionDate) : new Date();
+      const now = new Date();
+
+      if (currentData?.lastSubmissionDate && lastDate.getMonth() !== now.getMonth()) {
+          count = 0;
+      }
+
+      if (count >= 10) {
+          alert("عذراً، لقد تجاوزت الحد الأقصى لمحاولات تقديم الطلب لهذا الشهر (10 مرات).");
           return;
       }
 
       setLoading(true);
       const currentUser = auth.currentUser;
       
-      // بناء كائن البيانات الجديد
       const newProfile: UserProfile = {
           ...userProfile,
           uid: currentUser.uid, 
           name: doctorName,
           role: 'doctor',
-          setupComplete: true, // مهم جداً لإخبار النظام أن الإعداد اكتمل
+          setupComplete: true, 
           doctorData: {
               specialty: doctorForm.specialty!,
               licenseNumber: doctorForm.licenseNumber!,
               clinicLocation: doctorForm.clinicLocation || '',
               phoneNumber: doctorForm.phoneNumber!,
               bio: doctorForm.bio || '',
+              
               accountStatus: 'pending', 
-              totalPatients: 0,
-              activePatients: 0,
-              recoveredCount: 0,
-              doctorLevel: 1
+              // @ts-ignore
+              rejectionReason: null, 
+              
+              totalPatients: currentData?.totalPatients || 0,
+              activePatients: currentData?.activePatients || 0,
+              recoveredCount: currentData?.recoveredCount || 0,
+              doctorLevel: currentData?.doctorLevel || 1,
+              photoUrl: currentData?.photoUrl || null,
+              
+              submissionCount: count + 1,
+              lastSubmissionDate: Date.now()
           },
           durationMonths: 0,
           medType: null
       };
 
       try {
-          // الحفظ المباشر في قاعدة البيانات
           await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
-          
-          // لا نقوم بتحديث الحالة المحلية (setUserProfile) يدوياً هنا
-          // نترك App.tsx يكتشف التغيير عبر onSnapshot لتجنب التضارب
-          
-          alert("تم إرسال طلبك بنجاح! يرجى الانتظار حتى يتم تحويلك تلقائياً.");
+          alert("تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة.");
       } catch (e: any) {
           console.error("Error saving doctor profile:", e);
           if (e.code === 'permission-denied') {
-              alert("خطأ في الصلاحيات: تأكد من أن ملف firestore.rules محدث ليسمح بتعديل الدور.");
+              alert("خطأ في الصلاحيات. يرجى المحاولة مرة أخرى.");
           } else {
               alert(`حدث خطأ أثناء الحفظ: ${e.message}`);
           }
@@ -4730,7 +5586,7 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  // 2. Assign Patient to Doctor
+  // 2. Assign Patient to Doctor (UPDATED: Request Logic)
   const handleAssignDoctor = async (docProfile: UserProfile) => {
       if (!auth || !auth.currentUser || !docProfile.uid) return;
       
@@ -4745,6 +5601,7 @@ export const OnboardingView = ({
           patientData: {
               assignedDoctorId: docProfile.uid,
               assignedDoctorName: docProfile.name,
+              requestStatus: 'pending', // <--- IMPORTANT: Set status to pending
               isPlanAssigned: false, 
               isRecovered: false
           },
@@ -4754,7 +5611,7 @@ export const OnboardingView = ({
 
       try {
            await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
-           // نترك التحديث التلقائي يقوم بعمله
+           alert(t('req_sent_msg')); // "Request sent. Waiting for doctor approval."
       } catch(e: any) {
            console.error("Error assigning doctor:", e);
            alert(`حدث خطأ: ${e.message}`);
@@ -4768,7 +5625,6 @@ export const OnboardingView = ({
       setLoading(true);
       const currentUser = auth.currentUser;
 
-      // إعداد البروفايل الجديد
       const newProfile: UserProfile = {
           ...userProfile,
           uid: currentUser.uid,
@@ -4780,11 +5636,9 @@ export const OnboardingView = ({
           setupComplete: true
       };
 
-      // بدء الخطة محلياً للحسابات
       startPlan(previewPlan, 1.0, 'algorithm');
       
       try {
-          // حفظ البروفايل في القاعدة
           await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
       } catch(e: any) {
           console.error("Error saving algo plan:", e);
@@ -4793,24 +5647,29 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  // 4. Helper: Fetch Doctors List
+  // 4. Fetch Doctors
   useEffect(() => {
       if (step === 'DOCTOR_SELECT') {
           const fetchDocs = async () => {
               try {
-                  const q = query(collection(db, "users"), where("role", "==", "doctor"));
+                  const q = query(
+                      collection(db, "users"), 
+                      where("role", "==", "doctor"),
+                      where("doctorData.accountStatus", "==", "approved")
+                  );
+                  
                   const snapshot = await getDocs(q);
-                  const docs = snapshot.docs
-                      .map(d => ({...d.data(), uid: d.id} as UserProfile))
-                      .filter(d => d.doctorData?.accountStatus === 'approved');
+                  const docs = snapshot.docs.map(d => ({...d.data(), uid: d.id} as UserProfile));
+                  
                   setAvailableDoctors(docs);
-              } catch (e) { console.error(e); }
+              } catch (e: any) { 
+                  console.error("Error fetching doctors:", e);
+              }
           };
           fetchDocs();
       }
   }, [step]);
 
-  // Handle Logic
   const handleMedTypeSelect = (type: 'narcotic' | 'psychiatric' | 'normal') => {
       if (type === 'narcotic') setBlockedState(true);
       else if (type === 'psychiatric') { setMedType(type); setPsychWarning(true); } 
@@ -4913,7 +5772,62 @@ export const OnboardingView = ({
   }
 
   if (step === 'USER_PATH_SELECT') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ROLE_SELECT" /><header className="mb-12 text-center animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1><p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p></header><div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full"><button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3><p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p></button><button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3><p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p></button></div></div>); }
-  if (step === 'DOCTOR_SELECT') { const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="USER_PATH_SELECT" /><div className="max-w-4xl w-full animate-in fade-in"><header className="mb-8 text-center"><h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1><p className="text-slate-400">{t('path_doctor_desc')}</p></header><div className="relative mb-6"><Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/><input className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filteredDocs.length === 0 ? (<div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800"><Stethoscope className="mx-auto mb-4 text-slate-700" size={48} /><p className="text-slate-500">{availableDoctors.length === 0 ? 'No doctors available.' : 'No results found.'}</p></div>) : (filteredDocs.map(doc => (<div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div><div><h3 className="font-bold text-white text-lg">{doc.name}</h3><Badge color="blue">{doc.doctorData?.specialty}</Badge></div></div></div><p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p><div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div><Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>{loading ? 'Processing...' : t('doc_select_btn')}</Button></div>)))}</div></div></div>); }
+  
+  if (step === 'DOCTOR_SELECT') { 
+      const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); 
+      
+      return (
+        <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
+            <NavBackBtn to="USER_PATH_SELECT" />
+            <div className="max-w-4xl w-full animate-in fade-in">
+                <header className="mb-8 text-center">
+                    <h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1>
+                    <p className="text-slate-400">{t('path_doctor_desc')}</p>
+                </header>
+                <div className="relative mb-6">
+                    <Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/>
+                    <input className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDocs.length === 0 ? (
+                        <div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800">
+                            <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
+                            <p className="text-slate-500">
+                                {availableDoctors.length === 0 
+                                    ? 'No approved doctors available yet.' 
+                                    : 'No results found.'}
+                            </p>
+                        </div>
+                    ) : (
+                        filteredDocs.map(doc => (
+                            <div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                        {doc.doctorData?.photoUrl ? (
+                                            <img src={doc.doctorData.photoUrl} alt="Dr" className="w-12 h-12 rounded-full object-cover border border-white/10" />
+                                        ) : (
+                                            <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div>
+                                        )}
+                                        <div>
+                                            <h3 className="font-bold text-white text-lg">{doc.name}</h3>
+                                            <Badge color="blue">{doc.doctorData?.specialty}</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p>
+                                <div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div>
+                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>
+                                    {loading ? 'Sending...' : t('doc_select_btn')}
+                                </Button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+      ); 
+  }
+
   if (step === 'ALGO_SETUP_MED') { if (blockedState) return (<div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in"><div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div><h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1><p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p><Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button></div>); if (psychWarning) return (<div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in"><Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]"><div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div><h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2><p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p><div className="flex gap-4"><Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button><Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button></div></Card></div>); return (<div className="min-h-screen bg-[#020617] p-6 pt-20"><NavBackBtn to="USER_PATH_SELECT" /><header className="text-center mb-12 animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1></header><div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">{[{ type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }].map((item: any) => (<button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}><div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div><h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3><p className="text-sm text-slate-500 font-bold">{item.desc}</p></button>))}</div></div>); }
   if (step === 'ALGO_SETUP_FORM') { return (<div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center pt-20"><NavBackBtn to="ALGO_SETUP_MED" /><div className="max-w-2xl w-full animate-in zoom-in"><h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_title')}</h1><div className="grid grid-cols-2 gap-4 mb-8"><button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><Pill className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_tablet')}</span></button><button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><FlaskConical className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_liquid')}</span></button></div>{medForm && (<div className="animate-in fade-in slide-in-from-bottom-4"><h2 className="text-xl font-bold text-white text-center mb-4">{t('unit_title')}</h2><div className="flex justify-center gap-4 mb-8">{(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (<button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-500 hover:text-white'}`}>{u}</button>))}</div></div>)}<Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>Next <ArrowRight /></Button></div></div>); }
   if (step === 'ALGO_SETUP_INV') { const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes'; const unitLabel = medUnit || 'mg'; return (<div className="min-h-screen bg-[#020617] p-4 md:p-10 pt-20"><NavBackBtn to="ALGO_SETUP_FORM" /><div className="max-w-4xl mx-auto space-y-8 animate-in fade-in"><Card className="border-white/5 bg-slate-900"><h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4"><span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>{t('inventory_title')}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8"><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} /></div></div><div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center"><span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span><span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span></div></Card><Card className="bg-slate-900 border-white/5"><h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2><div className="flex flex-wrap gap-4">{[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (<button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>))}<input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} /></div></Card><Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>{t('analyze_plan')}</Button></div></div>); }
@@ -4929,12 +5843,19 @@ export const OnboardingView = ({
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    FileText, User, Award, Clock
+    User, Award, Clock
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile } from '../types';
-import { LayoutContainer, PageHeader, Card, Button, Badge } from '../components/UI';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SettingsViewProps {
@@ -5191,12 +6112,18 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 ### File: `views\StatsView.tsx`
 ```tsx
 import React, { useMemo } from 'react';
-import { Card, PageHeader, LayoutContainer, Badge } from '../components/UI';
-import { DailyLog, PlanDay, UserProfile } from '../types';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine
 } from 'recharts';
 import { Smile, Activity, Zap, Moon, Shield, Award } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface StatsViewProps {
@@ -5450,9 +6377,16 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
-import { PageHeader, LayoutContainer, Card, Button, Badge } from '../components/UI';
-import { useLanguage } from '../contexts/LanguageContext';
 import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, Stethoscope } from 'lucide-react';
+
+// 👇 تحديث المسارات للمكونات الجديدة
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
+
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SupportViewProps {
     user: UserProfile;
@@ -5771,16 +6705,19 @@ export const SupportView = ({ user }: SupportViewProps) => {
 ### File: `App.tsx`
 ```tsx
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Zap, Clock, ShieldCheck, Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
-import { auth, googleProvider, db } from './services/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore'; 
-import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
-import { UserProfile, Inventory, AppView, PlanDay, DailyLog } from './types';
+import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+
+// Contexts
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataProvider, useData } from './contexts/DataContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
-// Modular Views & Components
-import { Button, Card, PageHeader, LayoutContainer } from './components/UI';
+// Logic & Types
+import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
+import { AppView, Inventory, DailyLog, PlanDay, UserProfile } from './types';
+
+// Components & Views
+import { Button } from './components/ui/Button';
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav'; 
 import { LoginView } from './views/LoginView';
@@ -5794,7 +6731,7 @@ import { SupportView } from './views/SupportView';
 import { ArticlesView } from './views/ArticlesView';
 import { DoctorDashboardView } from './views/DoctorDashboardView'; 
 import { DoctorPatientsView } from './views/DoctorPatientsView';
-import { SettingsView } from './views/SettingsView'; // <--- تم إضافة استيراد صفحة الإعدادات الجديدة
+import { SettingsView } from './views/SettingsView';
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -5804,167 +6741,68 @@ const addDaysSafe = (dateStr: string, days: number): string => {
 };
 
 function AppContent() {
-  // -- State --
-  const [authUser, setAuthUser] = useState<User | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // -- Context Hooks --
+  const { 
+    currentUser, loading: authLoading, 
+    loginWithEmail, loginWithGoogle, logout, error: loginError, 
+    enableDemoMode, clearError, isDemoMode 
+  } = useAuth();
+
+  const { 
+    userProfile, setUserProfile, 
+    inventory, setInventory, 
+    plan, setPlan, 
+    logs, setLogs, 
+    speedModifier, setSpeedModifier,
+    dataLoading, resetAllData 
+  } = useData();
 
   const { dir, t } = useLanguage();
 
-  // App Data
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [inventory, setInventory] = useState<Inventory>({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
-  const [currentDoseHabit, setCurrentDoseHabit] = useState<number>(0);
-  const [plan, setPlan] = useState<PlanDay[]>([]);
-  const [logs, setLogs] = useState<DailyLog[]>([]);
-  
-  // Speed Modifier
-  const [speedModifier, setSpeedModifier] = useState<number>(1.0);
-  
-  // Navigation
+  // -- Local UI State --
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [viewHistory, setViewHistory] = useState<AppView[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isResubmitting, setIsResubmitting] = useState(false);
+
+  // Onboarding specific state (Needed here to pass down)
+  const [currentDoseHabit, setCurrentDoseHabit] = useState<number>(0);
 
   // Dashboard Interaction
   const [selectedDose, setSelectedDose] = useState<number | null>(null);
   const [selectedMood, setSelectedMood] = useState<'bad' | 'normal' | 'good' | null>(null);
 
-  // Login
+  // Login Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
 
-  // -- 0. Auth State Listener --
+  // -- Routing Logic --
   useEffect(() => {
-    if (!auth) {
-        setLoading(false);
-        return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setAuthUser(user);
-        if (!user && !isDemoMode) {
-            setLoading(false);
-            setUserProfile(null);
-        }
-    });
-    return () => unsubscribe();
-  }, [isDemoMode]);
-
-  // -- 1. FETCH CLOUD DATA (REAL-TIME LISTENER) --
-  useEffect(() => {
-    if (authUser) {
-      setLoading(true);
-      const docRef = doc(db, "users", authUser.uid);
-      
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const fetchedProfile = { ...data, uid: authUser.uid } as UserProfile;
-            
-            if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
-
-            // Auto-redirect logic based on Role status
-            if (fetchedProfile.role === 'admin' && currentView !== AppView.ADMIN) {
-                setCurrentView(AppView.ADMIN);
-            } else if (fetchedProfile.role === 'doctor' && fetchedProfile.doctorData?.accountStatus === 'approved') {
-                const allowedDoctorViews = [
-                    AppView.DOCTOR_DASHBOARD, 
-                    AppView.DOCTOR_PATIENTS, 
-                    AppView.COMMUNITY,
-                    AppView.ARTICLES,
-                    AppView.SUPPORT,
-                    AppView.SETTINGS
-                ];
-                
-                if (!allowedDoctorViews.includes(currentView)) {
-                     setCurrentView(AppView.DOCTOR_DASHBOARD);
-                }
+    if (userProfile) {
+        // Auto-redirect logic based on Role
+        if (userProfile.role === 'admin' && currentView !== AppView.ADMIN) {
+            setCurrentView(AppView.ADMIN);
+        } else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
+            const allowedDoctorViews = [
+                AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, 
+                AppView.COMMUNITY, AppView.ARTICLES, AppView.SUPPORT, AppView.SETTINGS
+            ];
+            if (!allowedDoctorViews.includes(currentView)) {
+                 setCurrentView(AppView.DOCTOR_DASHBOARD);
             }
-            
-            setUserProfile(fetchedProfile);
-
-            if (data.plan) setPlan(data.plan);
-            if (data.logs) setLogs(data.logs);
-            if (data.inventory) setInventory(data.inventory);
-            if (data.speedModifier) setSpeedModifier(data.speedModifier);
-            
-            if (data.isBanned) {
-               alert(t('banned_msg'));
-               handleLogout();
-            }
-        } else {
-            // New User - Skeleton
-            const skeletonProfile: UserProfile = {
-                uid: authUser.uid,
-                email: authUser.email || '',
-                name: authUser.displayName || 'New User',
-                role: 'normal_user',
-                setupComplete: false,
-                durationMonths: 0
-            };
-            setUserProfile(skeletonProfile);
         }
-        setLoading(false);
-      }, (error) => {
-          console.error("Error fetching user data:", error);
-          setLoading(false);
-      });
-
-      return () => unsubscribe();
-    }
-  }, [authUser]);
-
-  // -- 2. SYNC TO LOCAL & CLOUD --
-  useEffect(() => {
-    if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
-    if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
-    if (logs.length > 0) localStorage.setItem('taper_logs', JSON.stringify(logs));
-    if (inventory.totalPills > 0 || inventory.boxes > 0) localStorage.setItem('taper_inventory', JSON.stringify(inventory));
-    localStorage.setItem('taper_speed', speedModifier.toString());
-
-    if (authUser && userProfile && userProfile.setupComplete) {
-        const currentUser = authUser;
-        const currentProfileData = { ...userProfile };
         
-        // Safety Guard
-        if (currentProfileData.role === 'doctor' && !currentProfileData.doctorData) {
-            console.warn("Sync blocked: Local doctor data is incomplete.");
-            return;
+        // Reset resubmitting state checks
+        if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending') {
+            setIsResubmitting(false);
         }
-
-        const syncToCloud = async () => {
-            try {
-                const totalDays = plan.length;
-                const daysCompleted = logs.length;
-                const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
-
-                const updateData: any = {
-                    email: currentUser.email || email,   
-                    uid: currentUser.uid,       
-                    lastActive: new Date().toISOString(),
-                    ...(currentProfileData.name ? { name: currentProfileData.name } : {})
-                };
-
-                if (currentProfileData.role === 'patient' || currentProfileData.role === 'normal_user') {
-                    updateData.plan = plan;
-                    updateData.logs = logs;
-                    updateData.inventory = inventory;
-                    updateData.speedModifier = speedModifier;
-                    updateData.progress = progressPercentage;
-                }
-
-                await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
-            } catch(e) {
-                console.error("Cloud sync failed", e);
-            }
-        };
-        const timeoutId = setTimeout(syncToCloud, 5000); 
-        return () => clearTimeout(timeoutId);
+        if (userProfile.role === 'patient' && userProfile.patientData?.requestStatus === 'pending') {
+            setIsResubmitting(false);
+        }
     }
-  }, [userProfile, plan, logs, inventory, speedModifier, authUser]); 
+  }, [userProfile, currentView]);
 
+  // -- Navigation Handlers --
   const navigateTo = (view: AppView) => {
     if (view === currentView) return;
     setViewHistory(prev => [...prev, currentView]);
@@ -5977,101 +6815,35 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      if (userProfile?.role === 'doctor') {
-          setCurrentView(AppView.DOCTOR_DASHBOARD);
-      } else if (userProfile?.role === 'admin') {
-          setCurrentView(AppView.ADMIN);
-      } else {
-          setCurrentView(AppView.DASHBOARD);
-      }
+      // Default back behavior
+      const defaultView = userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : 
+                          userProfile?.role === 'admin' ? AppView.ADMIN : AppView.DASHBOARD;
+      setCurrentView(defaultView);
     }
   };
 
-  // --- AUTHENTICATION HANDLERS ---
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setLoading(true);
+  // -- Logic Handlers (Controller) --
 
-    if (email === 'admin@islamguide.com' && password === 'bombaAZ36') {
-        if (!auth) { setLoginError("Firebase not initialized."); setLoading(false); return; }
-        try {
-            try {
-                const cred = await signInWithEmailAndPassword(auth, email, password);
-                setAuthUser(cred.user);
-            } catch (err: any) {
-                 if (err.code === 'auth/user-not-found') {
-                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                    setAuthUser(newCred.user);
-                 } else {
-                    throw err;
-                 }
-            }
-            
-            if (auth.currentUser) {
-                const adminProfile: UserProfile = { 
-                    uid: auth.currentUser.uid,
-                    email: email, 
-                    name: 'System Admin', 
-                    role: 'admin', 
-                    setupComplete: true, 
-                    durationMonths: 0 
-                };
-                await setDoc(doc(db, "users", auth.currentUser.uid), adminProfile, { merge: true });
-                setUserProfile(adminProfile);
-                setCurrentView(AppView.ADMIN);
-            }
-        } catch (err: any) {
-            setLoginError(err.message);
-        }
-        setLoading(false);
-        return;
-    }
-
-    if (auth) {
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (err: any) { setLoginError('Login Error: ' + err.message); setLoading(false); }
-    }
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      clearError();
+      await loginWithEmail(email, password);
   };
 
-  const handleGoogleLogin = async () => {
-    setLoginError('');
-    setLoading(true);
-    if (auth) {
-        try {
-            await signInWithPopup(auth, googleProvider);
-        } catch (err: any) { setLoginError('Google Login Error: ' + err.message); setLoading(false); }
-    }
-  };
-
-  const setDemoCreds = () => { setEmail('islamaz@bomba.com'); setPassword('bombaAZ360'); }
-
-  const handleLogout = () => {
-    setAuthUser(null);
-    setIsDemoMode(false);
-    setUserProfile(null);
-    setPlan([]);
-    setLogs([]);
-    setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
-    setSpeedModifier(1.0);
-    localStorage.clear();
-    if (auth) auth.signOut().catch(console.error);
-    window.location.reload();
-  };
-
-  // --- PLAN MANAGEMENT ---
   const startPlan = (customPlan: PlanDay[], speed: number = 1.0, planType: 'algorithm' | 'manual' = 'algorithm') => {
     setSpeedModifier(speed); 
     setPlan(customPlan);
     
     if (userProfile) {
+        // Fix: Explicitly cast to UserProfile to avoid TypeScript errors with spread
+        const baseProfile = userProfile as UserProfile;
+
         const newProfile: UserProfile = {
-            ...userProfile,
+            ...baseProfile,
             setupComplete: true,
             planType: planType,
-            patientData: userProfile.role === 'patient' && userProfile.patientData ? {
-                ...userProfile.patientData,
+            patientData: baseProfile.role === 'patient' && baseProfile.patientData ? {
+                ...baseProfile.patientData,
                 isPlanAssigned: true 
             } : undefined
         };
@@ -6082,6 +6854,7 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
+    // 1. Update Inventory
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
@@ -6094,6 +6867,7 @@ function AppContent() {
     }
     setInventory(newInventory);
 
+    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
@@ -6101,6 +6875,7 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
+    // 3. Recalculate Plan (If Algo)
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
@@ -6158,21 +6933,7 @@ function AppContent() {
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); }
 
-  const resetAllData = async () => {
-    if (confirm('Are you sure? This will wipe everything.')) {
-      setLoading(true);
-      localStorage.clear();
-      setUserProfile(null);
-      setPlan([]);
-      setLogs([]);
-      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
-      setAuthUser(null);
-      setIsDemoMode(false);
-      if (auth) try { await auth.signOut(); } catch (e) {}
-      window.location.reload();
-    }
-  };
-
+  // -- Derived UI Data --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
@@ -6185,29 +6946,48 @@ function AppContent() {
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400 font-bold tracking-widest animate-pulse">LOADING SYSTEM...</div>;
+  // -- Loading State --
+  if (authLoading || dataLoading) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-indigo-400 gap-4" dir={dir}>
+            <Loader2 size={48} className="animate-spin" />
+            <span className="font-bold tracking-widest animate-pulse">LOADING SYSTEM...</span>
+        </div>
+      );
+  }
 
   // 1. LOGIN SCREEN
-  if (!authUser && !isDemoMode) {
-    return <LoginView handleLogin={handleLogin} handleGoogleLogin={handleGoogleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} loginError={loginError} setDemoCreds={setDemoCreds} />;
+  if (!currentUser && !isDemoMode) {
+    return (
+        <LoginView 
+            handleLogin={handleLoginSubmit} 
+            handleGoogleLogin={loginWithGoogle} 
+            email={email} setEmail={setEmail} 
+            password={password} setPassword={setPassword} 
+            loginError={loginError || ''} 
+            setDemoCreds={enableDemoMode} 
+        />
+    );
   }
 
-  // 2. ONBOARDING
-  if (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) {
-    return <OnboardingView 
-        userProfile={userProfile} 
-        setUserProfile={setUserProfile} 
-        inventory={inventory} 
-        setInventory={setInventory} 
-        currentDoseHabit={currentDoseHabit} 
-        setCurrentDoseHabit={setCurrentDoseHabit} 
-        startPlan={startPlan} 
-        email={authUser?.email || email} 
-        handleLogout={handleLogout} 
-    />;
+  // 2. ONBOARDING & RESUBMISSION
+  if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
+    return (
+        <OnboardingView 
+            userProfile={userProfile!} 
+            setUserProfile={setUserProfile} 
+            inventory={inventory} 
+            setInventory={setInventory} 
+            currentDoseHabit={currentDoseHabit} 
+            setCurrentDoseHabit={setCurrentDoseHabit} 
+            startPlan={startPlan} 
+            email={currentUser?.email || email} 
+            handleLogout={logout} 
+        />
+    );
   }
 
-  // 3. MAIN APP ROUTING
+  // 3. MAIN APP LAYOUT
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
       {toastMessage && (
@@ -6216,115 +6996,133 @@ function AppContent() {
           </div>
       )}
 
-      {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
-          <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
-              {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-          </button>
+      {/* REJECTION SCREEN */}
+      {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' && (
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
+                  <XCircle size={48} className="text-rose-500 animate-pulse" />
+              </div>
+              <h1 className="text-4xl font-black text-white mb-4">نأسف، تم رفض طلبك</h1>
+              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8">
+                  <h3 className="text-rose-400 font-bold mb-2 flex items-center justify-center gap-2">
+                      <AlertTriangle size={18}/> سبب الرفض من الإدارة
+                  </h3>
+                  <p className="text-rose-200 leading-relaxed">
+                      {userProfile.doctorData.rejectionReason || "لم يتم تحديد سبب. يرجى مراجعة البيانات."}
+                  </p>
+              </div>
+              <div className="flex gap-4">
+                  <Button variant="secondary" onClick={() => logout()}>تسجيل خروج</Button>
+                  <Button variant="primary" onClick={() => setIsResubmitting(true)}>تعديل الطلب وإعادة الإرسال</Button>
+              </div>
+          </div>
       )}
 
-      <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={handleLogout} userProfile={userProfile} />
-      <MobileNav currentView={currentView} setCurrentView={navigateTo} />
-      
-      <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
-        
-        {/* --- DOCTOR WAITING SCREEN --- */}
-        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-                    <Clock size={48} className="text-amber-500 animate-pulse" />
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
-                <p className="text-slate-400 max-w-lg leading-relaxed">
-                    شكراً لتسجيلك يا دكتور {userProfile.name}. طلبك الآن قيد المراجعة من قبل إدارة النظام للتحقق من بيانات الترخيص.
-                    <br/><br/>
-                    <span className="text-xs text-slate-500">سيتم توجيهك تلقائياً فور الاعتماد.</span>
-                </p>
-                <div className="mt-8 p-4 bg-slate-900 rounded-xl border border-white/5 text-xs text-slate-500 font-mono">
-                    Doctor ID: {authUser?.uid} <br/> License: {userProfile.doctorData?.licenseNumber}
-                </div>
-                <Button variant="secondary" onClick={handleLogout} className="mt-6 !px-6">تسجيل خروج</Button>
-            </div>
-        ) : 
+      {userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' && (
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
+                  <XCircle size={48} className="text-rose-500 animate-pulse" />
+              </div>
+              <h1 className="text-4xl font-black text-white mb-4">عذراً، تم رفض الطلب</h1>
+              <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                  لم يتم قبول طلب انضمامك من قبل الطبيب. يمكنك المحاولة مع طبيب آخر.
+              </p>
+              <div className="flex gap-4">
+                  <Button variant="secondary" onClick={() => logout()}>تسجيل خروج</Button>
+                  <Button variant="primary" onClick={() => setIsResubmitting(true)}>اختيار طبيب آخر</Button>
+              </div>
+          </div>
+      )}
 
-        /* --- PATIENT WAITING SCREEN --- */
-        userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                    <Loader2 size={48} className="text-indigo-500 animate-spin" />
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">بانتظار خطة الطبيب</h1>
-                <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                    لقد تم إرسال ملفك إلى الطبيب <strong>{userProfile.patientData?.assignedDoctorName}</strong>. 
-                    يرجى الانتظار حتى يقوم الطبيب بمراجعة حالتك ووضع الجدول العلاجي المناسب.
-                </p>
-                <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
-                     دخول المجتمع مؤقتاً
-                </Button>
-            </div>
-        ) : 
+      {/* NORMAL APP FLOW */}
+      {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
+          <>
+              {/* Mobile & Back Nav */}
+              {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
+                  <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
+                      {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+                  </button>
+              )}
 
-        /* --- APPROVED VIEWS --- */
-        (
-            <>
-                {/* --- NORMAL USER & APPROVED PATIENT VIEWS --- */}
-                {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
+              <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
+              <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
+              
+              <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
+                
+                {/* PENDING SCREENS */}
+                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Clock size={48} className="text-amber-500 animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                            طلبك قيد المراجعة من الإدارة. سيتم توجيهك تلقائياً فور الاعتماد.
+                        </p>
+                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
+                    </div>
+                ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Clock size={48} className="text-blue-500 animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                            طلبك للانضمام قيد المراجعة من قبل الطبيب.
+                        </p>
+                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
+                    </div>
+                ) : userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
+                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                            <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
+                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                            وافق الطبيب على انضمامك. يرجى الانتظار حتى يقوم بوضع الجدول العلاجي.
+                        </p>
+                        <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
+                            دخول المجتمع مؤقتاً
+                        </Button>
+                    </div>
+                ) : (
+                    /* ACTIVE VIEWS */
                     <>
-                        {currentView === AppView.DASHBOARD && (
-                            <DashboardView 
-                                userProfile={userProfile}
-                                plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
-                                progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
-                                showDoctorWarning={showDoctorWarning}
-                                selectedDose={selectedDose} setSelectedDose={setSelectedDose}
-                                selectedMood={selectedMood} setSelectedMood={setSelectedMood}
-                                submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
-                            />
+                        {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
+                            <>
+                                {currentView === AppView.DASHBOARD && (
+                                    <DashboardView 
+                                        userProfile={userProfile}
+                                        plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
+                                        progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
+                                        showDoctorWarning={showDoctorWarning}
+                                        selectedDose={selectedDose} setSelectedDose={setSelectedDose}
+                                        selectedMood={selectedMood} setSelectedMood={setSelectedMood}
+                                        submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                                    />
+                                )}
+                                {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
+                                {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
+                            </>
                         )}
-                        
-                        {currentView === AppView.CALENDAR && (
-                             <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />
+
+                        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
+                            <>
+                                {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
+                                {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
+                            </>
                         )}
-                        
-                        {currentView === AppView.STATS && (
-                             <StatsView logs={logs} plan={plan} userProfile={userProfile} />
-                        )} 
+
+                        {currentView === AppView.COMMUNITY && userProfile && <CommunityView currentUser={{...userProfile, uid: currentUser?.uid}} />}
+                        {currentView === AppView.SUPPORT && userProfile && <SupportView user={{...userProfile, uid: currentUser?.uid || ''}} />}
+                        {currentView === AppView.ARTICLES && <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />}
+                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
+                        {currentView === AppView.SETTINGS && userProfile && <SettingsView userProfile={userProfile} resetAllData={resetAllData} updateSpeedSettings={updateSpeedSettings} />}
                     </>
                 )}
-
-                {/* --- DOCTOR VIEWS --- */}
-                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
-                     <>
-                        {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
-                        {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
-                     </>
-                )}
-
-                {/* --- SHARED VIEWS --- */}
-                {currentView === AppView.COMMUNITY && userProfile && (
-                     <CommunityView currentUser={{...userProfile, uid: authUser?.uid}} />
-                )}
-                
-                {currentView === AppView.SUPPORT && userProfile && (
-                     <SupportView user={{...userProfile, uid: authUser?.uid || ''}} />
-                )}
-                
-                {currentView === AppView.ARTICLES && (
-                    <ArticlesView userProfile={userProfile ? { ...userProfile, uid: authUser?.uid } : null} />
-                )}
-                
-                {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
-                
-                {/* SETTINGS VIEW (UPDATED TO USE NEW COMPONENT) */}
-                {currentView === AppView.SETTINGS && userProfile && (
-                    <SettingsView 
-                        userProfile={userProfile}
-                        resetAllData={resetAllData}
-                        updateSpeedSettings={updateSpeedSettings}
-                    />
-                )}
-            </>
-        )}
-      </div>
+              </div>
+          </>
+      )}
     </div>
   );
 }
@@ -6332,7 +7130,11 @@ function AppContent() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AppContent />
+      <AuthProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 }
@@ -6355,13 +7157,11 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // Fetch the requesting user's profile
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // --- CORE FIX: Super Admin Identification ---
-    // هذه الدالة تمنح صلاحيات الأدمن إذا كان الدور مسجلاً في القاعدة "أو" إذا كان البريد هو بريد الأدمن الرئيسي
+    // Admin Check
     function isAdmin() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
@@ -6371,43 +7171,43 @@ service cloud.firestore {
     }
     
     function isApprovedDoctor() {
-      let user = getUserData();
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return isSignedIn() && user.role == 'doctor' && user.doctorData.accountStatus == 'approved';
     }
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // Read: Admin sees ALL. Owner sees self. Doctors see approved profiles or their patients.
+      // Admin: Full Access
+      allow read, write, delete: if isAdmin();
+
+      // Read Permissions
       allow read: if isSignedIn() && (
+        // 1. User reads own profile
         isOwner(userId) || 
-        isAdmin() || 
+        
+        // 2. Anyone can read APPROVED Doctors (Fix for "No doctors available")
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        (isApprovedDoctor() && !("assignedDoctorId" in resource.data.patientData))
+        
+        // 3. Approved Doctors can read Normal Users and Patients (Fix for "Doctor sees no users")
+        (isApprovedDoctor() && (resource.data.role == 'normal_user' || resource.data.role == 'patient')) ||
+        
+        // 4. Doctor sees their specific assigned patients
+        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid)
       );
 
-      // Create: Anyone can sign up.
+      // Create: Anyone
       allow create: if isSignedIn() && isOwner(userId);
 
-      // Update: Logic to allow role changes securely
+      // Update
       allow update: if isSignedIn() && (
-        // 1. Admin can do ANYTHING (Ban, Approve, Edit Roles)
-        isAdmin() || 
-        
-        // 2. Normal User updating their own profile
+        // User updates self (with restrictions)
         (isOwner(userId) && 
-         // Allow updating basic fields
-         // CRITICAL FIX: Allow Doctor Registration (switching from normal -> doctor)
-         // But prevent switching TO admin unless you are already the Super Admin
          request.resource.data.role != 'admin' &&
-         // Prevent unbanning self
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
-        
-        // 3. Doctor updating their patients
+        // Doctor updates their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        
-        // 4. Doctor claiming a new patient
+        // Doctor assigns themselves to a user
         (isApprovedDoctor() && 
          resource.data.role != 'admin' && 
          resource.data.role != 'doctor' &&
@@ -6418,41 +7218,42 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
+      allow read, write, delete: if isAdmin();
+
       allow read: if isSignedIn() && (
-        isAdmin() ||
         resource.data.isDoctorRoom == false ||
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
-        (resource.data.isDoctorRoom == true && getUserData().patientData.assignedDoctorId == resource.data.doctorId)
+        (resource.data.isDoctorRoom == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      allow create: if isAdmin() || isApprovedDoctor();
-      allow update, delete: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow create: if isApprovedDoctor();
+      allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
       match /messages/{msgId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow read, write: if isSignedIn();
       }
     }
 
     // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
+      allow read, write, delete: if isAdmin();
       allow read: if isSignedIn() && resource.data.isPublished == true;
-      allow create: if isAdmin() || isApprovedDoctor();
-      allow update, delete: if isAdmin() || (isApprovedDoctor() && resource.data.authorId == request.auth.uid);
+      allow create: if isApprovedDoctor();
+      allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
     }
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()); // Admin sees all tickets
+      allow read, write, delete: if isAdmin();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
       allow create: if isSignedIn(); 
-      allow update, delete: if false;
     }
   }
 }
@@ -6828,14 +7629,19 @@ export type UserRole = 'admin' | 'doctor' | 'normal_user' | 'patient';
 export type DoctorAccountStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DoctorProfileData {
-  specialty: string;        // التخصص
-  licenseNumber: string;    // رقم الترخيص
-  clinicLocation?: string;  // مكان العيادة
-  phoneNumber: string;      // رقم الهاتف
-  bio: string;              // نبذة
-  photoUrl?: string;        // <--- NEW: رابط صورة الطبيب
+  specialty: string;        
+  licenseNumber: string;    
+  clinicLocation?: string;  
+  phoneNumber: string;      
+  bio: string;              
+  photoUrl?: string | null;        
   accountStatus: DoctorAccountStatus; 
   
+  // Rejection & Resubmission Logic
+  rejectionReason?: string | null;       
+  submissionCount?: number;       
+  lastSubmissionDate?: number;    
+
   // Stats
   totalPatients: number;
   activePatients: number;
@@ -6847,6 +7653,9 @@ export interface DoctorProfileData {
 export interface PatientProfileData {
   assignedDoctorId: string;
   assignedDoctorName: string;
+  // NEW: Request Status logic
+  requestStatus: 'pending' | 'approved' | 'rejected'; 
+  
   isPlanAssigned: boolean; 
   isRecovered: boolean;    
   recoveryDate?: string;   
@@ -7025,6 +7834,6 @@ export default defineConfig({
 ---
 
 ## 📊 Stats
-- Total Files: 35
-- Total Characters: 346008
-- Estimated Tokens: ~86.502 (GPT-4 Context)
+- Total Files: 56
+- Total Characters: 372130
+- Estimated Tokens: ~93.033 (GPT-4 Context)

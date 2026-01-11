@@ -1,17 +1,17 @@
+/// <reference types="vite/client" />
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
-// --- إعدادات الاتصال ---
-// يجب استبدال هذه القيم بالقيم الخاصة بمشروعك من Firebase Console
+// قراءة المتغيرات البيئية من Vercel (أو ملف .env محلياً)
 const firebaseConfig = {
-  apiKey: "AIzaSyB9_8yeOazYKhzHiHvyzBaIoDQiNduMnS0", // Placeholder Key
-  authDomain: "islam-s-guide.firebaseapp.com",
-  projectId: "islam-s-guide",
-  storageBucket: "islam-s-guide.firebasestorage.app",
-  messagingSenderId: "176137497336",
-  appId: "1:176137497336:web:d763f34c2c632f1317e90d",
-  measurementId: "G-VNVJGFXLN4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID as string
 };
 
 // تهيئة المتغيرات
@@ -21,6 +21,12 @@ let db: Firestore;
 const googleProvider = new GoogleAuthProvider();
 
 try {
+  // التحقق من أن المفاتيح موجودة قبل التهيئة
+  // نتحقق فقط من apiKey كدليل على وجود التكوين
+  if (!firebaseConfig.apiKey) {
+    throw new Error("Firebase API keys are missing. Check Vercel Environment Variables or .env file.");
+  }
+
   // محاولة تهيئة التطبيق
   app = initializeApp(firebaseConfig);
   
@@ -31,9 +37,10 @@ try {
   console.log("Firebase initialized successfully.");
 } catch (error) {
   console.error("Firebase initialization failed:", error);
-  // في حالة فشل الاتصال، يمكن هنا تفعيل "وضع عدم الاتصال" أو إظهار رسالة خطأ
-  // لكن بما أن التطبيق يعتمد كلياً على البيانات السحابية الآن، سنكتفي بتسجيل الخطأ
+  // في حالة وجود خطأ، التطبيق سيستمر بالعمل ولكن خدمات Firebase لن تكون متاحة
+  // سيظهر خطأ في AuthContext إذا حاول المستخدم تسجيل الدخول
 }
 
 // تصدير الخدمات لاستخدامها في باقي الملفات
+// نستخدم الـ assertion (!) هنا لأننا تأكدنا من التهيئة أو رمينا خطأ (أو سنعالج الخطأ في مكان الاستخدام)
 export { auth, db, googleProvider };
