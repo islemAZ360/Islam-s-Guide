@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock
+    User, Award, Clock, Package, Pill, RefreshCw
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { UserProfile } from '../types';
+import { UserProfile, Inventory } from '../types';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -15,6 +15,7 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { Badge } from '../components/ui/Badge';
 
 import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext'; // استيراد Context للوصول للمخزون
 
 interface SettingsViewProps {
     userProfile: UserProfile;
@@ -23,7 +24,8 @@ interface SettingsViewProps {
 }
 
 export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }: SettingsViewProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
+    const { inventory, setInventory } = useData(); // جلب المخزون من البيانات العامة
     const [loading, setLoading] = useState(false);
 
     // -- Doctor Form State --
@@ -35,8 +37,17 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         name: ''
     });
 
+    // -- Inventory Edit State (للمستخدم العادي) --
+    const [localInventory, setLocalInventory] = useState<Inventory>({
+        boxes: 0, 
+        pillsPerBox: 0, 
+        loosePills: 0, 
+        totalPills: 0
+    });
+
     // Load initial data
     useEffect(() => {
+        // Doctor Data
         if (userProfile.role === 'doctor' && userProfile.doctorData) {
             setFormData({
                 photoUrl: userProfile.doctorData.photoUrl || '',
@@ -46,9 +57,14 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 name: userProfile.name || ''
             });
         }
-    }, [userProfile]);
+        
+        // User Inventory Data
+        if (inventory) {
+            setLocalInventory(inventory);
+        }
+    }, [userProfile, inventory]);
 
-    // -- Save Profile Changes --
+    // -- Save Profile Changes (Doctor) --
     const handleSaveProfile = async () => {
         if (!userProfile.uid) return;
         setLoading(true);
@@ -66,6 +82,18 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             alert("Failed to update profile.");
         }
         setLoading(false);
+    };
+
+    // -- Update Inventory (User) --
+    const handleUpdateInventory = () => {
+        // حساب المجموع الكلي الجديد
+        const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
+        const updatedInv = { ...localInventory, totalPills: newTotal };
+        
+        // تحديث الحالة العامة (سيقوم DataContext بحفظها في Firebase تلقائياً)
+        setInventory(updatedInv);
+        
+        alert(language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
     // --- DOCTOR PROFILE VIEW ---
@@ -118,7 +146,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                             </div>
                         </Card>
 
-                        {/* Rank Badge */}
                         <div className="bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 p-6 rounded-[2rem] flex items-center gap-4">
                             <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500">
                                 <Award size={32} />
@@ -212,8 +239,8 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
             
-            {/* Algorithm Settings */}
-            <Card className="bg-slate-900 border-white/5">
+            {/* Algorithm Pace Settings */}
+            <Card className="bg-slate-900 border-white/5 mb-8">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                     <Activity className="text-indigo-400" /> {t('pace_control')}
                 </h2>
@@ -222,13 +249,13 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
                         <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
                             <ShieldCheck size={40} className="text-slate-700" />
-                            <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي غير متاح.</p>
+                            <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي للسرعة غير متاح.</p>
                         </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <button 
                             onClick={() => updateSpeedSettings(0.8)} 
-                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
                         >
                             <Clock size={32} className="mx-auto mb-4" />
                             <span className="block font-bold mb-1">{t('pace_slow')}</span>
@@ -237,7 +264,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                         
                         <button 
                             onClick={() => updateSpeedSettings(1.0)} 
-                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
                         >
                             <ShieldCheck size={32} className="mx-auto mb-4" />
                             <span className="block font-bold mb-1">{t('pace_balanced')}</span>
@@ -246,7 +273,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                         
                         <button 
                             onClick={() => updateSpeedSettings(1.2)} 
-                            className={`p-8 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
                         >
                             <Zap size={32} className="mx-auto mb-4" />
                             <span className="block font-bold mb-1">{t('pace_fast')}</span>
@@ -256,8 +283,70 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 )}
             </Card>
 
+            {/* Inventory Management Section (New) */}
+            {userProfile?.role === 'normal_user' && (
+                <Card className="bg-slate-900 border-white/5 mb-8">
+                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                        <Package className="text-blue-400" /> {t('inventory_title')}
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
+                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('boxes')}</label>
+                            <div className="flex items-center gap-3">
+                                <Package className="text-slate-600" size={20} />
+                                <input 
+                                    type="number" 
+                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
+                                    value={localInventory.boxes}
+                                    onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
+                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('pills_per_box')}</label>
+                            <div className="flex items-center gap-3">
+                                <span className="text-slate-600 font-bold">x</span>
+                                <input 
+                                    type="number" 
+                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
+                                    value={localInventory.pillsPerBox}
+                                    onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
+                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('loose_pills')}</label>
+                            <div className="flex items-center gap-3">
+                                <Pill className="text-slate-600" size={20} />
+                                <input 
+                                    type="number" 
+                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
+                                    value={localInventory.loosePills}
+                                    onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
+                        <div className="text-sm">
+                            <span className="text-slate-500">{t('total_balance')}: </span>
+                            <span className="text-white font-bold font-mono text-lg">
+                                {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} {userProfile.medUnit || 'mg'}
+                            </span>
+                        </div>
+                        <Button onClick={handleUpdateInventory} variant="secondary" className="!py-2 !px-4">
+                            <RefreshCw size={16} className="mr-2"/> {t('save_changes')}
+                        </Button>
+                    </div>
+                </Card>
+            )}
+
             {/* Account Actions */}
-            <Card className="border-rose-500/10 bg-rose-900/5 mt-8">
+            <Card className="border-rose-500/10 bg-rose-900/5">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                 <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
             </Card>

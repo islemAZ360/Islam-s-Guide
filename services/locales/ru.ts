@@ -270,4 +270,10 @@ export const ru = {
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
     sci_trust_msg: "Эта система разработана как помощник, но она не заменяет консультацию вашего лечащего врача.",
     sci_btn_understood: "Понятно, начать план",
+
+    // Community & Inventory New Keys
+    community_clinic: "Клиника врача",
+    community_public_room_hint: "* Эта комната будет публичной и видимой для всех пользователей.",
+    community_doctor_room_hint: "* Все ваши текущие и будущие пациенты получат автоматический доступ к этой комнате.",
+    inventory_updated_msg: "Инвентарь обновлен, баланс пересчитан."
 };

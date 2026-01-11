@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, X, Stethoscope, BrainCircuit } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
@@ -20,18 +20,18 @@ interface CalendarViewProps {
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
     const { t, language } = useLanguage();
 
-    // تحديد تاريخ البداية لحساب الفراغات في التقويم
+    // 1. حساب إزاحة بداية الشهر (لضبط التقويم)
+    // نبدأ الرسم من أول يوم في الخطة
     const startDate = new Date(plan[0]?.date || new Date());
-    const startDayIndex = (startDate.getDay() + 1) % 7; // ضبط الترتيب ليبدأ من السبت
+    // في JavaScript: الأحد=0، الاثنين=1... السبت=6
+    // نريد أن يبدأ الأسبوع من السبت (Saturday = 0 في مصفوفتنا)
+    // معادلة التحويل: (Day + 1) % 7 تجعل السبت هو البداية
+    const startDayIndex = (startDate.getDay() + 1) % 7; 
     const blanks = Array.from({ length: startDayIndex });
 
-    // تحديد الوحدة بناءً على الملف الشخصي
     const unitLabel = userProfile?.medUnit || 'mg';
-    
-    // هل الخطة طبية أم خوارزمية؟
     const isDoctorPlan = userProfile?.planType === 'manual';
 
-    // ترجمة أيام الأسبوع
     const daysMap: Record<string, string[]> = {
         ar: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
         en: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -39,6 +39,7 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
     };
     
     const weekDays = daysMap[language] || daysMap['en'];
+    const dir = language === 'ar' ? 'rtl' : 'ltr';
 
     return (
       <LayoutContainer>
@@ -48,49 +49,52 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
             action={
                 <div className="flex gap-2">
                     {isDoctorPlan ? (
-                        <Badge color="indigo" className="!text-sm !py-2 !px-4">
-                            <Stethoscope size={16} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
+                        <Badge color="indigo" className="!text-xs md:!text-sm !py-2 !px-3 md:!px-4">
+                            <Stethoscope size={14} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
                         </Badge>
                     ) : (
-                        <Badge color="emerald" className="!text-sm !py-2 !px-4">
-                            <BrainCircuit size={16} className="mr-2" /> {t('path_algo')}
+                        <Badge color="emerald" className="!text-xs md:!text-sm !py-2 !px-3 md:!px-4">
+                            <BrainCircuit size={14} className="mr-2" /> {t('path_algo')}
                         </Badge>
                     )}
                 </div>
             }
         />
         
-        <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-6">
-          {/* Legend / مفتاح الخريطة */}
-          <div className="flex flex-wrap gap-4 mb-6 text-xs text-slate-400 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-indigo-600"></div> 
-                  {language === 'ar' ? 'اليوم الحالي' : language === 'ru' ? 'Сегодня' : 'Today'}
+        <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-4 md:!p-6">
+          {/* Legend (مفتاح الخريطة) */}
+          <div className="flex flex-wrap gap-3 md:gap-4 mb-6 text-[10px] md:text-xs text-slate-400 border-b border-white/5 pb-4">
+              <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-[0_0_8px_indigo]"></div> 
+                  {language === 'ar' ? 'اليوم' : 'Today'}
               </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div> 
-                  {language === 'ar' ? 'تم الالتزام' : language === 'ru' ? 'Выполнено' : 'Done'}
+              <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> 
+                  {language === 'ar' ? 'تم' : 'Done'}
               </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-500"></div> 
-                  {language === 'ar' ? 'لم يتم الالتزام' : language === 'ru' ? 'Пропущено' : 'Missed'}
+              <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div> 
+                  {language === 'ar' ? 'فائت' : 'Missed'}
               </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-slate-800 border border-white/10"></div> 
-                  {language === 'ar' ? 'القادم' : language === 'ru' ? 'Будущее' : 'Upcoming'}
+              <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-800 border border-white/10"></div> 
+                  {language === 'ar' ? 'قادم' : 'Future'}
               </div>
           </div>
 
           {/* ترويسة أيام الأسبوع */}
-          <div className="grid grid-cols-7 gap-2 md:gap-4 mb-3">
+          <div className="grid grid-cols-7 gap-1 md:gap-4 mb-2" dir={dir}>
             {weekDays.map(d => (
-              <div key={d} className="bg-slate-950/50 p-2 md:p-3 text-center text-[10px] md:text-xs font-bold text-slate-500 rounded-xl">{d}</div>
+              <div key={d} className="bg-slate-950/50 p-2 text-center text-[9px] md:text-xs font-bold text-slate-500 rounded-lg">
+                  {d}
+              </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2 md:gap-4">
-            {/* الأيام الفارغة في بداية الشهر/الجدول */}
-            {blanks.map((_, i) => <div key={`blank-${i}`} className="min-h-[80px]" />)}
+          {/* شبكة الأيام */}
+          <div className="grid grid-cols-7 gap-1 md:gap-4" dir={dir}>
+            {/* الأيام الفارغة لضبط بداية الشهر */}
+            {blanks.map((_, i) => <div key={`blank-${i}`} className="min-h-[60px] md:min-h-[80px]" />)}
 
             {plan.map((day, idx) => {
               const isToday = day.date === todayDate;
@@ -107,50 +111,51 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                   borderClass = "border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
                   textClass = "text-white";
               } else if (log) {
-                  // إذا تم تسجيل اليوم
                   if (log.doseTaken <= day.plannedDose) { // التزام جيد
                       bgClass = "bg-emerald-900/10";
                       borderClass = "border-emerald-500/30";
-                  } else { // تجاوز الجرعة
+                  } else { // تجاوز
                       bgClass = "bg-rose-900/10";
                       borderClass = "border-rose-500/30";
                   }
               } else if (isPast) {
-                  // يوم ماضي بدون تسجيل
                   bgClass = "bg-slate-950/30";
                   textClass = "text-slate-600";
                   borderClass = "border-dashed border-slate-700";
               }
 
               return (
-                <div key={idx} className={`${bgClass} border ${borderClass} rounded-2xl p-2 md:p-3 min-h-[80px] md:min-h-[110px] flex flex-col justify-between transition-all duration-300 relative group`}>
-                   {/* Header: Day & Status Icon */}
+                <div 
+                    key={idx} 
+                    className={`${bgClass} border ${borderClass} rounded-xl p-1.5 md:p-3 min-h-[70px] md:min-h-[110px] flex flex-col justify-between transition-all duration-300 relative group`}
+                >
+                   {/* Header: رقم اليوم + الأيقونة */}
                    <div className="flex justify-between items-start">
-                        <span className={`text-[10px] md:text-xs font-bold ${textClass}`}>
+                        <span className={`text-[9px] md:text-xs font-bold ${textClass}`}>
                             {day.date.slice(8)}
                         </span>
                         
                         {log && (
                             <span className={log.doseTaken <= day.plannedDose ? "text-emerald-400" : "text-rose-400"}>
-                                {log.doseTaken <= day.plannedDose ? <Check size={14} /> : <X size={14} />}
+                                {log.doseTaken <= day.plannedDose ? <Check size={12} className="md:w-4 md:h-4" /> : <X size={12} className="md:w-4 md:h-4" />}
                             </span>
                         )}
-                        {isToday && !log && <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+                        {isToday && !log && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
                    </div>
                   
-                  {/* Content: Dose */}
+                  {/* Content: الجرعة */}
                   <div className="text-center mt-1">
-                    <span className={`text-lg md:text-2xl font-black ${isToday ? 'text-white' : isPast && !log ? 'text-slate-600' : 'text-slate-300'}`}>
+                    <span className={`text-sm md:text-2xl font-black ${isToday ? 'text-white' : isPast && !log ? 'text-slate-600' : 'text-slate-300'}`}>
                       {day.plannedDose}
                     </span>
-                    <span className="text-[8px] md:text-[10px] block uppercase text-slate-600 font-bold">
+                    <span className="text-[7px] md:text-[10px] block uppercase text-slate-600 font-bold scale-90 md:scale-100">
                         {unitLabel}
                     </span>
                   </div>
 
-                  {/* Mood Indicator (Bottom Bar) */}
+                  {/* Footer: شريط الحالة المزاجية */}
                   {log && (
-                      <div className={`h-1 w-full rounded-full mt-2 ${
+                      <div className={`h-1 w-full rounded-full mt-1.5 md:mt-2 ${
                           log.mood === 'good' ? 'bg-emerald-500' : 
                           log.mood === 'bad' ? 'bg-rose-500' : 'bg-amber-500'
                       }`}></div>

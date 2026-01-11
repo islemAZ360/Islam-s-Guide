@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc, where 
+    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock 
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock
 } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
@@ -38,7 +38,6 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // 1. جلب غرف الدردشة (Smart Filtering)
     useEffect(() => {
-        // إذا لم يكن للمستخدم معرف، لا نقوم بجلب البيانات
         if (!currentUser.uid) return;
 
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
@@ -46,26 +45,26 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             const allRooms: ChatRoom[] = [];
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
-            // تصفية الغرف بناءً على الصلاحيات
+            // --- منطق الفلترة المحدث ---
             const filteredRooms = allRooms.filter(room => {
-                // الأدمن يرى كل شيء
+                // 1. الأدمن يرى كل شيء
                 if (currentUser.role === 'admin') return true;
 
-                // الغرف العامة تظهر للكل
-                if (!room.isDoctorRoom) return true;
+                // 2. المريض يرى فقط غرفة طبيبه المعالج (ويتم إخفاء الغرف العامة عنه للتركيز)
+                if (currentUser.role === 'patient') {
+                    return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
+                }
 
-                // غرف الأطباء الخاصة
+                // 3. الطبيب يرى غرفته الخاصة فقط
                 if (currentUser.role === 'doctor') {
-                    // الطبيب يرى غرفته الخاصة فقط
                     return room.doctorId === currentUser.uid;
                 }
 
-                if (currentUser.role === 'patient') {
-                    // المريض يرى غرفة طبيبه المعالج فقط
-                    return room.doctorId === currentUser.patientData?.assignedDoctorId;
+                // 4. المستخدم العادي يرى الغرف العامة فقط (يخفي غرف العيادات الخاصة)
+                if (currentUser.role === 'normal_user') {
+                    return !room.isDoctorRoom;
                 }
 
-                // المستخدم العادي لا يرى غرف الأطباء
                 return false;
             });
 
@@ -74,7 +73,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         return () => unsubscribe();
     }, [currentUser]);
 
-    // 2. جلب لوحة المتصدرين (Top 20 by Progress)
+    // 2. جلب لوحة المتصدرين
     useEffect(() => {
         if (tab === 'leaderboard') {
             const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(20));
@@ -87,7 +86,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     }, [tab]);
 
-    // 3. جلب الرسائل عند دخول غرفة
+    // 3. جلب الرسائل
     useEffect(() => {
         if (!activeRoom) return;
         const q = query(collection(db, "rooms", activeRoom.id, "messages"), orderBy("timestamp", "asc"));
@@ -113,7 +112,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             creatorName: currentUser.name,
             language: 'mixed',
             createdAt: Date.now(),
-            // Doctor logic
+            // إذا كان طبيباً، تصبح الغرفة "عيادة"، وإلا فهي غرفة عامة
             isDoctorRoom: isDoctor,
             doctorId: isDoctor ? currentUser.uid : null
         });
@@ -123,7 +122,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     const deleteRoom = async (roomId: string) => {
-        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟ سيتم حذف جميع الرسائل.")) {
+        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟")) {
             await deleteDoc(doc(db, "rooms", roomId));
             if (activeRoom?.id === roomId) setActiveRoom(null);
         }
@@ -137,7 +136,6 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             senderId: currentUser.uid,
             senderName: currentUser.name,
             timestamp: Date.now(),
-            // Flags for UI styling
             role: currentUser.role,
             isDoctor: currentUser.role === 'doctor',
             isAdmin: currentUser.role === 'admin'
@@ -145,8 +143,11 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         setNewMessage("");
     };
 
+    // السماح بإنشاء الغرفة للجميع ما عدا المريض
+    const canCreateRoom = currentUser.role !== 'patient';
+
     return (
-            <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col">
+        <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col">
             {/* Tabs */}
             <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 mb-4 shrink-0">
                 <button 
@@ -215,9 +216,12 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             {tab === 'rooms' && !activeRoom && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                     <div className="flex justify-between items-center mb-4 shrink-0">
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2"><Globe size={20} className="text-indigo-400"/> الغرف المتاحة</h2>
-                        {/* فقط الأدمن والطبيب يمكنهم إنشاء غرف */}
-                        {(currentUser.role === 'admin' || currentUser.role === 'doctor') && (
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Globe size={20} className="text-indigo-400"/> 
+                            {currentUser.role === 'patient' ? t('community_clinic') : t('comm_rooms')}
+                        </h2>
+                        {/* زر الإنشاء يظهر للمستخدم العادي، الأدمن، والطبيب فقط */}
+                        {canCreateRoom && (
                             <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-full">
                                 <Plus size={16} /> {t('create_room')}
                             </Button>
@@ -225,12 +229,18 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pb-20 custom-scrollbar pr-1">
+                        {rooms.length === 0 && (
+                            <div className="col-span-full text-center py-10 text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
+                                لا توجد غرف متاحة حالياً.
+                            </div>
+                        )}
                         {rooms.map(room => (
                             <div key={room.id} onClick={() => setActiveRoom(room)} className={`bg-slate-900 border p-5 rounded-2xl hover:bg-slate-800 transition-all cursor-pointer group relative flex flex-col justify-between h-32 ${room.isDoctorRoom ? 'border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5'}`}>
                                 <div className="flex justify-between items-start">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${room.isDoctorRoom ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
                                         {room.isDoctorRoom ? <Stethoscope size={20} /> : <MessageCircle size={20} />}
                                     </div>
+                                    {/* حذف الغرفة: للأدمن أو لمنشئ الغرفة */}
                                     {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
@@ -246,7 +256,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         {room.isDoctorRoom && <Lock size={12} className="text-indigo-400"/>}
                                     </h3>
                                     <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                                        {room.isDoctorRoom ? 'عيادة خاصة' : `By ${room.creatorName}`}
+                                        {room.isDoctorRoom ? t('community_clinic') : `By ${room.creatorName}`}
                                     </p>
                                 </div>
                             </div>
@@ -258,7 +268,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
                             <Card className="w-full max-w-sm bg-slate-900 border-white/10 shadow-2xl">
                                 <h3 className="text-lg font-bold text-white mb-4">
-                                    {currentUser.role === 'doctor' ? 'إنشاء غرفة للمرضى' : t('create_room')}
+                                    {currentUser.role === 'doctor' ? t('community_clinic') : t('create_room')}
                                 </h3>
                                 <input 
                                     className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-4 outline-none focus:border-indigo-500"
@@ -266,9 +276,13 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     value={newRoomName}
                                     onChange={(e) => setNewRoomName(e.target.value)}
                                 />
-                                {currentUser.role === 'doctor' && (
+                                {currentUser.role === 'doctor' ? (
                                     <p className="text-xs text-indigo-400 mb-4 bg-indigo-500/10 p-2 rounded-lg">
-                                        * سيتمكن جميع مرضاك الحاليين والمستقبليين من دخول هذه الغرفة تلقائياً.
+                                        {t('community_doctor_room_hint')}
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-slate-500 mb-4">
+                                        {t('community_public_room_hint')}
                                     </p>
                                 )}
                                 <div className="flex gap-2 justify-end">
@@ -306,7 +320,6 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             const isMe = msg.senderId === currentUser.uid;
                             const showAvatar = i === 0 || messages[i-1].senderId !== msg.senderId;
                             
-                            // Styling based on role
                             let bubbleClass = 'bg-slate-800 text-slate-200';
                             if (isMe) bubbleClass = 'bg-indigo-600 text-white';
                             else if (msg.isDoctor || msg.role === 'doctor') bubbleClass = 'bg-blue-900/40 border border-blue-500/30 text-blue-100';

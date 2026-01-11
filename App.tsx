@@ -73,7 +73,7 @@ function AppContent() {
   // -- Routing Logic --
   useEffect(() => {
     if (userProfile) {
-        // 1. منطق الأدمن: نوجهه للوحة التحكم فقط عند بدء التشغيل إذا كان في الداشبورد
+        // 1. منطق الأدمن
         if (userProfile.role === 'admin' && currentView === AppView.DASHBOARD) {
             setCurrentView(AppView.ADMIN);
         } 
@@ -170,7 +170,7 @@ function AppContent() {
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
-        const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier);
+        const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier, userProfile.medForm || 'tablet');
         setPlan(newPlan);
     }
     
@@ -216,7 +216,7 @@ function AppContent() {
           const totalUsed = logs.reduce((a, b) => a + b.doseTaken, 0);
           const theoreticalInitial = currentInv + totalUsed;
           
-          const newPlan = adjustPlan(plan, logs, theoreticalInitial, newSpeed);
+          const newPlan = adjustPlan(plan, logs, theoreticalInitial, newSpeed, userProfile.medForm || 'tablet');
           setPlan(newPlan);
           showToast(t('toast_speed_updated'));
       }
@@ -285,7 +285,7 @@ function AppContent() {
           </div>
       )}
 
-      {/* REJECTION SCREEN */}
+      {/* REJECTION SCREEN - DOCTOR */}
       {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' && (
           <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
@@ -307,6 +307,7 @@ function AppContent() {
           </div>
       )}
 
+      {/* REJECTION SCREEN - PATIENT */}
       {userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' && (
           <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
@@ -326,9 +327,9 @@ function AppContent() {
       {/* NORMAL APP FLOW */}
       {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
           <>
-              {/* Mobile & Back Nav */}
+              {/* Mobile Back Nav - Moved Top */}
               {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
-                  <button onClick={goBack} className="fixed top-4 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
+                  <button onClick={goBack} className="fixed top-6 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
                       {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                   </button>
               )}
@@ -375,8 +376,9 @@ function AppContent() {
                         </Button>
                     </div>
                 ) : (
-                    /* ACTIVE VIEWS - THIS SECTION WAS BROKEN, NOW FIXED */
+                    /* ACTIVE VIEWS - Main Routing */
                     <>
+                        {/* 1. Normal Users & Active Patients */}
                         {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                             <>
                                 {currentView === AppView.DASHBOARD && (
@@ -395,6 +397,7 @@ function AppContent() {
                             </>
                         )}
 
+                        {/* 2. Doctors */}
                         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                             <>
                                 {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -402,22 +405,25 @@ function AppContent() {
                             </>
                         )}
 
-                        {currentView === AppView.COMMUNITY && userProfile && (
-                            <CommunityView currentUser={{...userProfile, uid: currentUser?.uid}} />
+                        {/* 3. Shared Views (Accessible by Admin and others) */}
+                        {currentView === AppView.COMMUNITY && (
+                            <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
                         )}
 
-                        {currentView === AppView.SUPPORT && userProfile && (
-                            <SupportView user={{...userProfile, uid: currentUser?.uid || ''}} />
+                        {currentView === AppView.SUPPORT && (
+                            <SupportView user={{...userProfile!, uid: currentUser?.uid || ''}} />
                         )}
 
                         {currentView === AppView.ARTICLES && (
                             <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
                         )}
                         
+                        {/* 4. Admin Only */}
                         {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
                             <AdminView />
                         )}
                         
+                        {/* 5. Settings */}
                         {currentView === AppView.SETTINGS && userProfile && (
                             <SettingsView 
                                 userProfile={userProfile} 
