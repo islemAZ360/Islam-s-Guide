@@ -7,7 +7,6 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Inventory } from '../types';
 
-// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -15,7 +14,7 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { Badge } from '../components/ui/Badge';
 
 import { useLanguage } from '../contexts/LanguageContext';
-import { useData } from '../contexts/DataContext'; // استيراد Context للوصول للمخزون
+import { useData } from '../contexts/DataContext';
 
 interface SettingsViewProps {
     userProfile: UserProfile;
@@ -25,7 +24,7 @@ interface SettingsViewProps {
 
 export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }: SettingsViewProps) => {
     const { t, language } = useLanguage();
-    const { inventory, setInventory } = useData(); // جلب المخزون من البيانات العامة
+    const { inventory, setInventory } = useData(); 
     const [loading, setLoading] = useState(false);
 
     // -- Doctor Form State --
@@ -37,7 +36,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         name: ''
     });
 
-    // -- Inventory Edit State (للمستخدم العادي) --
+    // -- Inventory Edit State --
     const [localInventory, setLocalInventory] = useState<Inventory>({
         boxes: 0, 
         pillsPerBox: 0, 
@@ -45,9 +44,8 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         totalPills: 0
     });
 
-    // Load initial data
+    // Load initial data for Doctor
     useEffect(() => {
-        // Doctor Data
         if (userProfile.role === 'doctor' && userProfile.doctorData) {
             setFormData({
                 photoUrl: userProfile.doctorData.photoUrl || '',
@@ -57,14 +55,26 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 name: userProfile.name || ''
             });
         }
-        
-        // User Inventory Data
-        if (inventory) {
-            setLocalInventory(inventory);
-        }
-    }, [userProfile, inventory]);
+    }, [userProfile]);
 
-    // -- Save Profile Changes (Doctor) --
+    // --- الإصلاح هنا: منطق مزامنة أذكى ---
+    // هذا الكود يمنع البيانات القادمة من السيرفر من مسح ما يكتبه المستخدم
+    useEffect(() => {
+        if (inventory) {
+            // نحدث الحالة المحلية فقط إذا كانت فارغة تماماً (أول تحميل للصفحة)
+            // هذا يضمن أننا نرى البيانات المحفوظة، لكن إذا بدأنا التعديل لا يتم الكتابة عليه
+            setLocalInventory(prev => {
+                const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
+                // إذا كانت الحقول فارغة، نملأها بالبيانات من القاعدة
+                if (isPrevEmpty) {
+                    return inventory;
+                }
+                // إذا كان المستخدم قد كتب شيئاً، لا نلمسه
+                return prev;
+            });
+        }
+    }, [inventory]);
+
     const handleSaveProfile = async () => {
         if (!userProfile.uid) return;
         setLoading(true);
@@ -84,19 +94,21 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         setLoading(false);
     };
 
-    // -- Update Inventory (User) --
     const handleUpdateInventory = () => {
-        // حساب المجموع الكلي الجديد
+        // حساب المجموع الجديد
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
         
-        // تحديث الحالة العامة (سيقوم DataContext بحفظها في Firebase تلقائياً)
+        // تحديث السياق العام (ليتم حفظه في القاعدة)
         setInventory(updatedInv);
+        
+        // تحديث الحالة المحلية أيضاً لتأكيد القيم
+        setLocalInventory(updatedInv);
         
         alert(language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
-    // --- DOCTOR PROFILE VIEW ---
+    // --- واجهة الطبيب ---
     if (userProfile.role === 'doctor') {
         const level = userProfile.doctorData?.doctorLevel || 1;
         const recovered = userProfile.doctorData?.recoveredCount || 0;
@@ -107,7 +119,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 <PageHeader title={t('profile_title')} subtitle={t('nav_settings')} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: ID Card & Stats */}
                     <div className="space-y-6">
                         <Card className="bg-slate-900 border-white/5 text-center relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
@@ -145,19 +156,8 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
                             </div>
                         </Card>
-
-                        <div className="bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 p-6 rounded-[2rem] flex items-center gap-4">
-                            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500">
-                                <Award size={32} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-amber-500 text-lg">{t('rank_label')}</h3>
-                                <p className="text-xs text-amber-200/60">Top 10% of Doctors</p>
-                            </div>
-                        </div>
                     </div>
 
-                    {/* Right Column: Edit Form */}
                     <div className="lg:col-span-2">
                         <Card className="bg-slate-900 border-white/5 h-full">
                             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
@@ -234,12 +234,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         );
     }
 
-    // --- PATIENT / USER SETTINGS VIEW ---
+    // --- واجهة المستخدم العادي / المريض ---
     return (
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
             
-            {/* Algorithm Pace Settings */}
+            {/* إعدادات السرعة */}
             <Card className="bg-slate-900 border-white/5 mb-8">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                     <Activity className="text-indigo-400" /> {t('pace_control')}
@@ -283,7 +283,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 )}
             </Card>
 
-            {/* Inventory Management Section (New) */}
+            {/* إعدادات المخزون (للمستخدم العادي) */}
             {userProfile?.role === 'normal_user' && (
                 <Card className="bg-slate-900 border-white/5 mb-8">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
@@ -345,7 +345,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 </Card>
             )}
 
-            {/* Account Actions */}
+            {/* منطقة الخطر */}
             <Card className="border-rose-500/10 bg-rose-900/5">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                 <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>

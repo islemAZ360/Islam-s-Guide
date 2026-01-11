@@ -37,16 +37,9 @@ service cloud.firestore {
 
       // Read Permissions
       allow read: if isSignedIn() && (
-        // 1. User reads own profile
         isOwner(userId) || 
-        
-        // 2. Anyone can read APPROVED Doctors (Fix for "No doctors available")
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        
-        // 3. Approved Doctors can read Normal Users and Patients (Fix for "Doctor sees no users")
         (isApprovedDoctor() && (resource.data.role == 'normal_user' || resource.data.role == 'patient')) ||
-        
-        // 4. Doctor sees their specific assigned patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid)
       );
 
@@ -55,20 +48,16 @@ service cloud.firestore {
 
       // Update
       allow update: if isSignedIn() && (
-        // User updates self (with restrictions)
         (isOwner(userId) && 
          request.resource.data.role != 'admin' &&
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
-        // Doctor updates their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Doctor assigns themselves to a user
-        (isApprovedDoctor() && 
-         resource.data.role != 'admin' && 
-         resource.data.role != 'doctor' &&
-         (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null)
-        )
+        (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
+      
+      // التعديل الجديد هنا: السماح للمستخدم بحذف حسابه
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     // --- 2. Chat Rooms ---

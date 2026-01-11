@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore'; // تمت إضافة deleteDoc
 import { db } from '../services/firebase';
 import { UserProfile, Inventory, PlanDay, DailyLog } from '../types';
 import { useAuth } from './AuthContext';
@@ -49,7 +49,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
         setDataLoading(false);
       } else {
-        // Demo Mode - Assume setup handled elsewhere or mock data
+        // Demo Mode
         setDataLoading(false);
       }
       return;
@@ -73,13 +73,11 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         const data = docSnap.data();
         const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
         
-        // Merge nested object if exists (legacy support)
         if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
         setUserProfile(fetchedProfile);
 
-        // Only update local state from cloud if we are not currently "dirty" (editing)
-        // This prevents overwriting local changes with old cloud data during rapid edits
+        // Only update local state from cloud if we are not currently "dirty"
         if (!isDirty.current) {
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
@@ -87,7 +85,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
         }
 
-        // Security Check
         if (data.isBanned) {
            alert(t('banned_msg'));
            logout();
@@ -112,20 +109,16 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [currentUser, isDemoMode]);
 
-  // 2. Sync Logic (Debounced Save + Persistence)
+  // 2. Sync Logic
   useEffect(() => {
-    // Flag that we have changes
     if (userProfile?.setupComplete) {
         isDirty.current = true;
     }
 
-    // A. Local Storage Backup (Immediate)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
-    // B. Cloud Sync (Debounced)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
-        // Skip sync for doctors who don't have profile data yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -141,7 +134,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                     ...(userProfile.name ? { name: userProfile.name } : {})
                 };
 
-                // Only sync large data arrays for patients/users
                 if (userProfile.role === 'patient' || userProfile.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -150,22 +142,19 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                     updateData.progress = progressPercentage;
                 }
                 
-                // Sync Doctor Data structure if needed
                 if (userProfile.role === 'doctor' && userProfile.doctorData) {
                     updateData.doctorData = userProfile.doctorData;
                 }
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
                 
-                // Reset dirty flag after successful sync
                 isDirty.current = false;
 
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
-        }, 5000); // 5 seconds debounce
+        }, 5000); 
 
-        // C. Safety Net: Save to localStorage on tab close
         const handleBeforeUnload = () => {
             if (isDirty.current) {
                 localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
@@ -187,13 +176,35 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => setDataLoading(false), 1000);
   };
 
+  // --- التعديل الجذري هنا ---
   const resetAllData = async () => {
-      localStorage.clear();
-      setUserProfile(null);
-      setPlan([]);
-      setLogs([]);
-      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
-      await logout();
+      if (!window.confirm("تحذير هام: هذا الإجراء سيقوم بحذف جميع بياناتك، خطتك العلاجية، وسجلاتك نهائياً من قاعدة البيانات. هل أنت متأكد؟")) {
+          return;
+      }
+
+      try {
+          setDataLoading(true);
+          
+          if (currentUser && !isDemoMode) {
+              // حذف المستند بالكامل من فايربيس
+              await deleteDoc(doc(db, "users", currentUser.uid));
+          }
+          
+          // تنظيف المتصفح
+          localStorage.clear();
+          setUserProfile(null);
+          setPlan([]);
+          setLogs([]);
+          setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+          
+          // تسجيل الخروج
+          await logout();
+          
+      } catch (e) {
+          console.error("Error resetting data:", e);
+          alert("حدث خطأ أثناء محاولة حذف البيانات. يرجى التحقق من الاتصال بالإنترنت.");
+          setDataLoading(false);
+      }
   };
 
   return (

@@ -23,9 +23,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
     if (role === 'admin') {
        items.push(
         { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') },
-        // --- تصحيح: تغيير المسمى والأيقونة للأدمن في الموبايل أيضاً ---
         { id: AppView.COMMUNITY, icon: MessageSquare, label: language === 'ar' ? 'المجتمع' : 'Chat' },
-        // -------------------------------------------------------------
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
        );
     } 
@@ -39,14 +37,12 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
     } 
     // 3. PATIENT / NORMAL USER MENU
     else {
-        // Patient Waiting for Plan
         if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
              items.push(
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
                 { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
              );
         } else {
-             // Standard User
              items.push(
                 { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
                 { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
@@ -56,7 +52,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         }
     }
     
-    // Common settings icon at the end
+    // الإعدادات دائماً موجودة
     items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     
     return items;
@@ -65,36 +61,33 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
   const menuItems = getMenuItems();
 
   return (
-    <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
+    // التعديل: تقليل الارتفاع (h-16) وتقريب الحواف (bottom-3) وتوزيع العناصر بالتساوي (flex-1)
+    <div className="md:hidden fixed bottom-3 left-3 right-3 h-16 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 animate-in slide-in-from-bottom-20 duration-700">
       
-      <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
+      <div className="flex items-center justify-between px-1 h-full w-full">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setCurrentView(item.id)}
-              className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400 -translate-y-3' : 'text-slate-500 hover:text-slate-300'
+              className={`flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative group ${
+                  isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
-              <div className={`p-3 rounded-full transition-all duration-300 ${
+              <div className={`p-1.5 rounded-xl transition-all duration-300 ${
                   isActive 
-                  ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-[0_8px_20px_rgba(99,102,241,0.4)] ring-4 ring-[#020617]' 
-                  : 'bg-transparent group-hover:bg-white/5'
+                  ? 'bg-indigo-500/10 -translate-y-1' 
+                  : 'bg-transparent'
               }`}>
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               
-              <span className={`absolute -bottom-5 text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
-                  isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 -translate-y-2 text-slate-500'
+              <span className={`text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
+                  isActive ? 'opacity-100' : 'opacity-60 scale-90'
               }`}>
                   {item.label}
               </span>
-              
-              {isActive && (
-                  <span className="absolute -bottom-7 w-1 h-1 bg-indigo-500 rounded-full"></span>
-              )}
             </button>
           );
         })}
