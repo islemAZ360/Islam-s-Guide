@@ -59,7 +59,7 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isResubmitting, setIsResubmitting] = useState(false);
 
-  // Onboarding specific state (Needed here to pass down)
+  // Onboarding specific state
   const [currentDoseHabit, setCurrentDoseHabit] = useState<number>(0);
 
   // Dashboard Interaction
@@ -73,10 +73,13 @@ function AppContent() {
   // -- Routing Logic --
   useEffect(() => {
     if (userProfile) {
-        // Auto-redirect logic based on Role
-        if (userProfile.role === 'admin' && currentView !== AppView.ADMIN) {
+        // 1. منطق الأدمن: نوجهه للوحة التحكم فقط عند بدء التشغيل إذا كان في الداشبورد
+        if (userProfile.role === 'admin' && currentView === AppView.DASHBOARD) {
             setCurrentView(AppView.ADMIN);
-        } else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
+        } 
+        
+        // 2. منطق الطبيب
+        else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
             const allowedDoctorViews = [
                 AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, 
                 AppView.COMMUNITY, AppView.ARTICLES, AppView.SUPPORT, AppView.SETTINGS
@@ -86,7 +89,7 @@ function AppContent() {
             }
         }
         
-        // Reset resubmitting state checks
+        // 3. إعادة تعيين حالة إعادة الإرسال
         if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending') {
             setIsResubmitting(false);
         }
@@ -109,14 +112,13 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      // Default back behavior
       const defaultView = userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : 
                           userProfile?.role === 'admin' ? AppView.ADMIN : AppView.DASHBOARD;
       setCurrentView(defaultView);
     }
   };
 
-  // -- Logic Handlers (Controller) --
+  // -- Logic Handlers --
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -129,9 +131,7 @@ function AppContent() {
     setPlan(customPlan);
     
     if (userProfile) {
-        // Fix: Explicitly cast to UserProfile to avoid TypeScript errors with spread
         const baseProfile = userProfile as UserProfile;
-
         const newProfile: UserProfile = {
             ...baseProfile,
             setupComplete: true,
@@ -148,7 +148,6 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    // 1. Update Inventory
     const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
@@ -161,7 +160,6 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // 2. Add Log
     const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
@@ -169,7 +167,6 @@ function AppContent() {
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // 3. Recalculate Plan (If Algo)
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
         const theoreticalInitial = newTotal + totalUsed;
@@ -227,7 +224,6 @@ function AppContent() {
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); }
 
-  // -- Derived UI Data --
   const todayDate = new Date().toISOString().split('T')[0];
   const todayPlan = plan.find(p => p.date === todayDate);
   const todayLog = logs.find(l => l.date === todayDate);
@@ -240,7 +236,6 @@ function AppContent() {
   const poorSleep = recentLogs.length >= 3 && (recentLogs.reduce((acc, l) => acc + (l.sleepHours || 7), 0) / 3) < 5;
   const showDoctorWarning = badMoodCount >= 3 || poorSleep;
 
-  // -- Loading State --
   if (authLoading || dataLoading) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-indigo-400 gap-4" dir={dir}>
@@ -380,7 +375,7 @@ function AppContent() {
                         </Button>
                     </div>
                 ) : (
-                    /* ACTIVE VIEWS */
+                    /* ACTIVE VIEWS - THIS SECTION WAS BROKEN, NOW FIXED */
                     <>
                         {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                             <>
@@ -407,11 +402,29 @@ function AppContent() {
                             </>
                         )}
 
-                        {currentView === AppView.COMMUNITY && userProfile && <CommunityView currentUser={{...userProfile, uid: currentUser?.uid}} />}
-                        {currentView === AppView.SUPPORT && userProfile && <SupportView user={{...userProfile, uid: currentUser?.uid || ''}} />}
-                        {currentView === AppView.ARTICLES && <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />}
-                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && <AdminView />}
-                        {currentView === AppView.SETTINGS && userProfile && <SettingsView userProfile={userProfile} resetAllData={resetAllData} updateSpeedSettings={updateSpeedSettings} />}
+                        {currentView === AppView.COMMUNITY && userProfile && (
+                            <CommunityView currentUser={{...userProfile, uid: currentUser?.uid}} />
+                        )}
+
+                        {currentView === AppView.SUPPORT && userProfile && (
+                            <SupportView user={{...userProfile, uid: currentUser?.uid || ''}} />
+                        )}
+
+                        {currentView === AppView.ARTICLES && (
+                            <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
+                        )}
+                        
+                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
+                            <AdminView />
+                        )}
+                        
+                        {currentView === AppView.SETTINGS && userProfile && (
+                            <SettingsView 
+                                userProfile={userProfile} 
+                                resetAllData={resetAllData} 
+                                updateSpeedSettings={updateSpeedSettings} 
+                            />
+                        )}
                     </>
                 )}
               </div>
