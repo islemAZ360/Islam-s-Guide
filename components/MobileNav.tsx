@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, Users, 
-  LifeBuoy, BookOpen, ShieldAlert, MessageSquare 
+  LifeBuoy, ShieldAlert, MessageSquare 
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -13,7 +13,7 @@ interface MobileNavProps {
 }
 
 export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNavProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const getMenuItems = () => {
     const role = userProfile?.role;
@@ -22,9 +22,11 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
     // 1. ADMIN MENU
     if (role === 'admin') {
        items.push(
-        { id: AppView.ADMIN, icon: ShieldAlert, label: 'Admin' },
-        { id: AppView.COMMUNITY, icon: Users, label: 'Users' },
-        { id: AppView.SUPPORT, icon: LifeBuoy, label: 'Tickets' },
+        { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') },
+        // --- تصحيح: تغيير المسمى والأيقونة للأدمن في الموبايل أيضاً ---
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: language === 'ar' ? 'المجتمع' : 'Chat' },
+        // -------------------------------------------------------------
+        { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
        );
     } 
     // 2. DOCTOR MENU
@@ -33,7 +35,6 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
             { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
             { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
             { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
-            // Articles & Support can be accessed via sidebar or specific pages linked internally
         );
     } 
     // 3. PATIENT / NORMAL USER MENU

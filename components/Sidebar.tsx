@@ -28,7 +28,12 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     if (role === 'admin') {
       items.push(
         { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
-        { id: AppView.COMMUNITY, icon: Users, label: t('tab_users') },
+        
+        // --- تصحيح هنا: تغيير المسمى من "المستخدمين" إلى "المجتمع" وتغيير الأيقونة ---
+        // لأن إدارة المستخدمين موجودة داخل صفحة الأدمن، وهذا الزر مخصص للدردشة العامة
+        { id: AppView.COMMUNITY, icon: MessageSquare, label: t('nav_community') },
+        // -----------------------------------------------------------------------
+
         { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
