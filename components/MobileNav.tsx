@@ -52,7 +52,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         }
     }
     
-    // الإعدادات دائماً موجودة
+    // Settings always available
     items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     
     return items;
@@ -61,37 +61,51 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
   const menuItems = getMenuItems();
 
   return (
-    // التعديل: تقليل الارتفاع (h-16) وتقريب الحواف (bottom-3) وتوزيع العناصر بالتساوي (flex-1)
-    <div className="md:hidden fixed bottom-3 left-3 right-3 h-16 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 animate-in slide-in-from-bottom-20 duration-700">
+    // الجزيرة العائمة: glass class + rounded-full + margins
+    <div className="md:hidden fixed bottom-5 left-4 right-4 h-[70px] glass rounded-[2rem] z-50 animate-in slide-in-from-bottom-8 flex items-center justify-between px-2 shadow-2xl shadow-black/50">
       
-      <div className="flex items-center justify-between px-1 h-full w-full">
-        {menuItems.map((item) => {
-          const isActive = currentView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <div className={`p-1.5 rounded-xl transition-all duration-300 ${
-                  isActive 
-                  ? 'bg-indigo-500/10 -translate-y-1' 
-                  : 'bg-transparent'
-              }`}>
-                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              </div>
-              
-              <span className={`text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
-                  isActive ? 'opacity-100' : 'opacity-60 scale-90'
-              }`}>
-                  {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {menuItems.map((item) => {
+        const isActive = currentView === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => setCurrentView(item.id)}
+            className={`
+              flex-1 flex flex-col items-center justify-center gap-1 h-full relative group transition-all duration-500
+              ${isActive ? '-translate-y-2' : ''}
+            `}
+          >
+            {/* الخلفية المضيئة للعنصر النشط */}
+            <div className={`
+              absolute top-2 w-10 h-10 rounded-full blur-lg transition-all duration-500
+              ${isActive ? 'bg-indigo-500/40 opacity-100' : 'opacity-0'}
+            `}></div>
+
+            {/* الأيقونة */}
+            <div className={`
+              relative z-10 p-2.5 rounded-full transition-all duration-300
+              ${isActive 
+                ? 'bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-[#020617]' 
+                : 'text-slate-500 hover:text-slate-300'}
+            `}>
+                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            
+            {/* النص */}
+            <span className={`
+              text-[10px] font-bold tracking-wide transition-all duration-300 absolute bottom-2
+              ${isActive ? 'opacity-100 text-white translate-y-0' : 'opacity-0 translate-y-2'}
+            `}>
+                {item.label}
+            </span>
+            
+            {/* نقطة صغيرة للعناصر غير النشطة بدلاً من النص لتوفير المساحة */}
+            {!isActive && (
+                 <span className="w-1 h-1 rounded-full bg-slate-700 absolute bottom-3 transition-all duration-300 group-hover:bg-slate-500"></span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 };

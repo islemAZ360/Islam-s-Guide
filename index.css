@@ -3,130 +3,133 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --primary-glow: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+  }
+
   body {
-    @apply bg-[#020617] text-slate-200 antialiased;
+    @apply bg-[#020617] text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200;
     /* تحسين عرض الخطوط العربية */
     font-family: 'Tajawal', 'Inter', sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden; /* منع التمرير الأفقي غير المرغوب فيه */
+  }
+
+  /* تحسين شكل شريط التمرير الافتراضي للمتصفح */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f172a; 
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+    border: 2px solid #0f172a; /* يعطي شكلاً أنحف */
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+  }
+}
+
+@layer components {
+  /* فئة الزجاج الموحدة - خفيفة على المعالج */
+  .glass {
+    @apply bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+  
+  .glass-heavy {
+    @apply bg-slate-950/80 backdrop-blur-xl border border-white/5;
+  }
+
+  /* تأثير التفاعل */
+  .glass-hover {
+    @apply transition-all duration-300 hover:bg-slate-800/60 hover:border-indigo-500/30 hover:shadow-indigo-500/10 hover:shadow-xl;
   }
 }
 
 @layer utilities {
   /* إخفاء شريط التمرير مع الحفاظ على الوظيفة (للموبايل) */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
   }
 
   /* شريط تمرير مخصص ونحيف للقوائم الجانبية والدردشة */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-slate-900/30 rounded-full;
+    @apply bg-transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full hover:bg-slate-600 transition-colors border-2 border-transparent bg-clip-content;
+    @apply bg-slate-700/30 rounded-full hover:bg-slate-600/50 transition-colors;
+  }
+
+  /* نصوص متدرجة احترافية */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400;
   }
 }
 
-/* === مكتبة الرسوم المتحركة (Custom Animations) === */
-/* هذه التعريفات تحاكي مكتبة tailwindcss-animate لضمان عمل التأثيرات */
+/* === مكتبة الرسوم المتحركة (Optimized Animations) === */
 
-@keyframes enter {
+/* ظهور ناعم للعناصر */
+@keyframes fadeInScale {
   from {
-    opacity: var(--tw-enter-opacity, 1);
-    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1) rotate(var(--tw-enter-rotate, 0));
-  }
-}
-
-@keyframes exit {
-  to {
-    opacity: var(--tw-exit-opacity, 1);
-    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1) rotate(var(--tw-exit-rotate, 0));
-  }
-}
-
-@keyframes ping-slow {
-  75%, 100% {
-    transform: scale(2);
     opacity: 0;
+    transform: scale(0.98) translateY(5px);
   }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* حركة عائمة للخلفية (خفيفة جداً) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* نبض خفيف للتنبيهات */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { opacity: .8; box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.3); }
 }
 
 .animate-in {
-  animation-name: enter;
-  animation-duration: 300ms; /* Default duration */
-  --tw-enter-opacity: initial;
-  --tw-enter-scale: initial;
-  --tw-enter-rotate: initial;
-  --tw-enter-translate-x: initial;
-  --tw-enter-translate-y: initial;
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity; /* تحسين الأداء بإخبار المتصفح */
 }
 
-.fade-in {
-  --tw-enter-opacity: 0;
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
-.zoom-in {
-  --tw-enter-scale: 0.95;
+.animate-pulse-glow {
+  animation: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* اتجاهات الحركة */
-.slide-in-from-top-2 {
-  --tw-enter-translate-y: -0.5rem;
-}
-.slide-in-from-top-4 {
-  --tw-enter-translate-y: -1rem;
-}
+/* فئات مساعدة للحركة */
+.slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
+.slide-in-from-right-4 { --tw-enter-translate-x: 1rem; }
+.zoom-in { --tw-enter-scale: 0.95; }
 
-.slide-in-from-bottom-2 {
-  --tw-enter-translate-y: 0.5rem;
-}
-.slide-in-from-bottom-4 {
-  --tw-enter-translate-y: 1rem;
-}
-.slide-in-from-bottom-8 {
-  --tw-enter-translate-y: 2rem;
-}
-.slide-in-from-bottom-20 {
-  --tw-enter-translate-y: 5rem;
-}
-
-.slide-in-from-left-4 {
-  --tw-enter-translate-x: -1rem;
-}
-
-.slide-in-from-right-2 {
-  --tw-enter-translate-x: 0.5rem;
-}
-.slide-in-from-right-4 {
-  --tw-enter-translate-x: 1rem;
-}
-.slide-in-from-right-8 {
-  --tw-enter-translate-x: 2rem;
-}
-
-/* مدد زمنية مخصصة */
-.duration-300 { animation-duration: 300ms; }
-.duration-500 { animation-duration: 500ms; }
-.duration-700 { animation-duration: 700ms; }
-.duration-1000 { animation-duration: 1000ms; }
-
-/* تأخير الحركة */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-
-/* تنسيقات الطباعة */
+/* تحسين الطباعة */
 @media print {
   body {
     background-color: white;
     color: black;
+  }
+  .no-print {
+    display: none;
   }
 }

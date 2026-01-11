@@ -134,7 +134,7 @@ function AppContent() {
         const baseProfile = userProfile as UserProfile;
         const newProfile: UserProfile = {
             ...baseProfile,
-            setupComplete: true, // هذا المهم لتفعيل الانتقال للوحة التحكم
+            setupComplete: true,
             planType: planType,
             patientData: baseProfile.role === 'patient' && baseProfile.patientData ? {
                 ...baseProfile.patientData,
@@ -142,7 +142,6 @@ function AppContent() {
             } : undefined
         };
         setUserProfile(newProfile);
-        // إعادة التوجيه للوحة التحكم مباشرة
         setCurrentView(AppView.DASHBOARD);
     }
   };
@@ -240,9 +239,10 @@ function AppContent() {
 
   if (authLoading || dataLoading) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-indigo-400 gap-4" dir={dir}>
-            <Loader2 size={48} className="animate-spin" />
-            <span className="font-bold tracking-widest animate-pulse">LOADING SYSTEM...</span>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-indigo-400 gap-4" dir={dir}>
+            <div className="absolute inset-0 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none animate-pulse"></div>
+            <Loader2 size={48} className="animate-spin relative z-10" />
+            <span className="font-bold tracking-widest animate-pulse relative z-10">LOADING SYSTEM...</span>
         </div>
       );
   }
@@ -280,21 +280,28 @@ function AppContent() {
 
   // 3. MAIN APP LAYOUT
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
+    <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30" dir={dir}>
+      
+      {/* --- Ambient Background Effects (The New Magic) --- */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000"></div>
+      </div>
+
       {toastMessage && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2 border border-white/10">
               <Check size={18} /> {toastMessage}
           </div>
       )}
 
       {/* REJECTION SCREEN - DOCTOR */}
       {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
               <h1 className="text-4xl font-black text-white mb-4">نأسف، تم رفض طلبك</h1>
-              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8">
+              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8 backdrop-blur-sm">
                   <h3 className="text-rose-400 font-bold mb-2 flex items-center justify-center gap-2">
                       <AlertTriangle size={18}/> سبب الرفض من الإدارة
                   </h3>
@@ -311,7 +318,7 @@ function AppContent() {
 
       {/* REJECTION SCREEN - PATIENT */}
       {userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
@@ -339,8 +346,7 @@ function AppContent() {
               <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
               <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
               
-              {/* التعديل هنا: تم تقليل pb-32 إلى pb-24 ليتناسب مع شريط التنقل الأصغر */}
-              <div className="md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500">
+              <div className="md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
                 
                 {/* PENDING SCREENS */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
@@ -381,7 +387,6 @@ function AppContent() {
                 ) : (
                     /* ACTIVE VIEWS - Main Routing */
                     <>
-                        {/* 1. Normal Users & Active Patients */}
                         {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                             <>
                                 {currentView === AppView.DASHBOARD && (
@@ -400,7 +405,6 @@ function AppContent() {
                             </>
                         )}
 
-                        {/* 2. Doctors */}
                         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                             <>
                                 {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -408,7 +412,6 @@ function AppContent() {
                             </>
                         )}
 
-                        {/* 3. Shared Views (Accessible by Admin and others) */}
                         {currentView === AppView.COMMUNITY && (
                             <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
                         )}
@@ -421,12 +424,10 @@ function AppContent() {
                             <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
                         )}
                         
-                        {/* 4. Admin Only */}
                         {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
                             <AdminView />
                         )}
                         
-                        {/* 5. Settings */}
                         {currentView === AppView.SETTINGS && userProfile && (
                             <SettingsView 
                                 userProfile={userProfile} 
