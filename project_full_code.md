@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 11/1/2026, 03:25:07
+Generated: 11/1/2026, 04:10:03
 
 ## 🌳 Project Structure
 ```text
@@ -311,7 +311,109 @@ export const DoctorReportModal = ({
 
 ### File: `components\modals\ScientificPlanModal.tsx`
 ```tsx
+import React from 'react';
+import { X, BrainCircuit, Activity, Pill, BookOpen, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { Button } from '../ui/Button';
 
+interface ScientificPlanModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPlanModalProps) => {
+  const { t } = useLanguage();
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4">
+      <div className="relative w-full max-w-2xl bg-slate-900 border border-indigo-500/30 rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* تأثير خلفية جمالي */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+        
+        {/* زر الإغلاق */}
+        <button 
+            onClick={onClose} 
+            className="absolute top-6 right-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors z-20"
+        >
+            <X size={24} />
+        </button>
+
+        <div className="relative z-10 overflow-y-auto custom-scrollbar">
+            {/* الأيقونة والعنوان */}
+            <div className="flex flex-col items-center text-center mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-6 border border-white/10 animate-in zoom-in duration-500">
+                    <BrainCircuit size={40} className="text-white" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">{t('sci_title')}</h2>
+                <p className="text-slate-400 text-lg max-w-md">{t('sci_subtitle')}</p>
+            </div>
+
+            {/* المبادئ العلمية */}
+            <div className="space-y-6 mb-8">
+                {/* المبدأ 1 */}
+                <div className="flex gap-5 bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
+                        <Activity size={24} className="text-indigo-400" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white text-lg mb-1">{t('sci_principle_1_title')}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">{t('sci_principle_1_desc')}</p>
+                    </div>
+                </div>
+                
+                {/* المبدأ 2 */}
+                <div className="flex gap-5 bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors group">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                        <ShieldCheck size={24} className="text-emerald-400" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white text-lg mb-1">{t('sci_principle_2_title')}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">{t('sci_principle_2_desc')}</p>
+                    </div>
+                </div>
+
+                {/* المبدأ 3 */}
+                <div className="flex gap-5 bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-colors group">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+                        <Pill size={24} className="text-amber-400" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white text-lg mb-1">{t('sci_principle_3_title')}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">{t('sci_principle_3_desc')}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* المصادر */}
+            <div className="bg-slate-800/30 p-5 rounded-2xl border border-dashed border-slate-700 mb-8">
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                    <BookOpen size={14} /> {t('sci_sources_title')}
+                </h4>
+                <ul className="text-xs text-slate-400 space-y-2 list-disc list-inside font-medium font-mono opacity-80">
+                    <li>{t('sci_source_1')}</li>
+                    <li>{t('sci_source_2')}</li>
+                    <li>{t('sci_source_3')}</li>
+                </ul>
+            </div>
+
+            {/* زر الموافقة */}
+            <div className="flex flex-col md:flex-row gap-4 items-center pt-4 border-t border-white/5">
+                <p className="text-xs text-slate-500 text-center md:text-start flex-1 px-2 leading-relaxed">
+                    {t('sci_trust_msg')}
+                </p>
+                <Button onClick={onConfirm} variant="success" className="w-full md:w-auto px-8 py-4 text-lg shadow-lg shadow-emerald-500/20 rounded-xl">
+                    {t('sci_btn_understood')} <ArrowRight size={20} className={document.dir === 'rtl' ? 'mr-2 rotate-180' : 'ml-2'} />
+                </Button>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 ```
 ---
 
@@ -634,7 +736,7 @@ import {
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-// 👇 تحديث المسار هنا
+// المسار الصحيح حيث أن Sidebar داخل components و LanguageSwitcher داخل components/ui
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 
 interface SidebarProps {
@@ -676,12 +778,14 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
 
     // 3. PATIENT / NORMAL USER MENU
     else {
+      // إذا كان المريض في انتظار الخطة، نعرض له فقط المجتمع والدعم
       if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
          items.push(
             { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       } else {
+         // المستخدم العادي أو المريض الذي لديه خطة
          items.push(
             { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
             { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
@@ -820,7 +924,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // التحقق من وجود auth لضمان عدم حدوث أخطاء إذا لم يتم تهيئة Firebase
     if (!auth) {
         setLoading(false);
-        setError("Firebase Auth not initialized");
+        // لا نقوم بضبط خطأ هنا حتى لا يظهر للمستخدم العادي في حالة الديمو
         return;
     }
 
@@ -844,8 +948,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setError(null);
 
     try {
-      // تسجيل الدخول القياسي عبر Firebase
-      // تمت إزالة الكود القديم الذي كان يحتوي على كلمة مرور الأدمن الصلبة لأسباب أمنية
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       let errorMessage = 'Login Error';
@@ -899,6 +1001,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const enableDemoMode = () => {
     setIsDemoMode(true);
+    // التصحيح هنا: استخدام as unknown as User لإجبار التايب سكربت على قبول الكائن الناقص
     setCurrentUser({ 
       uid: 'demo-user', 
       email: 'demo@example.com', 
@@ -916,7 +1019,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toJSON: () => ({}),
       phoneNumber: null,
       photoURL: null,
-    } as User);
+    } as unknown as User);
     setLoading(false);
   };
 
@@ -951,7 +1054,7 @@ export const useAuth = () => {
 
 ### File: `contexts\DataContext.tsx`
 ```tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Inventory, PlanDay, DailyLog } from '../types';
@@ -988,6 +1091,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const [speedModifier, setSpeedModifier] = useState<number>(1.0);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Ref to track unsaved changes
+  const isDirty = useRef(false);
+
   // 1. Fetch Data Listener
   useEffect(() => {
     if (!currentUser) {
@@ -999,11 +1105,20 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
         setDataLoading(false);
       } else {
-        // Demo Mode Setup (Mock Data could go here if needed)
-        // For now, we assume Onboarding handles demo setup
+        // Demo Mode - Assume setup handled elsewhere or mock data
         setDataLoading(false);
       }
       return;
+    }
+
+    // Check if we have pending data from a crash/close
+    const savedLogs = localStorage.getItem('pending_sync_logs');
+    if (savedLogs) {
+        try {
+            const parsedLogs = JSON.parse(savedLogs);
+            if (parsedLogs.length > 0) setLogs(parsedLogs);
+            localStorage.removeItem('pending_sync_logs'); // Clear after load
+        } catch (e) { console.error("Error loading pending logs", e); }
     }
 
     setDataLoading(true);
@@ -1019,10 +1134,14 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
         setUserProfile(fetchedProfile);
 
-        if (data.plan) setPlan(data.plan);
-        if (data.logs) setLogs(data.logs);
-        if (data.inventory) setInventory(data.inventory);
-        if (data.speedModifier) setSpeedModifier(data.speedModifier);
+        // Only update local state from cloud if we are not currently "dirty" (editing)
+        // This prevents overwriting local changes with old cloud data during rapid edits
+        if (!isDirty.current) {
+            if (data.plan) setPlan(data.plan);
+            if (data.logs) setLogs(data.logs);
+            if (data.inventory) setInventory(data.inventory);
+            if (data.speedModifier) setSpeedModifier(data.speedModifier);
+        }
 
         // Security Check
         if (data.isBanned) {
@@ -1049,15 +1168,20 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [currentUser, isDemoMode]);
 
-  // 2. Sync Logic (Debounced Save)
+  // 2. Sync Logic (Debounced Save + Persistence)
   useEffect(() => {
-    // Local Storage Backup
+    // Flag that we have changes
+    if (userProfile?.setupComplete) {
+        isDirty.current = true;
+    }
+
+    // A. Local Storage Backup (Immediate)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
-    // Cloud Sync
+    // B. Cloud Sync (Debounced)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
-        // Don't sync if doctor doesn't have profile data yet
+        // Skip sync for doctors who don't have profile data yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -1081,19 +1205,40 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                     updateData.speedModifier = speedModifier;
                     updateData.progress = progressPercentage;
                 }
+                
+                // Sync Doctor Data structure if needed
+                if (userProfile.role === 'doctor' && userProfile.doctorData) {
+                    updateData.doctorData = userProfile.doctorData;
+                }
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
+                
+                // Reset dirty flag after successful sync
+                isDirty.current = false;
+
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
         }, 5000); // 5 seconds debounce
 
-        return () => clearTimeout(timeoutId);
+        // C. Safety Net: Save to localStorage on tab close
+        const handleBeforeUnload = () => {
+            if (isDirty.current) {
+                localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
+                localStorage.setItem('pending_sync_plan', JSON.stringify(plan));
+                localStorage.setItem('pending_sync_inv', JSON.stringify(inventory));
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
     }
   }, [userProfile, plan, logs, inventory, speedModifier, currentUser, isDemoMode]);
 
   const resyncData = () => {
-      // Manual trigger if needed
       setDataLoading(true);
       setTimeout(() => setDataLoading(false), 1000);
   };
@@ -1735,16 +1880,19 @@ export const en = {
 ### File: `services\locales\ru.ts`
 ```ts
 export const ru = {
+    // Auth
     welcome: "Добро пожаловать",
-    subtitle: "Нейро-система восстановления",
-    email: "Email",
+    subtitle: "Нейро-научная система восстановления",
+    email: "Эл. почта",
     password: "Пароль",
     login_email: "Войти",
-    login_google: "Google",
-    demo_account: "Демо",
+    login_google: "Войти через Google",
+    demo_account: "Демо-доступ",
     error_prefix: "Ошибка: ",
     or: "ИЛИ",
-    banned_msg: "Аккаунт заблокирован.",
+    banned_msg: "Ваш аккаунт заблокирован. Свяжитесь с поддержкой.",
+    
+    // Sidebar & Nav
     nav_dashboard: "Главная",
     nav_calendar: "График",
     nav_stats: "Аналитика",
@@ -1752,135 +1900,159 @@ export const ru = {
     nav_community: "Сообщество",
     nav_admin: "Админ",
     nav_support: "Поддержка",
-    nav_articles: "Статьи",
+    nav_articles: "База знаний",
     logout: "Выход",
-    create_room: "Создать чат",
-    room_name: "Название",
-    type_msg: "Сообщение...",
-    comm_rooms: "Чаты",
+    create_room: "Создать комнату",
+    room_name: "Название комнаты",
+    type_msg: "Введите сообщение...",
+    comm_rooms: "Чат-комнаты",
     comm_leaderboard: "Лидеры",
-    daily_report: "Отчет",
-    days_left: "Дней",
+
+    // Dashboard
+    daily_report: "Ежедневный отчет",
+    days_left: "Дней осталось",
     status_stable: "Стабильно",
     safety_active: "Защита активна",
-    safety_desc: "Обнаружена нестабильность. Доза зафиксирована.",
-    freeze_plan_btn: "Заморозить (3 дня)",
-    target_dose: "Цель",
-    documented: "Записано",
+    safety_desc: "Обнаружена нестабильность биометрии. Доза временно зафиксирована.",
+    freeze_plan_btn: "Заморозить (3 дня отдыха)",
+    target_dose: "Целевая доза",
+    documented: "Записано успешно",
     dose: "Доза",
-    mood: "Настрой",
+    mood: "Настроение",
     excellent: "Отлично",
-    stable: "Норм",
+    stable: "Хорошо",
     bad: "Плохо",
-    step_1: "Доза",
-    step_2: "Симптомы",
-    confirm_log: "Подтвердить",
-    algo_active: "Смарт-система",
-    algo_desc: "Безопасная система.",
-    recovery_path: "Прогноз",
+    step_1: "Фактическая доза",
+    step_2: "Показатели",
+    confirm_log: "Подтвердить и обновить",
+    algo_active: "Смарт-алгоритм активен",
+    algo_desc: "Система безопасного снижения на основе запасов.",
+    recovery_path: "Прогноз восстановления",
     sos_button: "SOS",
-    export_report: "Отчет врачу",
-    print: "Печать",
-    inv_status_ok: "Запас в норме",
-    inv_status_low: "Мало запасов",
-    inv_alert_desc: "Риск нехватки. Снизьте темп.",
+    export_report: "Отчет для врача",
+    print: "Печать отчета",
+    
+    // Inventory
+    inv_status_ok: "Запас достаточен",
+    inv_status_low: "Низкий запас",
+    inv_alert_desc: "Текущий темп может истощить запасы до окончания курса. Рекомендуется замедлиться.",
     inventory_title: "Инвентарь",
-    boxes: "Пачки",
-    pills_per_box: "Шт в пачке",
-    loose_pills: "Остаток",
-    total_balance: "Всего",
+    boxes: "Полные упаковки",
+    pills_per_box: "Шт. в упаковке",
+    loose_pills: "Остаток (шт)",
+    total_balance: "Общий баланс",
     current_habit: "Текущая доза",
     analyze_plan: "Создать план",
     guest: "Гость",
-    toast_log_success: "Сохранено.",
-    toast_freeze_success: "План заморожен.",
-    toast_speed_updated: "Скорость обновлена.",
-    sleep_label: "Сон",
+
+    // Toasts
+    toast_log_success: "Данные сохранены. План пересчитан.",
+    toast_freeze_success: "План заморожен на 3 дня.",
+    toast_speed_updated: "Скорость плана обновлена.",
+
+    // Features
+    sleep_label: "Часы сна",
     symptoms_label: "Симптомы",
     sym_insomnia: "Бессонница",
     sym_anxiety: "Тревога",
-    sym_sweating: "Пот",
+    sym_sweating: "Потливость",
     sym_shake: "Дрожь",
     sym_nausea: "Тошнота",
-    sym_headache: "Голова",
+    sym_headache: "Головная боль",
+    
+    // Badges
     badges_title: "Достижения",
-    badge_7days: "Начало",
-    badge_halfway: "Половина",
-    badge_sleep: "Сон",
-    badge_stable: "Стабильность",
-    sos_title: "SOS",
+    badge_7days: "Воин недели",
+    badge_halfway: "Половина пути",
+    badge_sleep: "Сон восстановлен",
+    badge_stable: "Эмоциональная стабильность",
+
+    // SOS
+    sos_title: "Протокол экстренной помощи",
     sos_phase_1_title: "СТОП.",
-    sos_phase_1_text: "Вы в безопасности.",
+    sos_phase_1_text: "Вы в безопасности. Это просто химия, это пройдет.",
     sos_btn_ground: "Далее",
-    sos_phase_2_title: "Осознание",
-    sos_phase_2_text: "Назовите 5 синих вещей.",
-    sos_btn_next: "Ок",
-    sos_phase_3_title: "Холод",
-    sos_phase_3_text: "Умойтесь холодной водой.",
-    sos_btn_breathe: "Дышать",
-    sos_phase_4_title: "Дыхание",
-    sos_phase_4_subtitle: "Вдох... выдох.",
+    sos_phase_2_title: "Заземление",
+    sos_phase_2_text: "Назовите 5 синих предметов вокруг.",
+    sos_btn_next: "Готово",
+    sos_phase_3_title: "Термический шок",
+    sos_phase_3_text: "Умойтесь очень холодной водой.",
+    sos_btn_breathe: "Дыхание",
+    sos_phase_4_title: "Дышите",
+    sos_phase_4_subtitle: "Глубокий вдох... медленный выдох.",
     breathe_in: "Вдох",
-    breathe_hold: "Держать",
+    breathe_hold: "Удержание",
     breathe_out: "Выдох",
     close: "Закрыть",
-    settings_title: "Настройки",
-    settings_subtitle: "Управление",
-    pace_control: "Темп",
-    pace_desc: "Измените скорость в любой момент.",
-    pace_slow: "Медленно",
-    pace_balanced: "Баланс",
-    pace_fast: "Быстро",
-    danger_zone: "Опасно",
-    factory_reset_btn: "Сброс",
-    profile_title: "Профиль",
-    photo_url_label: "URL фото",
-    save_changes: "Сохранить",
-    rank_label: "Рейтинг",
-    edit_profile: "Ред. профиль",
 
+    // Settings & Profile
+    settings_title: "Настройки системы",
+    settings_subtitle: "Управление алгоритмом",
+    pace_control: "Темп снижения",
+    pace_desc: "Вы можете изменить скорость в любой момент. Система пересчитает остатки.",
+    pace_slow: "Медленно (Растянуть)",
+    pace_balanced: "Сбалансированно",
+    pace_fast: "Быстро (Интенсивно)",
+    danger_zone: "Опасная зона",
+    factory_reset_btn: "Сброс к заводским настройкам",
+    profile_title: "Мой профиль",
+    photo_url_label: "URL фото профиля",
+    save_changes: "Сохранить изменения",
+    rank_label: "Глобальный рейтинг",
+    edit_profile: "Редактировать профиль",
+
+    // Onboarding & Roles
     onboard_title: "Добро пожаловать в Islam's Guide",
-    onboard_desc: "Пожалуйста, выберите цель использования.",
+    onboard_desc: "Пожалуйста, выберите цель использования системы.",
     role_patient: "Пользователь / Пациент",
-    role_patient_desc: "Я хочу снизить дозу лекарств (алгоритм или врач).",
+    role_patient_desc: "Я хочу снизить дозу лекарств (с алгоритмом или врачом).",
     role_doctor: "Врач / Терапевт",
     role_doctor_desc: "Я хочу присоединиться как врач для наблюдения за пациентами.",
-    doc_req_title: "Заявка врача",
-    doc_req_desc: "Ваши данные будут проверены администратором.",
-    doc_fullname: "ФИО (для пациентов)",
-    doc_specialty: "Специальность",
+    
+    // Doctor Registration
+    doc_req_title: "Заявка на аккредитацию врача",
+    doc_req_desc: "Ваши данные будут проверены администрацией перед активацией.",
+    doc_fullname: "ФИО (видно пациентам)",
+    doc_specialty: "Медицинская специальность",
     doc_license: "Номер лицензии",
-    doc_location: "Клиника / Адрес",
+    doc_location: "Клиника / Больница",
     doc_phone: "Телефон (для админа)",
-    doc_bio: "О себе",
+    doc_bio: "О себе (видно пациентам)",
     doc_submit: "Отправить заявку",
-    path_select_title: "Выберите путь",
-    path_algo: "Смарт-Алгоритм",
-    path_algo_desc: "Автоматический расчет плана на основе запасов.",
+
+    // Path Selection
+    path_select_title: "Выберите путь лечения",
+    path_algo: "Умный алгоритм",
+    path_algo_desc: "Я хочу, чтобы система автоматически рассчитала план на основе моих запасов.",
     path_doctor: "Наблюдение у врача",
-    path_doctor_desc: "Я выберу врача и буду ждать план лечения.",
-    doc_select_title: "Выберите врача",
-    doc_search_placeholder: "Поиск врача...",
+    path_doctor_desc: "Я выберу врача на платформе и буду ждать назначения плана.",
+
+    // Doctor Selection
+    doc_select_title: "Выберите своего врача",
+    doc_search_placeholder: "Поиск врача по имени...",
     doc_select_btn: "Отправить запрос", 
 
+    // Algorithm Setup
     med_type_title: "Тип лекарства",
-    med_type_narcotic: "Наркотические",
-    med_type_narcotic_desc: "Нужен стационар",
+    med_type_narcotic: "Наркотические (Список I)",
+    med_type_narcotic_desc: "Требуется стационар",
     med_type_psych: "Психиатрические",
-    med_type_psych_desc: "Нужен контроль врача",
-    med_type_normal: "Общие",
-    med_type_normal_desc: "Безопасно для снижения",
+    med_type_psych_desc: "Требуется наблюдение врача",
+    med_type_normal: "Общие препараты",
+    med_type_normal_desc: "Безопасно для самоснижения",
     blocked_title: "Доступ запрещен",
-    warning_title: "Важное предупреждение",
-    med_form_title: "Форма лекарства",
-    form_tablet: "Таблетки",
+    warning_title: "Важное медицинское предупреждение",
+    med_form_title: "Форма выпуска",
+    form_tablet: "Таблетки / Капсулы",
     form_liquid: "Жидкость / Капли",
     unit_title: "Единица измерения",
+
+    // Doctor Dashboard & Plan Builder
     stat_total_patients: "Всего пациентов",
     stat_new_requests: "Новые заявки",
     stat_recovered: "Выздоровели",
     stat_overview: "Обзор",
-    create_plan_btn: "Создать план",
+    create_plan_btn: "Создать план лечения",
     plan_notes: "Заметки для пациента",
     plan_phases: "Фазы снижения",
     duration_days: "Длительность (дни)",
@@ -1888,19 +2060,20 @@ export const ru = {
     
     // NEW KEYS FOR PLAN BUILDER
     pattern_builder: "Конструктор шаблонов",
-    pattern_sequence: "Шаблон (напр: 0.5, 0)",
-    repeat_count: "Повторить (раз)",
-    days_per_dose: "Дней на дозу",
-    apply_pattern: "Применить",
-    clear_phases: "Очистить все",
-
+    pattern_sequence: "Шаблон (напр: 0.5, 0, 0.5, 0)",
+    repeat_count: "Количество повторений",
+    days_per_dose: "Дней на каждую дозу",
+    apply_pattern: "Применить шаблон",
+    clear_phases: "Очистить всё",
+    
     // NEW KEYS FOR PATIENT REQUESTS
-    patient_requests_title: "Заявки пациентов",
+    patient_requests_title: "Запросы пациентов",
     accept_patient: "Принять",
     reject_patient: "Отклонить",
-    no_requests: "Нет заявок",
-    req_sent_msg: "Запрос отправлен врачу.",
+    no_requests: "Нет ожидающих запросов",
+    req_sent_msg: "Запрос отправлен врачу. Ожидайте подтверждения.",
 
+    // Admin & Management
     admin_title: "Центральная панель управления",
     admin_subtitle: "Интегрированная система управления",
     tab_overview: "Обзор",
@@ -1915,19 +2088,23 @@ export const ru = {
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
-    delete_user: "Удалить", 
+    delete_user: "Удалить навсегда", 
     delete_confirm_msg: "Вы уверены? Это действие необратимо.", 
     view_details: "Подробнее", 
     search_user_placeholder: "Поиск пользователя...",
-    manage_patients_title: "Управление пациентами",
+    
+    // Patient Management
+    manage_patients_title: "Управление досье пациентов",
     add_patient_btn: "Добавить пациента",
     back_list_btn: "Назад к списку",
     search_available_placeholder: "Поиск по имени или email...",
     add_btn: "Добавить",
+    
+    // Articles
     knowledge_center: "Центр знаний",
-    knowledge_desc: "Медицинские статьи и советы.",
+    knowledge_desc: "Медицинские статьи и советы для вашего восстановления.",
     new_article_btn: "Новая статья",
-    article_title_label: "Заголовок",
+    article_title_label: "Заголовок статьи",
     article_cat_label: "Категория",
     article_content_label: "Содержание",
     publish_now: "Опубликовать",
@@ -1936,28 +2113,44 @@ export const ru = {
     cat_tip: "Советы",
     cat_all: "Все",
     cancel_btn: "Отмена",
-    read_more: "Читать",
-    author_by: "Автор",
+    read_more: "Читать далее",
+    author_by: "Автор:",
 
     // Support & Tickets
-    support_desc: "Свяжитесь с командой поддержки напрямую.",
-    new_ticket: "Новый тикет",
+    support_desc: "Свяжитесь с технической поддержкой напрямую.",
+    new_ticket: "Создать тикет",
     new_ticket_title: "Новый запрос в поддержку",
     ticket_subject: "Тема",
     ticket_details: "Детали",
-    send_request: "Отправить",
+    send_request: "Отправить запрос",
     my_tickets: "Мои тикеты",
     no_tickets: "Нет предыдущих тикетов.",
-    select_ticket_prompt: "Выберите тикет для просмотра",
+    select_ticket_prompt: "Выберите тикет для просмотра деталей",
     status_open: "Открыт",
     status_pending: "В ожидании",
     status_resolved: "Решен",
     status_closed: "Закрыт",
-    ticket_closed_msg: "Этот тикет закрыт.",
-    write_reply: "Напишите ответ...",
+    ticket_closed_msg: "Этот тикет закрыт. Создайте новый для продолжения.",
+    write_reply: "Напишите ваш ответ...",
     me: "Я",
     support_team: "Поддержка",
     current_account: "Текущий аккаунт",
+
+    // Scientific Modal (New)
+    sci_title: "Ваш план научно обоснован",
+    sci_subtitle: "Этот алгоритм основан на последних мировых медицинских протоколах 2024 года.",
+    sci_principle_1_title: "Гиперболическое снижение",
+    sci_principle_1_desc: "Система снижает процент сокращения дозы по мере ее уменьшения. Это предотвращает «шок рецепторов», возникающий при резкой отмене малых доз.",
+    sci_principle_2_title: "Нейроадаптация",
+    sci_principle_2_desc: "План не статичен. Система ежедневно анализирует ваш сон и настроение, автоматически регулируя скорость снижения для защиты от синдрома отмены.",
+    sci_principle_3_title: "Оптимизация запасов",
+    sci_principle_3_desc: "Каждая оставшаяся таблетка была учтена, чтобы гарантировать, что лекарство не закончится внезапно до достижения безопасного финиша.",
+    sci_sources_title: "Научные источники и ссылки:",
+    sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
+    sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
+    sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
+    sci_trust_msg: "Эта система разработана как помощник, но она не заменяет консультацию вашего лечащего врача.",
+    sci_btn_understood: "Понятно, начать план",
 };
 ```
 ---
@@ -2063,19 +2256,20 @@ export const replyToTicket = async (admin: UserProfile, ticketId: string, text: 
 
 ### File: `services\firebase.ts`
 ```ts
+/// <reference types="vite/client" />
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
 // قراءة المتغيرات البيئية من Vercel (أو ملف .env محلياً)
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID as string
 };
 
 // تهيئة المتغيرات
@@ -2086,8 +2280,9 @@ const googleProvider = new GoogleAuthProvider();
 
 try {
   // التحقق من أن المفاتيح موجودة قبل التهيئة
+  // نتحقق فقط من apiKey كدليل على وجود التكوين
   if (!firebaseConfig.apiKey) {
-    throw new Error("Firebase API keys are missing. Check Vercel Environment Variables.");
+    throw new Error("Firebase API keys are missing. Check Vercel Environment Variables or .env file.");
   }
 
   // محاولة تهيئة التطبيق
@@ -2100,12 +2295,12 @@ try {
   console.log("Firebase initialized successfully.");
 } catch (error) {
   console.error("Firebase initialization failed:", error);
-  // في حالة وجود خطأ، نقوم بتهيئة كائنات وهمية لتجنب تحطم التطبيق بالكامل
-  // هذا يسمح للتطبيق بالعمل جزئياً (مثل عرض رسالة خطأ للمستخدم)
+  // في حالة وجود خطأ، التطبيق سيستمر بالعمل ولكن خدمات Firebase لن تكون متاحة
+  // سيظهر خطأ في AuthContext إذا حاول المستخدم تسجيل الدخول
 }
 
 // تصدير الخدمات لاستخدامها في باقي الملفات
-// نستخدم الـ assertion (!) هنا لأننا تأكدنا من التهيئة أو رمينا خطأ
+// نستخدم الـ assertion (!) هنا لأننا تأكدنا من التهيئة أو رمينا خطأ (أو سنعالج الخطأ في مكان الاستخدام)
 export { auth, db, googleProvider };
 ```
 ---
@@ -2118,7 +2313,6 @@ import { Inventory, PlanDay, DailyLog, ManualPhase } from '../types';
 // 1. PRECISION KERNEL (النواة الدقيقة)
 // ============================================================================
 // نستخدم وحدة "الميكرو" (1/1000) لتجنب مشاكل الفاصلة العائمة في الجافاسكربت
-// هذا يضمن أن 0.1 + 0.2 يساوي 0.3 دائماً ولا يساوي 0.300000004
 const PRECISION = 1000; 
 const MIN_SPLIT_MICRO = 250; // يعادل 0.25mg (ربع حبة) كأقل وحدة فيزيائية
 
@@ -2148,7 +2342,6 @@ const smartRound = (microVal: number, form: 'tablet' | 'liquid' = 'tablet'): num
 /**
  * معادلة هورويتز-تايلور (Horowitz-Taylor Hyperbolic Decay)
  * المبدأ: "كلما انخفضت الجرعة، زادت صعوبة الخصم"
- * المصدر: The Maudsley Deprescribing Guidelines
  */
 const getHyperbolicReductionRate = (currentMicro: number, startMicro: number): number => {
     if (startMicro === 0) return 0.1;
@@ -2234,15 +2427,25 @@ export const generatePlan = (
     const effectiveSpeed = speedModifier * readiness;
 
     // --- محاكي الميزانية (The Economy Simulator) ---
-    // الهدف: العثور على أفضل منحنى هبوط (Curve) يناسب المخزون
-    // نبدأ بمنحنى مثالي (Quality 1.0) ونقلله تدريجياً إذا لم يكفِ المخزون
     
     let bestSteps: number[] = [];
     let quality = 1.0;
     let foundSolution = false;
+    
+    // FIX: إضافة عداد لمنع الحلقات اللانهائية (Safety Circuit Breaker)
+    let loopGuard = 0;
+    const MAX_ITERATIONS = 50;
 
     // حلقة البحث عن الحل (تتكرر حتى تجد خطة تناسب المخزون)
     while (quality > 0.1 && !foundSolution) {
+        
+        // Safety Break
+        loopGuard++;
+        if (loopGuard > MAX_ITERATIONS) {
+            console.warn("Tapering Engine: Max iterations reached. Breaking loop.");
+            break;
+        }
+
         const steps: number[] = [];
         let currentMicro = startMicro;
         let simulatedInventory = totalInvMicro;
@@ -2269,7 +2472,6 @@ export const generatePlan = (
 
             // 2. تحديد مدة الثبات (Plateau Duration)
             // علمياً: يحتاج الدماغ 2-4 أسابيع في التخفيضات الكبيرة، و 1-2 أسبوع في الصغيرة
-            // نستخدم 14 يوم كأساس، ونضربه في الجودة
             let daysOnDose = Math.round(14 * quality); 
             if (daysOnDose < 4) daysOnDose = 4; // أمان: لا يقل عن 4 أيام (Half-life clearance)
 
@@ -2280,9 +2482,8 @@ export const generatePlan = (
             }
 
             // 4. استراتيجية "الذيل" (The Tail Strategy)
-            // التذبذب (Oscillation) كحل أخير لتخفيف الصدمة عند الوصول للصفر
             if (targetMicro === 0) {
-                const tailCycles = Math.max(2, Math.round(4 * quality)); // عدد دورات التذبذب
+                const tailCycles = Math.max(2, Math.round(4 * quality));
                 
                 // النمط: يوم إيه / يوم لا
                 for(let i=0; i < tailCycles; i++) {
@@ -2290,7 +2491,6 @@ export const generatePlan = (
                     steps.push(0);
                 }
                 
-                // النمط: يوم إيه / يومين لا (فقط إذا الجودة > 50%)
                 if (quality > 0.5) {
                     for(let i=0; i < tailCycles; i++) {
                         steps.push(currentMicro); simulatedInventory -= currentMicro;
@@ -2307,7 +2507,7 @@ export const generatePlan = (
             }
 
             currentMicro = targetMicro;
-            if (steps.length > 5000) break; // أمان ضد الحلقات اللانهائية
+            if (steps.length > 5000) break; // أمان ضد الحلقات اللانهائية الداخلية
         }
 
         if (isFeasible && simulatedInventory >= 0) {
@@ -2327,6 +2527,12 @@ export const generatePlan = (
             bestSteps.push(emergencyDose);
             budget -= emergencyDose;
             emergencyDose = smartRound(emergencyDose - MIN_SPLIT_MICRO);
+        }
+        // استهلاك ما تبقى
+        while (budget > 0) {
+             const dose = Math.min(budget, MIN_SPLIT_MICRO);
+             bestSteps.push(dose);
+             budget -= dose;
         }
     }
 
@@ -3184,14 +3390,14 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { UserProfile, Article, ArticleCategory } from '../types';
-import { Activity, Users, FileText, Stethoscope, MessageSquareWarning, X } from 'lucide-react';
+// تم إضافة Trash2 هنا
+import { Activity, Users, FileText, Stethoscope, MessageSquareWarning, X, Trash2 } from 'lucide-react';
 
 // المكونات الأساسية
 import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge'; // تأكد من استدعاء Badge إذا كنت تستخدمه في المودال
 
 // المكونات الفرعية الجديدة للإدارة
 import { AdminOverview } from './admin/AdminOverview';
@@ -3437,7 +3643,16 @@ export const AdminView = () => {
                         
                         {selectedDoctor.doctorData?.accountStatus === 'approved' && (
                              <div className="mt-6 flex justify-center">
-                                 <Button onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} variant="danger" className="w-full">
+                                 {/* التصحيح هنا: استخدام دالة سهمية للتحقق من uid قبل الحذف */}
+                                 <Button 
+                                     onClick={() => {
+                                         if (selectedDoctor.uid) {
+                                             deleteUser(selectedDoctor.uid);
+                                         }
+                                     }} 
+                                     variant="danger" 
+                                     className="w-full"
+                                 >
                                      <Trash2 size={18} className="mr-2"/> Delete User
                                  </Button>
                              </div>
@@ -7835,5 +8050,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 56
-- Total Characters: 372130
-- Estimated Tokens: ~93.033 (GPT-4 Context)
+- Total Characters: 383449
+- Estimated Tokens: ~95.863 (GPT-4 Context)
