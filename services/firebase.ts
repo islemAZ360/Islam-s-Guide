@@ -3,15 +3,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 
-// قراءة المتغيرات البيئية من Vercel (أو ملف .env محلياً)
+// قراءة المتغيرات من ملف .env بشكل آمن
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID as string
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // تهيئة المتغيرات
@@ -21,26 +21,18 @@ let db: Firestore;
 const googleProvider = new GoogleAuthProvider();
 
 try {
-  // التحقق من أن المفاتيح موجودة قبل التهيئة
-  // نتحقق فقط من apiKey كدليل على وجود التكوين
+  // التحقق من وجود المفاتيح قبل البدء
   if (!firebaseConfig.apiKey) {
-    throw new Error("Firebase API keys are missing. Check Vercel Environment Variables or .env file.");
+    throw new Error("Missing Firebase Configuration in .env file");
   }
 
-  // محاولة تهيئة التطبيق
   app = initializeApp(firebaseConfig);
-  
-  // تهيئة خدمات المصادقة وقاعدة البيانات
   auth = getAuth(app);
   db = getFirestore(app);
   
-  console.log("Firebase initialized successfully.");
+  console.log("✅ Firebase initialized successfully.");
 } catch (error) {
-  console.error("Firebase initialization failed:", error);
-  // في حالة وجود خطأ، التطبيق سيستمر بالعمل ولكن خدمات Firebase لن تكون متاحة
-  // سيظهر خطأ في AuthContext إذا حاول المستخدم تسجيل الدخول
+  console.error("❌ Firebase initialization failed:", error);
 }
 
-// تصدير الخدمات لاستخدامها في باقي الملفات
-// نستخدم الـ assertion (!) هنا لأننا تأكدنا من التهيئة أو رمينا خطأ (أو سنعالج الخطأ في مكان الاستخدام)
 export { auth, db, googleProvider };
