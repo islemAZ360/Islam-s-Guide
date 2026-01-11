@@ -134,7 +134,7 @@ function AppContent() {
         const baseProfile = userProfile as UserProfile;
         const newProfile: UserProfile = {
             ...baseProfile,
-            setupComplete: true,
+            setupComplete: true, // هذا المهم لتفعيل الانتقال للوحة التحكم
             planType: planType,
             patientData: baseProfile.role === 'patient' && baseProfile.patientData ? {
                 ...baseProfile.patientData,
@@ -142,6 +142,8 @@ function AppContent() {
             } : undefined
         };
         setUserProfile(newProfile);
+        // إعادة التوجيه للوحة التحكم مباشرة
+        setCurrentView(AppView.DASHBOARD);
     }
   };
 
@@ -337,7 +339,8 @@ function AppContent() {
               <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
               <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
               
-              <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
+              {/* التعديل هنا: تم تقليل pb-32 إلى pb-24 ليتناسب مع شريط التنقل الأصغر */}
+              <div className="md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500">
                 
                 {/* PENDING SCREENS */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (

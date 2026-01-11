@@ -11,7 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { Badge } from '../components/ui/Badge';
-import { ScientificPlanModal } from '../components/modals/ScientificPlanModal'; // استيراد المودال الجديد
+import { ScientificPlanModal } from '../components/modals/ScientificPlanModal'; 
 
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
@@ -224,11 +224,14 @@ export const OnboardingView = ({
   };
 
   const generatePreview = () => {
-      // توليد الخطة
+      // 1. توليد الخطة
       const plan = generatePlan(totalInventory, currentDoseHabit, new Date().toISOString(), 1.0, [], medForm || 'tablet');
       setPreviewPlan(plan);
       
-      // فتح المودال العلمي أولاً قبل عرض المعاينة
+      // 2. إصلاح الخطأ: الانتقال إلى صفحة المعاينة
+      setStep('ALGO_PREVIEW');
+      
+      // 3. فتح المودال العلمي
       setShowSciModal(true);
   };
 
@@ -261,9 +264,7 @@ export const OnboardingView = ({
       );
   }
 
-  // ... (DOCTOR_FORM omitted for brevity, logic remains same) ...
   if (step === 'DOCTOR_FORM') {
-      // (نفس كود نموذج الطبيب السابق بدون تغيير)
       return (
           <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
               <NavBackBtn to="ROLE_SELECT" />
@@ -273,13 +274,11 @@ export const OnboardingView = ({
                       <p className="text-slate-400">{t('doc_req_desc')}</p>
                   </header>
                   <Card className="bg-slate-900 border-white/5 space-y-6">
-                      {/* ... Form Fields ... */}
                       <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_fullname')}</label><div className="relative"><User className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_fullname')} value={doctorName} onChange={e => setDoctorName(e.target.value)}/></div></div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_specialty')}</label><div className="relative"><Award className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_specialty')} value={doctorForm.specialty} onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}/></div></div><div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_license')}</label><div className="relative"><FileText className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_license')} value={doctorForm.licenseNumber} onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}/></div></div></div>
                       <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_location')}</label><div className="relative"><MapPin className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_location')} value={doctorForm.clinicLocation} onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}/></div></div>
                       <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_phone')}</label><div className="relative"><Phone className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder="+966..." value={doctorForm.phoneNumber} onChange={e => setDoctorForm({...doctorForm, phoneNumber: e.target.value})}/></div></div>
                       <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_bio')}</label><textarea className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none h-24 resize-none" placeholder={t('doc_bio')} value={doctorForm.bio} onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}/></div>
-                      
                       <Button variant="success" className="w-full py-4 text-lg" onClick={handleDoctorSubmit} disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}>
                           {loading ? 'جاري الإرسال...' : t('doc_submit')}
                       </Button>
@@ -325,32 +324,39 @@ export const OnboardingView = ({
   
   if (step === 'ALGO_SETUP_INV') { const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes'; const unitLabel = medUnit || 'mg'; return (<div className="min-h-screen bg-[#020617] p-4 md:p-10 pt-20"><NavBackBtn to="ALGO_SETUP_FORM" /><div className="max-w-4xl mx-auto space-y-8 animate-in fade-in"><Card className="border-white/5 bg-slate-900"><h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4"><span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>{t('inventory_title')}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8"><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} /></div></div><div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center"><span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span><span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span></div></Card><Card className="bg-slate-900 border-white/5"><h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2><div className="flex flex-wrap gap-4">{[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (<button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>))}<input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} /></div></Card><Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>{t('analyze_plan')}</Button></div></div>); }
   
+  // شاشة المعاينة النهائية
   if (step === 'ALGO_PREVIEW') { 
       return (
         <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
-            {/* Scientific Modal */}
+            {/* Scientific Modal Component */}
             <ScientificPlanModal 
                 isOpen={showSciModal} 
-                onClose={() => setShowSciModal(false)} // User can close and see preview
+                onClose={() => setShowSciModal(false)}
                 onConfirm={() => setShowSciModal(false)} 
             />
 
             <NavBackBtn to="ALGO_SETUP_INV" />
             <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in">
-                <h1 className="text-4xl font-black text-white">Plan Ready!</h1>
-                <p className="text-slate-400">Calculated duration: {previewPlan.length} days.</p>
+                <h1 className="text-4xl font-black text-white">تم إنشاء الخطة بنجاح!</h1>
+                <p className="text-slate-400">المدة المتوقعة: <span className="text-white font-bold">{previewPlan.length}</span> يوم</p>
+                
                 <div className="grid grid-cols-2 gap-4">
-                    <Card className="bg-slate-900 text-center">
-                        <div className="text-xs text-slate-500 uppercase">{t('duration_days')}</div>
+                    <Card className="bg-slate-900 text-center border-white/5">
+                        <div className="text-xs text-slate-500 uppercase mb-2">{t('duration_days')}</div>
                         <div className="text-3xl font-bold text-white">{previewPlan.length}</div>
                     </Card>
-                    <Card className="bg-slate-900 text-center">
-                        <div className="text-xs text-slate-500 uppercase">Coverage</div>
+                    <Card className="bg-slate-900 text-center border-white/5">
+                        <div className="text-xs text-slate-500 uppercase mb-2">تغطية المخزون</div>
                         <div className="text-3xl font-bold text-emerald-400">100%</div>
                     </Card>
                 </div>
-                <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>
-                    {loading ? 'Setting up...' : t('confirm_log')}
+
+                <div className="bg-indigo-900/20 p-6 rounded-3xl border border-indigo-500/20 text-indigo-300 text-sm">
+                    سيتم الآن نقلك إلى لوحة التحكم للبدء في تنفيذ الخطة وتسجيل جرعاتك اليومية.
+                </div>
+
+                <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl shadow-emerald-500/20" disabled={loading}>
+                    {loading ? 'جاري الإعداد...' : t('confirm_log')}
                 </Button>
             </div>
         </div>

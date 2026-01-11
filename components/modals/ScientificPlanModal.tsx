@@ -10,12 +10,12 @@ interface ScientificPlanModalProps {
 }
 
 export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPlanModalProps) => {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4" dir={dir}>
       <div className="relative w-full max-w-2xl bg-slate-900 border border-indigo-500/30 rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* تأثير خلفية جمالي */}
@@ -93,7 +93,7 @@ export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPl
                     {t('sci_trust_msg')}
                 </p>
                 <Button onClick={onConfirm} variant="success" className="w-full md:w-auto px-8 py-4 text-lg shadow-lg shadow-emerald-500/20 rounded-xl">
-                    {t('sci_btn_understood')} <ArrowRight size={20} className={document.dir === 'rtl' ? 'mr-2 rotate-180' : 'ml-2'} />
+                    {t('sci_btn_understood')} <ArrowRight size={20} className={dir === 'rtl' ? 'mr-2 rotate-180' : 'ml-2'} />
                 </Button>
             </div>
         </div>

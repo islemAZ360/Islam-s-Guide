@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 11/1/2026, 05:52:08
+Generated: 12/1/2026, 01:47:24
 
 ## 🌳 Project Structure
 ```text
@@ -645,9 +645,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
     if (role === 'admin') {
        items.push(
         { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') },
-        // --- تصحيح: تغيير المسمى والأيقونة للأدمن في الموبايل أيضاً ---
         { id: AppView.COMMUNITY, icon: MessageSquare, label: language === 'ar' ? 'المجتمع' : 'Chat' },
-        // -------------------------------------------------------------
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
        );
     } 
@@ -661,14 +659,12 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
     } 
     // 3. PATIENT / NORMAL USER MENU
     else {
-        // Patient Waiting for Plan
         if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
              items.push(
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
                 { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
              );
         } else {
-             // Standard User
              items.push(
                 { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
                 { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
@@ -678,7 +674,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         }
     }
     
-    // Common settings icon at the end
+    // الإعدادات دائماً موجودة
     items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     
     return items;
@@ -687,36 +683,33 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
   const menuItems = getMenuItems();
 
   return (
-    <div className="md:hidden fixed bottom-4 left-4 right-4 h-20 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.6)] z-50 animate-in slide-in-from-bottom-20 duration-700">
+    // التعديل: تقليل الارتفاع (h-16) وتقريب الحواف (bottom-3) وتوزيع العناصر بالتساوي (flex-1)
+    <div className="md:hidden fixed bottom-3 left-3 right-3 h-16 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 animate-in slide-in-from-bottom-20 duration-700">
       
-      <div className="flex items-center justify-between px-4 h-full overflow-x-auto scrollbar-hide pb-1 gap-2">
+      <div className="flex items-center justify-between px-1 h-full w-full">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setCurrentView(item.id)}
-              className={`flex-shrink-0 min-w-[60px] flex flex-col items-center justify-center gap-1 transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400 -translate-y-3' : 'text-slate-500 hover:text-slate-300'
+              className={`flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative group ${
+                  isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
-              <div className={`p-3 rounded-full transition-all duration-300 ${
+              <div className={`p-1.5 rounded-xl transition-all duration-300 ${
                   isActive 
-                  ? 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-[0_8px_20px_rgba(99,102,241,0.4)] ring-4 ring-[#020617]' 
-                  : 'bg-transparent group-hover:bg-white/5'
+                  ? 'bg-indigo-500/10 -translate-y-1' 
+                  : 'bg-transparent'
               }`}>
                   <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               
-              <span className={`absolute -bottom-5 text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
-                  isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 -translate-y-2 text-slate-500'
+              <span className={`text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
+                  isActive ? 'opacity-100' : 'opacity-60 scale-90'
               }`}>
                   {item.label}
               </span>
-              
-              {isActive && (
-                  <span className="absolute -bottom-7 w-1 h-1 bg-indigo-500 rounded-full"></span>
-              )}
             </button>
           );
         })}
@@ -1061,7 +1054,7 @@ export const useAuth = () => {
 ### File: `contexts\DataContext.tsx`
 ```tsx
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore'; // تمت إضافة deleteDoc
 import { db } from '../services/firebase';
 import { UserProfile, Inventory, PlanDay, DailyLog } from '../types';
 import { useAuth } from './AuthContext';
@@ -1111,7 +1104,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
         setDataLoading(false);
       } else {
-        // Demo Mode - Assume setup handled elsewhere or mock data
+        // Demo Mode
         setDataLoading(false);
       }
       return;
@@ -1135,13 +1128,11 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         const data = docSnap.data();
         const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
         
-        // Merge nested object if exists (legacy support)
         if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
         setUserProfile(fetchedProfile);
 
-        // Only update local state from cloud if we are not currently "dirty" (editing)
-        // This prevents overwriting local changes with old cloud data during rapid edits
+        // Only update local state from cloud if we are not currently "dirty"
         if (!isDirty.current) {
             if (data.plan) setPlan(data.plan);
             if (data.logs) setLogs(data.logs);
@@ -1149,7 +1140,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             if (data.speedModifier) setSpeedModifier(data.speedModifier);
         }
 
-        // Security Check
         if (data.isBanned) {
            alert(t('banned_msg'));
            logout();
@@ -1174,20 +1164,16 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [currentUser, isDemoMode]);
 
-  // 2. Sync Logic (Debounced Save + Persistence)
+  // 2. Sync Logic
   useEffect(() => {
-    // Flag that we have changes
     if (userProfile?.setupComplete) {
         isDirty.current = true;
     }
 
-    // A. Local Storage Backup (Immediate)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
-    // B. Cloud Sync (Debounced)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
-        // Skip sync for doctors who don't have profile data yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -1203,7 +1189,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                     ...(userProfile.name ? { name: userProfile.name } : {})
                 };
 
-                // Only sync large data arrays for patients/users
                 if (userProfile.role === 'patient' || userProfile.role === 'normal_user') {
                     updateData.plan = plan;
                     updateData.logs = logs;
@@ -1212,22 +1197,19 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                     updateData.progress = progressPercentage;
                 }
                 
-                // Sync Doctor Data structure if needed
                 if (userProfile.role === 'doctor' && userProfile.doctorData) {
                     updateData.doctorData = userProfile.doctorData;
                 }
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
                 
-                // Reset dirty flag after successful sync
                 isDirty.current = false;
 
             } catch(e) {
                 console.error("Cloud sync failed", e);
             }
-        }, 5000); // 5 seconds debounce
+        }, 5000); 
 
-        // C. Safety Net: Save to localStorage on tab close
         const handleBeforeUnload = () => {
             if (isDirty.current) {
                 localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
@@ -1249,13 +1231,35 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => setDataLoading(false), 1000);
   };
 
+  // --- التعديل الجذري هنا ---
   const resetAllData = async () => {
-      localStorage.clear();
-      setUserProfile(null);
-      setPlan([]);
-      setLogs([]);
-      setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
-      await logout();
+      if (!window.confirm("تحذير هام: هذا الإجراء سيقوم بحذف جميع بياناتك، خطتك العلاجية، وسجلاتك نهائياً من قاعدة البيانات. هل أنت متأكد؟")) {
+          return;
+      }
+
+      try {
+          setDataLoading(true);
+          
+          if (currentUser && !isDemoMode) {
+              // حذف المستند بالكامل من فايربيس
+              await deleteDoc(doc(db, "users", currentUser.uid));
+          }
+          
+          // تنظيف المتصفح
+          localStorage.clear();
+          setUserProfile(null);
+          setPlan([]);
+          setLogs([]);
+          setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
+          
+          // تسجيل الخروج
+          await logout();
+          
+      } catch (e) {
+          console.error("Error resetting data:", e);
+          alert("حدث خطأ أثناء محاولة حذف البيانات. يرجى التحقق من الاتصال بالإنترنت.");
+          setDataLoading(false);
+      }
   };
 
   return (
@@ -6025,7 +6029,6 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Inventory } from '../types';
 
-// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -6033,7 +6036,7 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { Badge } from '../components/ui/Badge';
 
 import { useLanguage } from '../contexts/LanguageContext';
-import { useData } from '../contexts/DataContext'; // استيراد Context للوصول للمخزون
+import { useData } from '../contexts/DataContext';
 
 interface SettingsViewProps {
     userProfile: UserProfile;
@@ -6043,7 +6046,7 @@ interface SettingsViewProps {
 
 export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }: SettingsViewProps) => {
     const { t, language } = useLanguage();
-    const { inventory, setInventory } = useData(); // جلب المخزون من البيانات العامة
+    const { inventory, setInventory } = useData(); 
     const [loading, setLoading] = useState(false);
 
     // -- Doctor Form State --
@@ -6055,7 +6058,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         name: ''
     });
 
-    // -- Inventory Edit State (للمستخدم العادي) --
+    // -- Inventory Edit State --
     const [localInventory, setLocalInventory] = useState<Inventory>({
         boxes: 0, 
         pillsPerBox: 0, 
@@ -6063,9 +6066,8 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         totalPills: 0
     });
 
-    // Load initial data
+    // Load initial data for Doctor
     useEffect(() => {
-        // Doctor Data
         if (userProfile.role === 'doctor' && userProfile.doctorData) {
             setFormData({
                 photoUrl: userProfile.doctorData.photoUrl || '',
@@ -6075,14 +6077,26 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 name: userProfile.name || ''
             });
         }
-        
-        // User Inventory Data
-        if (inventory) {
-            setLocalInventory(inventory);
-        }
-    }, [userProfile, inventory]);
+    }, [userProfile]);
 
-    // -- Save Profile Changes (Doctor) --
+    // --- الإصلاح هنا: منطق مزامنة أذكى ---
+    // هذا الكود يمنع البيانات القادمة من السيرفر من مسح ما يكتبه المستخدم
+    useEffect(() => {
+        if (inventory) {
+            // نحدث الحالة المحلية فقط إذا كانت فارغة تماماً (أول تحميل للصفحة)
+            // هذا يضمن أننا نرى البيانات المحفوظة، لكن إذا بدأنا التعديل لا يتم الكتابة عليه
+            setLocalInventory(prev => {
+                const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
+                // إذا كانت الحقول فارغة، نملأها بالبيانات من القاعدة
+                if (isPrevEmpty) {
+                    return inventory;
+                }
+                // إذا كان المستخدم قد كتب شيئاً، لا نلمسه
+                return prev;
+            });
+        }
+    }, [inventory]);
+
     const handleSaveProfile = async () => {
         if (!userProfile.uid) return;
         setLoading(true);
@@ -6102,19 +6116,21 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         setLoading(false);
     };
 
-    // -- Update Inventory (User) --
     const handleUpdateInventory = () => {
-        // حساب المجموع الكلي الجديد
+        // حساب المجموع الجديد
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
         
-        // تحديث الحالة العامة (سيقوم DataContext بحفظها في Firebase تلقائياً)
+        // تحديث السياق العام (ليتم حفظه في القاعدة)
         setInventory(updatedInv);
+        
+        // تحديث الحالة المحلية أيضاً لتأكيد القيم
+        setLocalInventory(updatedInv);
         
         alert(language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
-    // --- DOCTOR PROFILE VIEW ---
+    // --- واجهة الطبيب ---
     if (userProfile.role === 'doctor') {
         const level = userProfile.doctorData?.doctorLevel || 1;
         const recovered = userProfile.doctorData?.recoveredCount || 0;
@@ -6125,7 +6141,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 <PageHeader title={t('profile_title')} subtitle={t('nav_settings')} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: ID Card & Stats */}
                     <div className="space-y-6">
                         <Card className="bg-slate-900 border-white/5 text-center relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
@@ -6163,19 +6178,8 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
                             </div>
                         </Card>
-
-                        <div className="bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20 p-6 rounded-[2rem] flex items-center gap-4">
-                            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500">
-                                <Award size={32} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-amber-500 text-lg">{t('rank_label')}</h3>
-                                <p className="text-xs text-amber-200/60">Top 10% of Doctors</p>
-                            </div>
-                        </div>
                     </div>
 
-                    {/* Right Column: Edit Form */}
                     <div className="lg:col-span-2">
                         <Card className="bg-slate-900 border-white/5 h-full">
                             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
@@ -6252,12 +6256,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         );
     }
 
-    // --- PATIENT / USER SETTINGS VIEW ---
+    // --- واجهة المستخدم العادي / المريض ---
     return (
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
             
-            {/* Algorithm Pace Settings */}
+            {/* إعدادات السرعة */}
             <Card className="bg-slate-900 border-white/5 mb-8">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                     <Activity className="text-indigo-400" /> {t('pace_control')}
@@ -6301,7 +6305,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 )}
             </Card>
 
-            {/* Inventory Management Section (New) */}
+            {/* إعدادات المخزون (للمستخدم العادي) */}
             {userProfile?.role === 'normal_user' && (
                 <Card className="bg-slate-900 border-white/5 mb-8">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
@@ -6363,7 +6367,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 </Card>
             )}
 
-            {/* Account Actions */}
+            {/* منطقة الخطر */}
             <Card className="border-rose-500/10 bg-rose-900/5">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
                 <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
@@ -7466,16 +7470,9 @@ service cloud.firestore {
 
       // Read Permissions
       allow read: if isSignedIn() && (
-        // 1. User reads own profile
         isOwner(userId) || 
-        
-        // 2. Anyone can read APPROVED Doctors (Fix for "No doctors available")
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        
-        // 3. Approved Doctors can read Normal Users and Patients (Fix for "Doctor sees no users")
         (isApprovedDoctor() && (resource.data.role == 'normal_user' || resource.data.role == 'patient')) ||
-        
-        // 4. Doctor sees their specific assigned patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid)
       );
 
@@ -7484,20 +7481,16 @@ service cloud.firestore {
 
       // Update
       allow update: if isSignedIn() && (
-        // User updates self (with restrictions)
         (isOwner(userId) && 
          request.resource.data.role != 'admin' &&
          (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
         ) ||
-        // Doctor updates their patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Doctor assigns themselves to a user
-        (isApprovedDoctor() && 
-         resource.data.role != 'admin' && 
-         resource.data.role != 'doctor' &&
-         (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null)
-        )
+        (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
+      
+      // التعديل الجديد هنا: السماح للمستخدم بحذف حسابه
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     // --- 2. Chat Rooms ---
@@ -8119,5 +8112,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 56
-- Total Characters: 387309
-- Estimated Tokens: ~96.828 (GPT-4 Context)
+- Total Characters: 386164
+- Estimated Tokens: ~96.541 (GPT-4 Context)
