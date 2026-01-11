@@ -1,97 +1,28 @@
 import { Inventory, PlanDay, DailyLog, ManualPhase, MedForm } from '../types';
 
 // ============================================================================
-// 1. PRECISION KERNEL (النواة الدقيقة)
-// ============================================================================
-const PRECISION = 1000; 
-const MIN_SPLIT_MICRO = 250; // 0.25mg (ربع حبة) - أقل وحدة قياسية للأقراص
-
-const toMicro = (val: number) => Math.round(val * PRECISION);
-const fromMicro = (val: number) => val / PRECISION;
-
-/**
- * دالة "التقريب الذكي": 
- * للأقراص: تقرب لأقرب 0.25 (ربع حبة).
- * للسوائل: تقرب لأقرب 0.1 (عشر المليلتر).
- */
-const smartRound = (microVal: number, form: MedForm = 'tablet'): number => {
-    // 1. تحديد حجم الخطوة بناءً على الشكل الدوائي
-    // للأقراص: 250 ميكرو = 0.25
-    // للسوائل: 100 ميكرو = 0.1
-    const step = form === 'liquid' ? 100 : 250; 
-    
-    // 2. حساب الباقي
-    const remainder = microVal % step;
-    
-    // 3. التقريب (لأقرب خطوة)
-    let result = remainder < step / 2 
-        ? microVal - remainder 
-        : microVal + (step - remainder);
-
-    // 4. حماية الجرعات الصغيرة جداً
-    // إذا كانت النتيجة صغيرة جداً ولكن ليست صفراً، نجعلها تساوي أقل خطوة ممكنة
-    // هذا يمنع ظهور جرعات غريبة مثل 0.1mg للأقراص
-    if (result > 0 && result < step) {
-        return step;
-    }
-    
-    return result;
-};
-
-// ============================================================================
-// 2. NEURO-SCIENCE LOGIC (المنطق العلمي)
+// 1. UTILS (أدوات مساعدة)
 // ============================================================================
 
-/**
- * معادلة التخفيض الزائدي (Hyperbolic)
- */
-const getHyperbolicReductionRate = (currentMicro: number, startMicro: number): number => {
-    if (startMicro === 0) return 0.1;
-    
-    const ratio = currentMicro / startMicro;
-
-    // تخفيف النسب قليلاً لتكون ألطف على المستخدم
-    if (ratio > 0.75) return 0.10; // 10%
-    if (ratio > 0.40) return 0.07; // 7%
-    if (ratio > 0.15) return 0.05; // 5%
-    return 0.05;                   // تثبيت الحد الأدنى عند 5% لتجنب التخفيض البطيء جداً في النهاية
-};
-
-/**
- * تحليل جاهزية الجهاز العصبي (Neuro-Readiness)
- */
-const calculateNeuroReadiness = (logs: DailyLog[]): number => {
-    if (logs.length < 3) return 1.0; 
-
-    const recent = logs.slice(-5);
-    
-    // تحليل النوم (المعيار 7 ساعات)
-    const sleepAvg = recent.reduce((a, b) => a + (b.sleepHours || 0), 0) / recent.length;
-    const sleepFactor = Math.min(1, Math.max(0.5, sleepAvg / 7)); 
-
-    // تحليل الأعراض
-    const symptomSeverity = recent.reduce((a, b) => a + (b.symptoms?.length || 0), 0);
-    const symptomFactor = Math.max(0.4, 1 - (symptomSeverity * 0.1));
-
-    const score = (sleepFactor * 0.5) + (symptomFactor * 0.5);
-    return Math.max(0.5, score); 
-};
-
-// ============================================================================
-// 3. ENGINE CORE (محرك التوليد)
-// ============================================================================
-
+// إضافة أيام للتاريخ
 const addDays = (dateStr: string, days: number): string => {
     const date = new Date(dateStr);
     date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().split('T')[0];
 };
 
+// حساب المخزون الكلي
 export const calculateTotalInventory = (inv: Inventory): number => {
     return (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
 };
 
-// --- المولد اليدوي (للأطباء) ---
+// ============================================================================
+// 2. ENGINE CORE (المحرك المنطقي الجديد)
+// ============================================================================
+
+/**
+ * المولد اليدوي (للأطباء) - يبقى كما هو
+ */
 export const generateManualPlan = (phases: ManualPhase[], startDateStr: string): PlanDay[] => {
     const plan: PlanDay[] = [];
     let currentDate = startDateStr.split('T')[0];
@@ -104,132 +35,110 @@ export const generateManualPlan = (phases: ManualPhase[], startDateStr: string):
     return plan;
 };
 
-// --- المولد الذكي (الخوارزمية) ---
+/**
+ * المولد الذكي (الخوارزمية العملية)
+ * تم تعديلها لتدعم نظام "الأنصاف" و "تباعد الأيام"
+ */
 export const generatePlan = (
     totalPills: number, 
     startDose: number, 
     startDateStr: string,
-    speedModifier: number = 1.0,
+    speedModifier: number = 1.0, // 1.0 = عادي، 0.5 = بطيء، 1.5 = سريع
     recentLogs: DailyLog[] = [],
-    medForm: MedForm = 'tablet' // افتراضياً أقراص لتكون أكثر أماناً
+    medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
-    const totalInvMicro = toMicro(totalPills);
-    const startMicro = toMicro(startDose);
+    // إذا كان رصيد الحبوب 0 أو الجرعة 0، لا نولد خطة
+    if (totalPills <= 0 || startDose <= 0) return [];
+
+    const plan: PlanDay[] = [];
+    let currentDate = startDateStr.split('T')[0];
+    let remainingInventory = totalPills;
     
-    if (totalInvMicro <= 0 || startMicro <= 0) return [];
-
-    const readiness = calculateNeuroReadiness(recentLogs);
-    const effectiveSpeed = speedModifier * readiness;
-
-    let bestSteps: number[] = [];
-    let quality = 1.0;
-    let foundSolution = false;
+    // تحديد أقل وحدة كسر (للأقراص 0.5 للنص، وللسائل 0.1)
+    // بناءً على طلبك: التركيز على نظام الأنصاف (0.5)
+    const MIN_STEP = medForm === 'liquid' ? 0.1 : 0.5;
     
-    // Safety Circuit Breaker (قاطع الطوارئ لمنع التعليق)
-    let loopGuard = 0;
-    const MAX_ITERATIONS = 50; 
+    // الجرعة الحالية التي سنبدأ التخفيض منها
+    let currentDose = startDose;
 
-    while (quality > 0.1 && !foundSolution) {
-        loopGuard++;
-        if (loopGuard > MAX_ITERATIONS) {
-            console.warn("Tapering Engine: Max iterations reached. Breaking to safe mode.");
-            break;
-        }
-
-        const steps: number[] = [];
-        let currentMicro = startMicro;
-        let simulatedInventory = totalInvMicro;
-        let isFeasible = true;
-        let internalLoopGuard = 0;
-
-        while (currentMicro > 0) {
-            internalLoopGuard++;
-            if (internalLoopGuard > 5000) { isFeasible = false; break; }
-
-            // 1. حساب نسبة الخصم
-            let reductionRate = getHyperbolicReductionRate(currentMicro, startMicro);
-            reductionRate = reductionRate / (quality * effectiveSpeed);
-            
-            // 2. حساب الهدف القادم مع التقريب الذكي (هنا يتم إصلاح مشكلة الكسور)
-            let targetMicro = Math.round(currentMicro * (1 - reductionRate));
-            targetMicro = smartRound(targetMicro, medForm); 
-
-            // منع التوقف (إذا كان التقريب يعيدنا لنفس الرقم، ننزل خطوة واحدة قسراً)
-            if (targetMicro >= currentMicro) {
-                const stepSize = medForm === 'liquid' ? 100 : 250; // 0.1ml or 0.25mg
-                targetMicro = Math.max(0, currentMicro - stepSize);
-            }
-
-            // 3. تحديد المدة (أيام الثبات)
-            let daysOnDose = Math.round(14 * quality); 
-            if (daysOnDose < 4) daysOnDose = 4; // لا تقل عن 4 أيام
-
-            // 4. المحاكاة
-            for (let i = 0; i < daysOnDose; i++) {
-                steps.push(currentMicro);
-                simulatedInventory -= currentMicro;
-            }
-
-            // 5. النهاية (الذيل)
-            if (targetMicro === 0) {
-                // نمط يوم إيه / يوم لا في النهاية لتخفيف الصدمة
-                const tailCycles = Math.max(2, Math.round(4 * quality));
-                for(let i=0; i < tailCycles; i++) {
-                    steps.push(currentMicro); simulatedInventory -= currentMicro;
-                    steps.push(0);
-                }
-                break; 
-            }
-
-            // فحص المخزون
-            if (simulatedInventory < 0) {
-                isFeasible = false;
-                break;
-            }
-
-            currentMicro = targetMicro;
-        }
-
-        if (isFeasible && simulatedInventory >= 0) {
-            bestSteps = steps;
-            foundSolution = true;
-        } else {
-            // تقليل الجودة (زيادة السرعة) والمحاولة مرة أخرى
-            quality -= 0.05;
-        }
-    }
-
-    // fallback: الحل الخطي الطارئ إذا فشل كل شيء
-    if (!foundSolution) {
-        let budget = totalInvMicro;
-        let emergencyDose = startMicro;
-        const stepSize = medForm === 'liquid' ? 100 : 250;
+    // --- المرحلة الأولى: التخفيض المباشر حتى الوصول لـ 0.5 ---
+    // طالما الجرعة أكبر من 0.5، نقوم بالإنقاص تدريجياً
+    while (currentDose > 0.5 && remainingInventory >= currentDose) {
         
-        while (budget >= emergencyDose && emergencyDose > 0) {
-            bestSteps.push(emergencyDose);
-            budget -= emergencyDose;
-            emergencyDose = Math.max(0, emergencyDose - stepSize);
+        // تحديد مدة الثبات على الجرعة (تتأثر بالسرعة المختارة)
+        // السرعة العادية: 7-10 أيام لكل تخفيض
+        let daysOnDose = Math.round(7 * (1 / speedModifier));
+        if (daysOnDose < 3) daysOnDose = 3; // لا تقل عن 3 أيام
+
+        // إضافة الأيام للخطة
+        for (let i = 0; i < daysOnDose; i++) {
+            if (remainingInventory < currentDose) break; // نفاد المخزون
+
+            plan.push({
+                date: currentDate,
+                plannedDose: currentDose,
+                isPast: false
+            });
+            remainingInventory -= currentDose;
+            currentDate = addDays(currentDate, 1);
+        }
+
+        // حساب الجرعة التالية (إنقاص نصف حبة)
+        // مثال: 2 -> 1.5 -> 1 -> 0.5
+        let nextDose = currentDose - 0.5;
+        
+        // تصحيح الأرقام العشرية
+        nextDose = Math.round(nextDose * 10) / 10;
+        
+        if (nextDose < 0.5) nextDose = 0.5; // لا ننزل تحت النص في هذه المرحلة
+        currentDose = nextDose;
+    }
+
+    // --- المرحلة الثانية: نظام تباعد الأيام (Skip-Day Logic) ---
+    // عندما نصل لجرعة 0.5 (نص حبة)، نبدأ بزيادة أيام الراحة تدريجياً
+    // هذا هو النظام الذي طلبته بالضبط
+    
+    if (currentDose === 0.5 && remainingInventory >= 0.5) {
+        
+        // تعريف أنماط تباعد الأيام
+        const patterns = [
+            { label: "Day ON, Day OFF", doseSeq: [0.5, 0], cycles: 4 },           // أسبوع تقريباً
+            { label: "Day ON, 2 Days OFF", doseSeq: [0.5, 0, 0], cycles: 3 },     // 9 أيام
+            { label: "Day ON, 3 Days OFF", doseSeq: [0.5, 0, 0, 0], cycles: 2 },  // 8 أيام
+            { label: "Day ON, 4 Days OFF", doseSeq: [0.5, 0, 0, 0, 0], cycles: 2 } // 10 أيام
+        ];
+
+        // تطبيق الأنماط بالترتيب
+        for (const pattern of patterns) {
+            // نعدل عدد التكرارات (Cycles) بناءً على سرعة المستخدم
+            // إذا اختار "سريع" نقلل التكرار، إذا "بطيء" نزيد التكرار
+            const adjustedCycles = Math.max(1, Math.round(pattern.cycles * (1 / speedModifier)));
+
+            for (let c = 0; c < adjustedCycles; c++) {
+                for (const dose of pattern.doseSeq) {
+                    // التحقق من المخزون فقط في أيام الجرعة
+                    if (dose > 0 && remainingInventory < dose) break; 
+
+                    plan.push({
+                        date: currentDate,
+                        plannedDose: dose,
+                        isPast: false
+                    });
+
+                    if (dose > 0) remainingInventory -= dose;
+                    currentDate = addDays(currentDate, 1);
+                }
+                if (remainingInventory < 0.5) break;
+            }
+            if (remainingInventory < 0.5) break;
         }
     }
 
-    // تحويل النتائج لخطة نهائية
-    const finalPlan: PlanDay[] = [];
-    let currDate = startDateStr.split('T')[0];
-
-    bestSteps.forEach(microDose => {
-        finalPlan.push({
-            date: currDate,
-            plannedDose: fromMicro(microDose),
-            isPast: false
-        });
-        currDate = addDays(currDate, 1);
-    });
-
-    return finalPlan;
+    return plan;
 };
 
-// --- إعادة الحساب الديناميكي ---
+// --- إعادة الحساب الديناميكي (عند تسجيل جرعة يومية) ---
 export const adjustPlan = (
     originalPlan: PlanDay[],
     logs: DailyLog[],
@@ -238,29 +147,41 @@ export const adjustPlan = (
     medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
+    // ترتيب السجلات زمنياً
     const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (sortedLogs.length === 0) {
+        // إذا لم توجد سجلات، نولد خطة جديدة من البداية
         return originalPlan.length > 0 
             ? generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier, [], medForm)
             : [];
     }
 
+    // آخر يوم تم تسجيله
     const lastLog = sortedLogs[sortedLogs.length - 1];
+    
+    // حساب ما تم استهلاكه
     const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
+    
+    // المتبقي الفعلي
     const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
 
+    // الأيام الماضية (نحتفظ بها كما هي في التاريخ)
     const historyDays = originalPlan.filter(day => day.date <= lastLog.date).map(day => {
         const log = sortedLogs.find(l => l.date === day.date);
         return { ...day, isPast: true, log: log || undefined };
     });
 
+    // تحديد نقطة الانطلاق الجديدة
+    // إذا كان آخر يوم 0 (يوم راحة)، نبحث عن آخر جرعة حقيقية أخذها لنعرف مستواه
     let startPoint = lastLog.doseTaken;
     if (startPoint === 0) {
         const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
-        startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0);
+        // إذا وجدنا آخر جرعة فعالة، نعتمدها، وإلا نعود لبداية الخطة
+        startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0.5);
     }
 
+    // توليد المستقبل بناءً على المعطيات الجديدة
     const futureDays = generatePlan(
         remainingInventory,
         startPoint,
