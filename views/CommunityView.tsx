@@ -6,7 +6,7 @@ import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles, ArrowDown
 } from 'lucide-react';
 
 // المكونات
@@ -22,19 +22,24 @@ interface CommunityViewProps {
 }
 
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
-    const { t, language, dir } = useLanguage();
+    const { t, dir } = useLanguage();
+    
+    // -- State --
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
     const [rooms, setRooms] = useState<ChatRoom[]>([]);
     const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
+    const [showScrollButton, setShowScrollButton] = useState(false);
     
     // Create Room State
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newRoomName, setNewRoomName] = useState("");
 
-    const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    // Refs
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     // 1. Fetch Rooms
     useEffect(() => {
@@ -59,7 +64,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     // 2. Fetch Leaderboard
     useEffect(() => {
         if (tab === 'leaderboard') {
-            const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(50)); // Increased limit
+            const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(50));
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const u: UserProfile[] = [];
                 snapshot.forEach((doc) => u.push({ ...doc.data(), uid: doc.id } as UserProfile));
@@ -69,7 +74,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     }, [tab]);
 
-    // 3. Fetch Messages
+    // 3. Fetch Messages & Handle Scroll
     useEffect(() => {
         if (!activeRoom) return;
         const q = query(collection(db, "rooms", activeRoom.id, "messages"), orderBy("timestamp", "asc"));
@@ -77,19 +82,43 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             const m: ChatMessage[] = [];
             snapshot.forEach((doc) => m.push({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(m);
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+            
+            // Auto-scroll only if user is already near bottom
+            if (chatContainerRef.current) {
+                const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+                const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+                if (isNearBottom) {
+                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                } else {
+                    setShowScrollButton(true);
+                }
+            }
         });
         return () => unsubscribe();
     }, [activeRoom]);
+
+    // 4. Scroll Event Listener
+    const handleScroll = () => {
+        if (chatContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+            setShowScrollButton(!isNearBottom);
+        }
+    };
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setShowScrollButton(false);
+    };
 
     // --- Actions ---
     const createRoom = async () => {
         if (!newRoomName.trim() || !currentUser.uid) return;
         const isDoctor = currentUser.role === 'doctor';
         await addDoc(collection(db, "rooms"), {
-            name: newRoomName,
+            name: newRoomName.trim().slice(0, 30), // Validated length
             createdBy: currentUser.uid,
-            creatorName: currentUser.name || "Unknown Doctor",
+            creatorName: currentUser.name || "Unknown",
             language: 'mixed',
             createdAt: Date.now(),
             isDoctorRoom: isDoctor,
@@ -100,7 +129,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     };
 
     const deleteRoom = async (roomId: string) => {
-        if (confirm("Are you sure?")) {
+        if (confirm("Are you sure you want to delete this room?")) {
             await deleteDoc(doc(db, "rooms", roomId));
             if (activeRoom?.id === roomId) setActiveRoom(null);
         }
@@ -108,8 +137,11 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
+        
+        const cleanMessage = newMessage.trim().slice(0, 300); // Input sanitization/limit
+        
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
-            text: newMessage,
+            text: cleanMessage,
             senderId: currentUser.uid,
             senderName: currentUser.name || "Anonymous",
             timestamp: Date.now(),
@@ -118,6 +150,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             isAdmin: currentUser.role === 'admin'
         });
         setNewMessage("");
+        scrollToBottom();
     };
 
     const canCreateRoom = currentUser.role !== 'patient';
@@ -125,34 +158,37 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     return (
         <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col relative">
             
-            {/* Tabs Navigation (Floating Island Style) */}
+            {/* Tabs Navigation */}
             {!activeRoom && (
-                <div className="flex p-1.5 bg-slate-900/80 rounded-full border border-white/10 mb-8 shrink-0 backdrop-blur-xl shadow-2xl w-fit mx-auto relative z-10">
+                <nav className="flex p-1.5 bg-slate-900/80 rounded-full border border-white/10 mb-8 shrink-0 backdrop-blur-xl shadow-2xl w-fit mx-auto relative z-10" role="tablist">
                     <button 
                         onClick={() => setTab('rooms')} 
-                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 ${tab === 'rooms' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                        role="tab"
+                        aria-selected={tab === 'rooms'}
+                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${tab === 'rooms' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                     >
-                        <MessageCircle size={18} /> {t('comm_rooms')}
+                        <MessageCircle size={18} aria-hidden="true" /> {t('comm_rooms')}
                     </button>
                     <button 
                         onClick={() => setTab('leaderboard')} 
-                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 ${tab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                        role="tab"
+                        aria-selected={tab === 'leaderboard'}
+                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-amber-500 ${tab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                     >
-                        <Trophy size={18} /> {t('comm_leaderboard')}
+                        <Trophy size={18} aria-hidden="true" /> {t('comm_leaderboard')}
                     </button>
-                </div>
+                </nav>
             )}
 
             {/* LEADERBOARD TAB */}
             {tab === 'leaderboard' && !activeRoom && (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 space-y-4 animate-in slide-in-from-bottom-8">
+                <ul className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 space-y-4 animate-in slide-in-from-bottom-8" role="list">
                     {leaderboard.map((user, idx) => {
                         let rankStyle = 'bg-slate-900/60 border-white/5';
                         let rankBadge = null;
                         let progressColor = 'bg-slate-700';
                         let nameColor = 'text-white';
                         
-                        // Top 3 Styling
                         if (idx === 0) { 
                             rankStyle = 'bg-gradient-to-r from-yellow-900/40 to-amber-900/10 border-amber-500/30 shadow-lg shadow-amber-500/10'; 
                             rankBadge = <div className="p-2 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 shadow-lg shadow-amber-500/40"><Crown size={20} className="text-white" fill="white"/></div>;
@@ -177,54 +213,40 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
-                            <div key={idx} className={`flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
+                            <li key={idx} className={`flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
                                 <div className="flex items-center gap-5">
-                                    {/* Rank Indicator */}
-                                    <div className="shrink-0">
-                                        {rankBadge}
-                                    </div>
-                                    
-                                    {/* User Info */}
+                                    <div className="shrink-0">{rankBadge}</div>
                                     <div>
                                         <p className={`font-bold text-lg flex items-center gap-2 ${nameColor}`}>
                                             {user.name || t('guest')}
-                                            {user.role === 'admin' && <ShieldCheck size={16} className="text-rose-500" />}
-                                            {user.role === 'doctor' && <Stethoscope size={16} className="text-blue-400" />}
-                                            {idx === 0 && <Sparkles size={14} className="text-yellow-400 animate-pulse"/>}
+                                            {user.role === 'admin' && <ShieldCheck size={16} className="text-rose-500" aria-label="Admin" />}
+                                            {user.role === 'doctor' && <Stethoscope size={16} className="text-blue-400" aria-label="Doctor" />}
+                                            {idx === 0 && <Sparkles size={14} className="text-yellow-400 animate-pulse" aria-hidden="true"/>}
                                         </p>
-                                        
-                                        {/* Progress Bar Visual */}
                                         <div className="flex items-center gap-3 mt-2">
-                                            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden" role="progressbar" aria-valuenow={user.progress || 0} aria-valuemin={0} aria-valuemax={100} aria-label="Recovery Progress">
                                                 <div className={`h-full rounded-full ${progressColor}`} style={{width: `${user.progress || 0}%`}}></div>
                                             </div>
                                             <div className="flex gap-2">
                                                 {user.medType && (
                                                     <span className="text-[10px] text-slate-400 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-md">
-                                                        <MedIcon size={10} /> {user.medType}
-                                                    </span>
-                                                )}
-                                                {user.streak && (
-                                                    <span className="text-[10px] text-amber-400 flex items-center gap-1 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/10">
-                                                        <Zap size={10} fill="currentColor" /> {user.streak} Days
+                                                        <MedIcon size={10} aria-hidden="true" /> {user.medType}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Percentage */}
                                 <div className="text-right">
                                     <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
                                 </div>
-                            </div>
+                            </li>
                         );
                     })}
-                </div>
+                </ul>
             )}
 
-            {/* ROOMS TAB (Cards) */}
+            {/* ROOMS TAB */}
             {tab === 'rooms' && !activeRoom && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden animate-in slide-in-from-bottom-4">
                     <div className="flex justify-between items-center mb-6 shrink-0 px-1">
@@ -233,8 +255,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             {currentUser.role === 'patient' ? "Your Clinic" : t('comm_rooms')}
                         </h2>
                         {canCreateRoom && (
-                            <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/20">
-                                <Plus size={16} /> {t('create_room')}
+                            <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/20" aria-label={t('create_room')}>
+                                <Plus size={16} aria-hidden="true" /> {t('create_room')}
                             </Button>
                         )}
                     </div>
@@ -243,7 +265,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         {rooms.length === 0 && (
                             <div className="col-span-full text-center py-20 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500 flex flex-col items-center">
                                 <MessageCircle size={48} className="mb-4 opacity-20"/>
-                                <p>No rooms available at the moment.</p>
+                                <p>No rooms available.</p>
                             </div>
                         )}
                         {rooms.map(room => (
@@ -252,13 +274,16 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                 hoverEffect={true}
                                 className={`!p-0 cursor-pointer flex flex-col justify-between min-h-[140px] border-white/5 relative group ${room.isDoctorRoom ? 'bg-gradient-to-br from-indigo-900/40 to-slate-900/80' : 'bg-slate-900/60'}`}
                             >
-                                <div className="absolute inset-0 z-20" onClick={() => setActiveRoom(room)}></div>
+                                <button 
+                                    onClick={() => setActiveRoom(room)} 
+                                    className="absolute inset-0 z-20 w-full h-full focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-3xl"
+                                    aria-label={`Open room: ${room.name}`}
+                                ></button>
                                 
-                                {/* Decor */}
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors"></div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
 
-                                <div className="p-6 flex flex-col h-full justify-between relative z-10">
-                                    <div className="flex justify-between items-start">
+                                <div className="p-6 flex flex-col h-full justify-between relative z-10 pointer-events-none">
+                                    <div className="flex justify-between items-start pointer-events-auto">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg ${room.isDoctorRoom ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-800 text-slate-400 border border-white/5'}`}>
                                             {room.isDoctorRoom ? <Stethoscope size={24} /> : <MessageCircle size={24} />}
                                         </div>
@@ -266,7 +291,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
-                                                className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30"
+                                                className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                                aria-label="Delete Room"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -288,15 +314,16 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
                     {/* Create Room Modal */}
                     {showCreateModal && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in" role="dialog" aria-modal="true">
                             <Card className="w-full max-w-sm bg-slate-900 border-white/10 shadow-2xl relative">
                                 <h3 className="text-lg font-bold text-white mb-6">
                                     {currentUser.role === 'doctor' ? t('community_clinic') : t('create_room')}
                                 </h3>
                                 <input 
-                                    className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-6 outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
+                                    className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-6 outline-none focus:border-indigo-500 transition-all placeholder-slate-700 focus:ring-2 focus:ring-indigo-500"
                                     placeholder={t('room_name')}
                                     value={newRoomName}
+                                    maxLength={30}
                                     onChange={(e) => setNewRoomName(e.target.value)}
                                     autoFocus
                                 />
@@ -311,7 +338,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                 )}
                                 <div className="flex gap-3 justify-end">
                                     <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('close')}</Button>
-                                    <Button variant="primary" onClick={createRoom}>{t('create_room')}</Button>
+                                    <Button variant="primary" onClick={createRoom} disabled={!newRoomName.trim()}>{t('create_room')}</Button>
                                 </div>
                             </Card>
                         </div>
@@ -319,14 +346,14 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 </div>
             )}
 
-            {/* CHAT INTERFACE (Modern Message Bubbles) */}
+            {/* CHAT INTERFACE */}
             {tab === 'rooms' && activeRoom && (
                 <div className="flex-1 flex flex-col h-full bg-slate-900/80 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl relative animate-in zoom-in backdrop-blur-xl">
                     
-                    {/* Header */}
+                    {/* Chat Header */}
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50 backdrop-blur-md absolute top-0 left-0 right-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setActiveRoom(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors md:hidden">
+                            <button onClick={() => setActiveRoom(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors md:hidden" aria-label="Back">
                                 <ChevronLeft size={24} />
                             </button>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg ${activeRoom.isDoctorRoom ? 'bg-gradient-to-br from-indigo-600 to-blue-600' : 'bg-slate-800'}`}>
@@ -343,12 +370,19 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     </div>
 
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 pt-24 space-y-4 custom-scrollbar bg-gradient-to-b from-transparent to-black/20">
+                    <div 
+                        className="flex-1 overflow-y-auto p-4 pt-24 space-y-4 custom-scrollbar bg-gradient-to-b from-transparent to-black/20"
+                        ref={chatContainerRef}
+                        onScroll={handleScroll}
+                        role="log"
+                        aria-live="polite"
+                        aria-relevant="additions"
+                        aria-label="Chat messages"
+                    >
                         {messages.map((msg, i) => {
                             const isMe = msg.senderId === currentUser.uid;
                             const showAvatar = i === 0 || messages[i-1].senderId !== msg.senderId;
                             
-                            // أنماط الرسائل الحديثة
                             let bubbleStyle = 'bg-slate-800/80 text-slate-200 border-white/5';
                             if (isMe) bubbleStyle = 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-indigo-500';
                             else if (msg.isDoctor || msg.role === 'doctor') bubbleStyle = 'bg-gradient-to-br from-blue-900/90 to-blue-800/90 border-blue-500/30 text-blue-100 shadow-lg';
@@ -356,8 +390,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
                             return (
                                 <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}>
-                                    {/* Avatar */}
-                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border border-white/10 shadow-md ${showAvatar ? (isMe ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400') : 'opacity-0'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border border-white/10 shadow-md ${showAvatar ? (isMe ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400') : 'opacity-0'}`} aria-hidden="true">
                                         {msg.senderName.charAt(0).toUpperCase()}
                                     </div>
 
@@ -383,19 +416,33 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         <div ref={messagesEndRef} />
                     </div>
 
+                    {/* Scroll To Bottom Button */}
+                    {showScrollButton && (
+                        <button 
+                            onClick={scrollToBottom}
+                            className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 p-2 rounded-full bg-slate-800 border border-white/10 shadow-xl text-indigo-400 animate-bounce hover:bg-slate-700 transition-colors"
+                            aria-label="Scroll to bottom"
+                        >
+                            <ArrowDown size={20} />
+                        </button>
+                    )}
+
                     {/* Input Area */}
                     <div className="p-4 bg-slate-950/80 border-t border-white/5 flex gap-3 backdrop-blur-xl relative z-20">
                         <input 
-                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all placeholder-slate-600 shadow-inner"
+                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all placeholder-slate-600 shadow-inner focus:ring-1 focus:ring-indigo-500"
                             placeholder={t('type_msg')}
                             value={newMessage}
+                            maxLength={300}
                             onChange={e => setNewMessage(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                            aria-label="Message input"
                         />
                         <button 
                             onClick={sendMessage} 
                             disabled={!newMessage.trim()}
-                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95"
+                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            aria-label="Send message"
                         >
                             <Send size={20} />
                         </button>

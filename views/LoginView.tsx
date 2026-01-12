@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar, CheckSquare, Square } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -21,136 +20,187 @@ export const LoginView = ({
   handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds 
 }: LoginViewProps) => {
   const { t, dir, language } = useLanguage();
-  const { signupWithEmail } = useAuth(); // استخدام دالة الإنشاء الجديدة من السياق
-
-  // حالة التبديل بين الدخول والتسجيل
+  
+  // Local state for Signup Mode
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasConsented, setHasConsented] = useState(false);
 
-  // بيانات التسجيل الإضافية
+  // Additional Signup Data
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
 
+  // Use Auth Context directly here to avoid prop drilling for signup if possible, 
+  // but following existing pattern we use the props or import hook if needed. 
+  // For consistency with previous file, we import the hook to access signup function.
+  // Note: The previous file passed `signupWithEmail` implicitly via props or context? 
+  // The original App.tsx didn't pass `signupWithEmail` to LoginView props in the interface, 
+  // but LoginView imported `useAuth`. Let's stick to using `useAuth` hook inside.
+  const { signupWithEmail } = require('../contexts/AuthContext').useAuth(); 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (isSignUp) {
-        // منطق إنشاء الحساب
-        if (!name || !age || !weight || !height) {
-            alert(language === 'ar' ? "يرجى تعبئة جميع البيانات الصحية" : "Please fill all health data");
-            setIsLoading(false);
-            return;
+    try {
+        if (isSignUp) {
+            if (!hasConsented) {
+                alert(language === 'ar' ? "يجب الموافقة على الشروط والتنبيه الطبي للمتابعة." : "You must agree to the terms and medical disclaimer.");
+                setIsLoading(false);
+                return;
+            }
+            if (!name || !age || !weight || !height) {
+                alert(language === 'ar' ? "يرجى تعبئة جميع البيانات الصحية" : "Please fill all health data");
+                setIsLoading(false);
+                return;
+            }
+            // Use the hook function directly
+            await signupWithEmail(email, password, name, {
+                age: parseInt(age),
+                weight: parseFloat(weight),
+                height: parseFloat(height)
+            });
+        } else {
+            await handleLogin(e);
         }
-        await signupWithEmail(email, password, name, {
-            age: parseInt(age),
-            weight: parseFloat(weight),
-            height: parseFloat(height)
-        });
-    } else {
-        // منطق تسجيل الدخول (الموجود مسبقاً)
-        await handleLogin(e);
+    } catch (err) {
+        console.error("Auth Error", err);
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4 relative overflow-hidden" dir={dir}>
+    <div className="w-full max-w-lg relative z-10 animate-in fade-in zoom-in duration-500" dir={dir}>
       
-      {/* خلفية حية */}
-      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-60 pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[100px] animate-float opacity-50 delay-1000 pointer-events-none"></div>
-      
-      <div className="absolute top-6 right-6 z-50">
+      <div className="absolute top-0 right-0 -mt-12 z-50">
         <LanguageSwitcher />
       </div>
 
-      <Card className="w-full max-w-lg relative z-10 !bg-slate-900/70 border-white/10 shadow-2xl backdrop-blur-xl" noPadding>
-        <div className="p-8 md:p-10">
+      <Card className="!bg-slate-900/80 border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden" noPadding>
+        <div className="p-8 md:p-10 relative">
             
-            {/* الشعار والعنوان */}
+            {/* Logo & Header */}
             <div className="text-center mb-8">
-                <div className="inline-flex p-4 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4 animate-in zoom-in">
+                <div className="inline-flex p-4 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4 ring-1 ring-white/10">
                     <Activity className="w-10 h-10 text-white" />
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
                     {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
                 </h1>
-                <p className="text-slate-400 font-medium text-sm">
+                <p className="text-slate-400 font-medium text-sm leading-relaxed max-w-xs mx-auto">
                     {isSignUp 
                         ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') 
                         : t('subtitle')}
                 </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
                 
-                {/* حقول التسجيل الإضافية (تظهر فقط عند isSignUp) */}
+                {/* Signup Fields */}
                 {isSignUp && (
                     <div className="space-y-4 animate-in slide-in-from-bottom-4">
                         <div className="relative group">
-                            <User className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                            <label htmlFor="fullname" className="sr-only">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
+                            <User className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
                             <input 
+                                id="fullname"
                                 type="text" 
+                                name="name"
+                                autoComplete="name"
                                 placeholder={language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
+                                className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
+                                required
                             />
                         </div>
                         
                         <div className="grid grid-cols-3 gap-3">
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Calendar size={16}/></div>
-                                <input type="number" placeholder={language === 'ar' ? 'العمر' : 'Age'} value={age} onChange={(e) => setAge(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                                <label htmlFor="age" className="sr-only">{language === 'ar' ? 'العمر' : 'Age'}</label>
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500 pointer-events-none"><Calendar size={16}/></div>
+                                <input id="age" type="number" name="age" placeholder={language === 'ar' ? 'العمر' : 'Age'} value={age} onChange={(e) => setAge(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none text-sm text-center" required min="18" max="99"/>
                             </div>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Weight size={16}/></div>
-                                <input type="number" placeholder={language === 'ar' ? 'وزن (kg)' : 'Weight'} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                                <label htmlFor="weight" className="sr-only">{language === 'ar' ? 'الوزن' : 'Weight'}</label>
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500 pointer-events-none"><Weight size={16}/></div>
+                                <input id="weight" type="number" name="weight" placeholder={language === 'ar' ? 'وزن (kg)' : 'Weight'} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none text-sm text-center" required />
                             </div>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Ruler size={16}/></div>
-                                <input type="number" placeholder={language === 'ar' ? 'طول (cm)' : 'Height'} value={height} onChange={(e) => setHeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                                <label htmlFor="height" className="sr-only">{language === 'ar' ? 'الطول' : 'Height'}</label>
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500 pointer-events-none"><Ruler size={16}/></div>
+                                <input id="height" type="number" name="height" placeholder={language === 'ar' ? 'طول (cm)' : 'Height'} value={height} onChange={(e) => setHeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none text-sm text-center" required />
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* الحقول الأساسية (البريد وكلمة المرور) */}
+                {/* Common Fields */}
                 <div className="space-y-4">
                     <div className="relative group">
-                        <Mail className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                        <label htmlFor="email" className="sr-only">{t('email')}</label>
+                        <Mail className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
                         <input 
+                            id="email"
                             type="email" 
+                            name="email"
+                            autoComplete="email"
                             placeholder={t('email')}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
+                            required
                         />
                     </div>
                     <div className="relative group">
-                        <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                        <label htmlFor="password" className="sr-only">{t('password')}</label>
+                        <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
                         <input 
+                            id="password"
                             type="password" 
+                            name="password"
+                            autoComplete={isSignUp ? "new-password" : "current-password"}
                             placeholder={t('password')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
+                            required
+                            minLength={6}
                         />
                     </div>
                 </div>
-                
-                {/* رسائل الخطأ */}
-                {loginError && (
-                    <div className="text-rose-400 text-xs bg-rose-500/10 p-3 rounded-lg border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> {loginError}
+
+                {/* Privacy Consent Checkbox (Only for Signup) */}
+                {isSignUp && (
+                    <div className="flex items-start gap-3 p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 animate-in slide-in-from-bottom-2 cursor-pointer" onClick={() => setHasConsented(!hasConsented)}>
+                        <div className={`mt-0.5 shrink-0 transition-colors ${hasConsented ? 'text-indigo-400' : 'text-slate-500'}`}>
+                            {hasConsented ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </div>
+                        <label className="text-xs text-slate-300 leading-relaxed cursor-pointer select-none">
+                            {language === 'ar' 
+                                ? 'أقر بأنني قرأت التنبيه الطبي، وأفهم أن هذا التطبيق أداة مساعدة فقط وليس بديلاً عن الطبيب. أوافق على جمع البيانات الصحية لغرض تتبع التعافي.'
+                                : 'I acknowledge the medical disclaimer. I understand this app is a tool, not a doctor. I consent to processing my health data for recovery tracking.'}
+                        </label>
                     </div>
                 )}
                 
-                {/* زر الإرسال الرئيسي */}
-                <Button className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" type="submit" isLoading={isLoading}>
+                {/* Error Messages */}
+                {loginError && (
+                    <div className="text-rose-400 text-xs bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2 font-bold" role="alert">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></div> {loginError}
+                    </div>
+                )}
+                
+                {/* Submit Button */}
+                <Button 
+                    className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20 mt-2" 
+                    type="submit" 
+                    isLoading={isLoading}
+                    disabled={isSignUp && !hasConsented}
+                >
                     {isSignUp 
                         ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
                         : t('login_email')} 
@@ -158,8 +208,8 @@ export const LoginView = ({
                 </Button>
             </form>
 
-            {/* الفواصل وأزرار التواصل الاجتماعي */}
-            <div className="my-6 flex items-center gap-4 text-xs text-slate-600 font-bold uppercase tracking-widest">
+            {/* Separator & Social Login */}
+            <div className="my-6 flex items-center gap-4 text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">
                 <div className="h-px bg-slate-800 flex-1"></div>
                 {t('or')}
                 <div className="h-px bg-slate-800 flex-1"></div>
@@ -174,28 +224,28 @@ export const LoginView = ({
                 <span>{t('login_google')}</span>
             </Button>
 
-            {/* التبديل بين الدخول والتسجيل */}
+            {/* Toggle Mode */}
             <div className="mt-8 text-center">
                 <p className="text-slate-400 text-sm">
                     {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
                     <button 
                         onClick={() => {
                             setIsSignUp(!isSignUp);
-                            loginError = ''; // محاولة لتصفير الخطأ ظاهرياً
+                            setHasConsented(false); // Reset consent on toggle
                         }}
-                        className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4"
+                        className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
                     >
                         {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
                     </button>
                 </p>
             </div>
 
-            {/* زر الديمو */}
+            {/* Demo Button */}
             {!isSignUp && (
                 <div className="mt-6 pt-6 border-t border-white/5 text-center">
                     <button 
                         onClick={setDemoCreds}
-                        className="text-slate-600 text-xs font-mono hover:text-slate-400 transition-colors"
+                        className="text-slate-600 text-xs font-mono hover:text-slate-400 transition-colors focus:outline-none focus:text-slate-300"
                     >
                         {t('demo_account')}
                     </button>

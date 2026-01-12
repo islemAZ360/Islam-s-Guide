@@ -4,7 +4,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
-import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, Stethoscope, ChevronRight } from 'lucide-react';
+import { 
+    LifeBuoy, Plus, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, 
+    Stethoscope, ChevronRight, Loader2, AlertCircle, MessageSquare
+} from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -20,12 +23,13 @@ interface SupportViewProps {
 }
 
 export const SupportView = ({ user }: SupportViewProps) => {
-    const { t, language } = useLanguage();
+    const { t, language, dir } = useLanguage();
     
     // -- State --
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Forms
     const [newSubject, setNewSubject] = useState("");
@@ -50,6 +54,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
+            // Real-time update for active ticket
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -74,10 +79,11 @@ export const SupportView = ({ user }: SupportViewProps) => {
         if (!user.uid) return;
         if (!newSubject.trim() || !newMessage.trim()) return;
         
+        setIsSubmitting(true);
         const initialMsg: TicketMessage = {
             senderId: user.uid,
             senderName: user.name,
-            text: newMessage,
+            text: newMessage.trim().slice(0, 1000), // Max length check
             timestamp: Date.now(),
             isAdmin: false
         };
@@ -86,7 +92,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             await addDoc(collection(db, "tickets"), {
                 userId: user.uid,
                 userEmail: user.email,
-                subject: newSubject,
+                subject: newSubject.trim().slice(0, 100),
                 status: 'open',
                 createdAt: Date.now(),
                 lastUpdate: Date.now(),
@@ -98,6 +104,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
         } catch (e) {
             console.error("Error creating ticket:", e);
             alert("Failed to create ticket.");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -105,10 +113,11 @@ export const SupportView = ({ user }: SupportViewProps) => {
         if (!user.uid) return;
         if (!newMessage.trim() || !activeTicket || !activeTicket.id) return;
 
+        setIsSubmitting(true);
         const newMsg: TicketMessage = {
             senderId: user.uid,
             senderName: user.name,
-            text: newMessage,
+            text: newMessage.trim().slice(0, 1000),
             timestamp: Date.now(),
             isAdmin: false
         };
@@ -125,6 +134,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
             setNewMessage("");
         } catch (e) {
             console.error("Error sending reply:", e);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -145,16 +156,16 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 title={t('nav_support')} 
                 subtitle={t('support_desc') || "Contact the support team directly."}
                 action={
-                    <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20">
-                        <Plus size={18} /> {t('new_ticket') || "New Ticket"}
+                    <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20" aria-label={t('new_ticket')}>
+                        <Plus size={18} aria-hidden="true" /> {t('new_ticket') || "New Ticket"}
                     </Button>
                 }
             />
 
-            {/* Context Banner - Glass Style */}
-            <div className="mb-8 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border border-white/10 p-5 rounded-3xl flex items-center justify-between backdrop-blur-xl shadow-xl animate-in slide-in-from-top-4">
+            {/* Context Banner - Semantic Header Info */}
+            <section aria-label="User Context" className="mb-8 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border border-white/10 p-5 rounded-3xl flex items-center justify-between backdrop-blur-xl shadow-xl animate-in slide-in-from-top-4">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-900/20">
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-900/20" aria-hidden="true">
                         {user.role === 'doctor' ? <Stethoscope size={24}/> : 
                          user.medForm === 'liquid' ? <FlaskConical size={24} /> : 
                          user.medForm === 'tablet' ? <Pill size={24} /> : <User size={24}/>}
@@ -170,7 +181,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 {user.role === 'normal_user' && user.planType === 'algorithm' && (
                     <Badge color="indigo" className="hidden md:flex">Smart Algorithm</Badge>
                 )}
-            </div>
+            </section>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
                 {/* LIST COLUMN */}
@@ -180,38 +191,40 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         <Badge color="indigo">{tickets.length}</Badge>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2">
+                    <ul className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2" role="list">
                         {tickets.length === 0 && (
-                            <div className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-2xl m-2 flex flex-col items-center">
-                                <LifeBuoy className="mb-3 opacity-30" size={32}/>
+                            <li className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-2xl m-2 flex flex-col items-center">
+                                <LifeBuoy className="mb-3 opacity-30" size={32} aria-hidden="true"/>
                                 {t('no_tickets') || "No previous tickets."}
-                            </div>
+                            </li>
                         )}
                         {tickets.map(ticket => (
-                            <div 
-                                key={ticket.id}
-                                onClick={() => setActiveTicket(ticket)}
-                                className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 group ${
-                                    activeTicket?.id === ticket.id 
-                                    ? 'bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-900/20' 
-                                    : 'bg-slate-950/30 border-transparent hover:bg-slate-800 hover:border-white/5'
-                                }`}
-                            >
-                                <div className="flex justify-between items-start mb-3">
-                                    <h4 className={`font-bold text-sm truncate max-w-[70%] ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
-                                        {ticket.subject}
-                                    </h4>
-                                    <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-2 !py-0.5">
-                                        {getStatusLabel(ticket.status)}
-                                    </Badge>
-                                </div>
-                                <div className="flex justify-between items-end text-[10px] text-slate-500">
-                                    <span className="font-mono">{new Date(ticket.lastUpdate).toLocaleDateString()}</span>
-                                    <ChevronRight size={14} className={`transition-transform duration-300 ${activeTicket?.id === ticket.id ? 'text-indigo-400 translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
-                                </div>
-                            </div>
+                            <li key={ticket.id}>
+                                <button 
+                                    onClick={() => setActiveTicket(ticket)}
+                                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                        activeTicket?.id === ticket.id 
+                                        ? 'bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-900/20' 
+                                        : 'bg-slate-950/30 border-transparent hover:bg-slate-800 hover:border-white/5'
+                                    }`}
+                                    aria-current={activeTicket?.id === ticket.id ? 'true' : undefined}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h4 className={`font-bold text-sm truncate max-w-[70%] ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
+                                            {ticket.subject}
+                                        </h4>
+                                        <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-2 !py-0.5">
+                                            {getStatusLabel(ticket.status)}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex justify-between items-end text-[10px] text-slate-500">
+                                        <span className="font-mono">{new Date(ticket.lastUpdate).toLocaleDateString()}</span>
+                                        <ChevronRight size={14} className={`transition-transform duration-300 ${activeTicket?.id === ticket.id ? 'text-indigo-400 translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} aria-hidden="true"/>
+                                    </div>
+                                </button>
+                            </li>
                         ))}
-                    </div>
+                    </ul>
                 </Card>
 
                 {/* CHAT COLUMN */}
@@ -219,7 +232,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                     {!activeTicket ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
                             <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 opacity-50 shadow-inner border border-white/5">
-                                <LifeBuoy size={48} />
+                                <LifeBuoy size={48} aria-hidden="true"/>
                             </div>
                             <p className="text-lg font-medium">{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
                         </div>
@@ -228,24 +241,34 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             {/* Ticket Header */}
                             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-20">
                                 <div>
-                                    <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs hover:text-white transition-colors">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setActiveTicket(null)} 
+                                        className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs hover:text-white transition-colors focus:outline-none focus:text-white"
+                                        aria-label={t('close')}
+                                    >
                                         <ChevronRight size={14} className={language === 'ar' ? 'rotate-180' : 'rotate-0'}/> {t('close')}
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Lock size={16} className="text-emerald-500"/></div>
+                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Lock size={16} className="text-emerald-500" aria-hidden="true"/></div>
                                         {activeTicket.subject}
                                     </h3>
                                     <p className="text-[10px] text-slate-500 font-mono mt-1 ml-9">Ref: {activeTicket.id}</p>
                                 </div>
                                 {activeTicket.status === 'resolved' && (
                                     <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold flex items-center gap-2">
-                                        <CheckCircle size={14} /> {t('status_resolved') || "Resolved"}
+                                        <CheckCircle size={14} aria-hidden="true"/> {t('status_resolved') || "Resolved"}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Messages Area */}
-                            <div className="flex-1 overflow-y-auto p-6 pt-28 space-y-6 custom-scrollbar bg-slate-900/30">
+                            {/* Messages Area (Live Region) */}
+                            <div 
+                                className="flex-1 overflow-y-auto p-6 pt-28 space-y-6 custom-scrollbar bg-slate-900/30"
+                                role="log"
+                                aria-live="polite"
+                                aria-label="Ticket Conversation"
+                            >
                                 {activeTicket.messages?.map((msg, idx) => {
                                     const isMe = !msg.isAdmin; 
                                     return (
@@ -269,24 +292,30 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             {/* Reply Input */}
                             <div className="p-4 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl z-20">
                                 {activeTicket.status === 'resolved' ? (
-                                    <div className="text-center text-sm text-emerald-400 font-bold bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-lg">
+                                    <div className="text-center text-sm text-emerald-400 font-bold bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-lg flex items-center justify-center gap-2">
+                                        <CheckCircle size={16} aria-hidden="true"/>
                                         {t('ticket_closed_msg') || "This ticket is closed."}
                                     </div>
                                 ) : (
                                     <div className="flex gap-3">
+                                        <label htmlFor="reply-input" className="sr-only">{t('write_reply') || "Write your reply"}</label>
                                         <input 
-                                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 focus:bg-slate-900 outline-none transition-all placeholder-slate-600 shadow-inner"
+                                            id="reply-input"
+                                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 focus:bg-slate-900 outline-none transition-all placeholder-slate-600 shadow-inner disabled:opacity-50"
                                             placeholder={t('write_reply') || "Write your reply..."}
                                             value={newMessage}
                                             onChange={e => setNewMessage(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && sendReply()}
+                                            onKeyDown={e => e.key === 'Enter' && !isSubmitting && sendReply()}
+                                            disabled={isSubmitting}
+                                            maxLength={1000}
                                         />
                                         <button 
                                             onClick={sendReply} 
-                                            disabled={!newMessage.trim()}
-                                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95"
+                                            disabled={!newMessage.trim() || isSubmitting}
+                                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            aria-label={language === 'ar' ? 'إرسال الرد' : 'Send Reply'}
                                         >
-                                            <Send size={20} />
+                                            {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                                         </button>
                                     </div>
                                 )}
@@ -298,40 +327,68 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
             {/* Create Ticket Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+                <div 
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="new-ticket-title"
+                >
                     <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl overflow-hidden">
                         {/* Header Background */}
                         <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
                         
-                        <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all z-20"><X size={20}/></button>
+                        <button 
+                            type="button" 
+                            onClick={() => setShowCreateModal(false)} 
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all z-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            aria-label={t('close')}
+                        >
+                            <X size={20}/>
+                        </button>
                         
                         <div className="relative z-10 p-2">
-                            <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
-                                <div className="p-3 bg-indigo-500/20 rounded-xl"><LifeBuoy className="text-indigo-400" size={24}/></div>
+                            <h3 id="new-ticket-title" className="text-2xl font-black text-white mb-8 flex items-center gap-3">
+                                <div className="p-3 bg-indigo-500/20 rounded-xl"><LifeBuoy className="text-indigo-400" size={24} aria-hidden="true"/></div>
                                 {t('new_ticket_title') || "New Request"}
                             </h3>
                             
                             <div className="space-y-5">
                                 <div className="group">
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_subject') || "Subject"}</label>
+                                    <label htmlFor="ticket-subject" className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_subject') || "Subject"}</label>
                                     <input 
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700" 
+                                        id="ticket-subject"
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-indigo-500" 
                                         value={newSubject} 
                                         onChange={e => setNewSubject(e.target.value)} 
                                         placeholder="Briefly describe the issue..." 
+                                        maxLength={100}
+                                        disabled={isSubmitting}
                                     />
                                 </div>
                                 <div className="group">
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_details') || "Details"}</label>
+                                    <label htmlFor="ticket-details" className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_details') || "Details"}</label>
                                     <textarea 
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none h-40 resize-none transition-all placeholder-slate-700" 
+                                        id="ticket-details"
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none h-40 resize-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-indigo-500" 
                                         value={newMessage} 
                                         onChange={e => setNewMessage(e.target.value)} 
                                         placeholder="Provide more details here..." 
+                                        maxLength={1000}
+                                        disabled={isSubmitting}
                                     />
+                                    <p className="text-right text-[10px] text-slate-600 mt-1">{newMessage.length}/1000</p>
                                 </div>
-                                <Button onClick={createTicket} variant="primary" className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" disabled={!newSubject || !newMessage}>
-                                    {t('send_request') || "Submit Request"}
+                                <Button 
+                                    onClick={createTicket} 
+                                    variant="primary" 
+                                    className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" 
+                                    disabled={!newSubject || !newMessage || isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <><Loader2 size={20} className="animate-spin mr-2"/> Sending...</>
+                                    ) : (
+                                        t('send_request') || "Submit Request"
+                                    )}
                                 </Button>
                             </div>
                         </div>

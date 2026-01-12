@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
     collection, query, where, getDocs, updateDoc, doc, getDoc 
 } from 'firebase/firestore';
@@ -20,7 +20,7 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { Badge } from '../components/ui/Badge';
 
 export const DoctorPatientsView = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
     // -- State --
     const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
@@ -60,6 +60,15 @@ export const DoctorPatientsView = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // -- Memoized Filters (Performance Optimization) --
+    const filteredAvailable = useMemo(() => {
+        return availableUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [availableUsers, searchTerm]);
+
+    const filteredMyPatients = useMemo(() => {
+        return myPatients.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [myPatients, searchTerm]);
 
     // -- Actions --
 
@@ -152,9 +161,6 @@ export const DoctorPatientsView = () => {
         } catch (e) { console.error(e); }
     };
 
-    const filteredAvailable = availableUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const filteredMyPatients = myPatients.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
     return (
         <LayoutContainer>
             <PageHeader 
@@ -163,11 +169,11 @@ export const DoctorPatientsView = () => {
                 action={
                     viewMode === 'LIST' ? (
                         <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary" className="!rounded-xl shadow-indigo-500/20">
-                            <UserPlus size={18} /> {t('add_patient_btn')}
+                            <UserPlus size={18} aria-hidden="true" /> {t('add_patient_btn')}
                         </Button>
                     ) : (
                         <Button onClick={() => setViewMode('LIST')} variant="secondary" className="!rounded-xl">
-                            <ChevronLeft size={18} /> {t('back_list_btn')}
+                            <ChevronLeft size={18} aria-hidden="true" /> {t('back_list_btn')}
                         </Button>
                     )
                 }
@@ -179,8 +185,10 @@ export const DoctorPatientsView = () => {
                     <Card className="bg-slate-900/80 border-white/10 mb-6 backdrop-blur-xl">
                         <h3 className="text-xl font-bold text-white mb-6">Find Users</h3>
                         <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-white/5 mb-6 group focus-within:border-indigo-500/50 transition-colors">
-                            <Search className="text-slate-500 group-focus-within:text-indigo-400" />
+                            <label htmlFor="user-search" className="sr-only">Search Users</label>
+                            <Search className="text-slate-500 group-focus-within:text-indigo-400" aria-hidden="true" />
                             <input 
+                                id="user-search"
                                 className="bg-transparent w-full text-white outline-none placeholder-slate-600"
                                 placeholder={t('search_available_placeholder')}
                                 value={searchTerm}
@@ -188,9 +196,9 @@ export const DoctorPatientsView = () => {
                                 autoFocus
                             />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar" role="list">
                             {filteredAvailable.map(user => (
-                                <div key={user.uid} className="flex justify-between items-center p-5 rounded-2xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-800/60 transition-all group">
+                                <div key={user.uid} className="flex justify-between items-center p-5 rounded-2xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-800/60 transition-all group" role="listitem">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5 group-hover:scale-110 transition-transform">
                                             {user.name.charAt(0)}
@@ -201,7 +209,7 @@ export const DoctorPatientsView = () => {
                                         </div>
                                     </div>
                                     <Button onClick={() => handleManualAdd(user)} variant="success" className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/10">
-                                        <UserPlus size={16} className="mr-2"/> {t('add_btn')}
+                                        <UserPlus size={16} className="mr-2" aria-hidden="true"/> {t('add_btn')}
                                     </Button>
                                 </div>
                             ))}
@@ -214,10 +222,12 @@ export const DoctorPatientsView = () => {
             {viewMode === 'LIST' && (
                 <div className="animate-in fade-in">
                     {/* TABS */}
-                    <div className="flex p-1.5 bg-slate-900/50 rounded-2xl border border-white/10 mb-8 w-fit backdrop-blur-md">
+                    <div className="flex p-1.5 bg-slate-900/50 rounded-2xl border border-white/10 mb-8 w-fit backdrop-blur-md" role="tablist">
                         <button 
                             onClick={() => setActiveTab('MY_PATIENTS')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'MY_PATIENTS' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            role="tab"
+                            aria-selected={activeTab === 'MY_PATIENTS'}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${activeTab === 'MY_PATIENTS' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             {t('stat_total_patients')}
                             <Badge color="blue" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent">{myPatients.length}</Badge>
@@ -225,7 +235,9 @@ export const DoctorPatientsView = () => {
                         
                         <button 
                             onClick={() => setActiveTab('REQUESTS')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'REQUESTS' ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            role="tab"
+                            aria-selected={activeTab === 'REQUESTS'}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-amber-500 ${activeTab === 'REQUESTS' ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             {t('patient_requests_title')}
                             {pendingRequests.length > 0 && <Badge color="red" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent animate-pulse">{pendingRequests.length}</Badge>}
@@ -262,10 +274,10 @@ export const DoctorPatientsView = () => {
                                     </div>
                                     <div className="flex gap-3">
                                         <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-3 !text-xs shadow-emerald-500/10">
-                                            <UserCheck size={16} className="mr-2"/> {t('accept_patient')}
+                                            <UserCheck size={16} className="mr-2" aria-hidden="true"/> {t('accept_patient')}
                                         </Button>
                                         <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-3 !text-xs shadow-rose-500/10">
-                                            <UserX size={16} className="mr-2"/> {t('reject_patient')}
+                                            <UserX size={16} className="mr-2" aria-hidden="true"/> {t('reject_patient')}
                                         </Button>
                                     </div>
                                 </div>
@@ -280,9 +292,12 @@ export const DoctorPatientsView = () => {
                                 <div 
                                     key={patient.uid} 
                                     onClick={() => openPatientDetails(patient)}
-                                    className="bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/80 cursor-pointer transition-all group relative overflow-hidden backdrop-blur-md shadow-lg"
+                                    className="bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/80 cursor-pointer transition-all group relative overflow-hidden backdrop-blur-md shadow-lg focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none"
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label={`View details for ${patient.name}`}
                                 >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
                                     
                                     <div className="flex justify-between items-start mb-6 relative z-10">
                                         <div className="flex items-center gap-4">
@@ -326,7 +341,12 @@ export const DoctorPatientsView = () => {
 
             {/* --- PATIENT DETAILS MODAL --- */}
             {selectedPatient && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-title"
+                >
                     <div className="w-full max-w-6xl h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative rounded-[2.5rem] overflow-hidden">
                         
                         {/* Header */}
@@ -336,18 +356,22 @@ export const DoctorPatientsView = () => {
                                     {selectedPatient.name.charAt(0)}
                                 </div>
                                 <div>
-                                    <h2 className="text-3xl font-black text-white mb-1">{selectedPatient.name}</h2>
+                                    <h2 id="modal-title" className="text-3xl font-black text-white mb-1">{selectedPatient.name}</h2>
                                     <div className="flex items-center gap-3 text-sm text-slate-400">
-                                        <FileText size={16} className="text-indigo-400"/> 
+                                        <FileText size={16} className="text-indigo-400" aria-hidden="true"/> 
                                         <span className="text-white font-bold">{selectedPatient.medType || 'General'}</span> 
-                                        <span>•</span>
+                                        <span aria-hidden="true">•</span>
                                         <span>{selectedPatient.medForm}</span>
-                                        <span>•</span>
+                                        <span aria-hidden="true">•</span>
                                         <span className="bg-slate-800 px-2 py-0.5 rounded text-xs">{selectedPatient.medUnit}</span>
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedPatient(null)} className="p-3 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-all border border-white/5">
+                            <button 
+                                onClick={() => setSelectedPatient(null)} 
+                                className="p-3 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-all border border-white/5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                aria-label="Close details"
+                            >
                                 <X size={24} />
                             </button>
                         </div>
@@ -359,10 +383,10 @@ export const DoctorPatientsView = () => {
                             <div className="lg:col-span-2 space-y-8">
                                 <Card className="bg-slate-900/60 border-white/5 p-6 h-[400px] flex flex-col shadow-inner">
                                     <h3 className="text-white font-bold mb-6 flex items-center gap-3 text-lg">
-                                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Activity size={20} className="text-indigo-400"/></div>
+                                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Activity size={20} className="text-indigo-400" aria-hidden="true"/></div>
                                         Adherence & Dosage
                                     </h3>
-                                    <div className="flex-1 w-full">
+                                    <div className="flex-1 w-full" role="img" aria-label="Adherence Chart">
                                         {patientLogs.length > 0 ? (
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <AreaChart data={patientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
@@ -397,14 +421,14 @@ export const DoctorPatientsView = () => {
                                      <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
                                          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('sleep_label')}</span>
                                          <span className="text-2xl font-black text-white flex items-center justify-center gap-2">
-                                             <Moon size={20} className="text-blue-400"/> 
+                                             <Moon size={20} className="text-blue-400" aria-hidden="true"/> 
                                              {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'} <span className="text-sm text-slate-600">h</span>
                                          </span>
                                      </div>
                                      <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
                                          <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('mood')}</span>
                                          <span className="text-xl font-bold text-white flex items-center justify-center gap-2 mt-1">
-                                             <Smile size={24} className="text-emerald-400"/> Good
+                                             <Smile size={24} className="text-emerald-400" aria-hidden="true"/> Good
                                          </span>
                                      </div>
                                 </div>
@@ -412,21 +436,33 @@ export const DoctorPatientsView = () => {
                                 <Card className="bg-slate-900/60 border-white/5 flex-1 max-h-[500px] overflow-hidden flex flex-col !p-0 shadow-lg">
                                     <div className="p-6 border-b border-white/5 bg-slate-900/40">
                                         <h3 className="text-white font-bold flex items-center gap-3">
-                                            <Calendar size={20} className="text-amber-400"/> Recent Logs
+                                            <Calendar size={20} className="text-amber-400" aria-hidden="true"/> Recent Logs
                                         </h3>
                                     </div>
                                     <div className="overflow-y-auto custom-scrollbar flex-1 p-4 space-y-2">
-                                        {patientLogs.slice().reverse().map((log, i) => (
-                                            <div key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors">
-                                                <span className="text-slate-400 font-mono">{log.date}</span>
-                                                <span className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></span>
-                                                <span>
-                                                    {log.mood === 'good' ? <Smile size={18} className="text-emerald-500"/> : 
-                                                     log.mood === 'bad' ? <Frown size={18} className="text-rose-500"/> : 
-                                                     <Meh size={18} className="text-amber-500"/>}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        <table className="w-full text-left border-collapse">
+                                            <caption className="sr-only">Patient Daily Logs</caption>
+                                            <thead className="sr-only">
+                                                <tr>
+                                                    <th scope="col">Date</th>
+                                                    <th scope="col">Dose</th>
+                                                    <th scope="col">Mood</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                            {patientLogs.slice().reverse().map((log, i) => (
+                                                <tr key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors mb-2">
+                                                    <td className="text-slate-400 font-mono">{log.date}</td>
+                                                    <td className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></td>
+                                                    <td>
+                                                        {log.mood === 'good' ? <Smile size={18} className="text-emerald-500" aria-label="Good"/> : 
+                                                         log.mood === 'bad' ? <Frown size={18} className="text-rose-500" aria-label="Bad"/> : 
+                                                         <Meh size={18} className="text-amber-500" aria-label="Average"/>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </Card>
                             </div>

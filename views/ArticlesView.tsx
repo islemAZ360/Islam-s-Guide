@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool, Sparkles } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -17,8 +17,26 @@ interface ArticlesViewProps {
     userProfile?: UserProfile | null;
 }
 
+// Internal Component: Article Skeleton Loader
+const ArticleSkeleton = () => (
+    <div className="rounded-[2rem] p-6 border border-white/5 bg-slate-900/40 animate-pulse h-full flex flex-col">
+        <div className="w-24 h-6 bg-slate-800 rounded-full mb-4"></div>
+        <div className="w-3/4 h-8 bg-slate-800 rounded-lg mb-2"></div>
+        <div className="w-1/2 h-8 bg-slate-800 rounded-lg mb-6"></div>
+        <div className="space-y-2 flex-1">
+            <div className="w-full h-4 bg-slate-800/50 rounded"></div>
+            <div className="w-full h-4 bg-slate-800/50 rounded"></div>
+            <div className="w-2/3 h-4 bg-slate-800/50 rounded"></div>
+        </div>
+        <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
+            <div className="w-20 h-4 bg-slate-800 rounded"></div>
+            <div className="w-8 h-8 bg-slate-800 rounded-full"></div>
+        </div>
+    </div>
+);
+
 export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
-    const { t, language } = useLanguage();
+    const { t, language, dir } = useLanguage();
     const [articles, setArticles] = useState<Article[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<'all' | ArticleCategory>('all');
     const [readingArticle, setReadingArticle] = useState<Article | null>(null);
@@ -27,6 +45,17 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
     // -- Create Mode State --
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
+
+    // Focus Management Refs
+    const modalRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement | null>(null); // To return focus after closing modal
+
+    // -- Helpers --
+    const calculateReadingTime = (text: string) => {
+        const wordsPerMinute = 200;
+        const words = text.trim().split(/\s+/).length;
+        return Math.ceil(words / wordsPerMinute);
+    };
 
     // -- Fetch Articles --
     const fetchArticles = async () => {
@@ -50,12 +79,23 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         fetchArticles();
     }, []);
 
+    // Manage Focus for Reading Modal
+    useEffect(() => {
+        if (readingArticle) {
+            setTimeout(() => modalRef.current?.focus(), 100);
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+            // Return focus to the card that opened it (if tracked, simplified here)
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [readingArticle]);
+
     // -- Publish Action --
     const handlePublish = async () => {
         const currentUser = auth?.currentUser;
 
         if (!currentUser || !userProfile) return;
-        
         if (!newArticle.title.trim() || !newArticle.content.trim()) return;
 
         try {
@@ -80,16 +120,16 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         }
     };
 
-    // -- Helpers --
+    // -- UI Helpers --
     const filteredArticles = selectedCategory === 'all' 
         ? articles 
         : articles.filter(a => a.category === selectedCategory);
 
     const getCategoryIcon = (cat: string) => {
         switch(cat) {
-            case 'medical': return <Stethoscope size={16} />;
-            case 'motivation': return <Heart size={16} />;
-            default: return <Lightbulb size={16} />;
+            case 'medical': return <Stethoscope size={14} aria-hidden="true" />;
+            case 'motivation': return <Heart size={14} aria-hidden="true" />;
+            default: return <Lightbulb size={14} aria-hidden="true" />;
         }
     };
 
@@ -103,9 +143,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     const getCategoryGradient = (cat: string) => {
         switch(cat) {
-            case 'medical': return 'from-indigo-500/20 to-blue-500/20 hover:from-indigo-500/30 hover:to-blue-500/30';
-            case 'motivation': return 'from-rose-500/20 to-pink-500/20 hover:from-rose-500/30 hover:to-pink-500/30';
-            default: return 'from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30';
+            case 'medical': return 'from-indigo-500/20 to-blue-500/20 hover:from-indigo-500/30 hover:to-blue-500/30 border-indigo-500/20';
+            case 'motivation': return 'from-rose-500/20 to-pink-500/20 hover:from-rose-500/30 hover:to-pink-500/30 border-rose-500/20';
+            default: return 'from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border-amber-500/20';
         }
     };
 
@@ -118,15 +158,15 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 subtitle={t('knowledge_desc')}
                 action={
                     canPublish && (
-                        <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20">
-                            <PenTool size={18} /> {t('new_article_btn')}
+                        <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20" aria-label={t('new_article_btn')}>
+                            <PenTool size={18} aria-hidden="true" /> {t('new_article_btn')}
                         </Button>
                     )
                 }
             />
 
             {/* Category Filters */}
-            <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide" role="tablist" aria-label="Article Categories">
                 {[
                     { id: 'all', label: t('cat_all'), icon: BookOpen },
                     { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
@@ -136,94 +176,107 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                     <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id as any)}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap border backdrop-blur-md ${
+                        role="tab"
+                        aria-selected={selectedCategory === cat.id}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap border backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                             selectedCategory === cat.id 
                             ? 'bg-white text-slate-900 border-white shadow-lg shadow-white/20 scale-105' 
                             : 'bg-slate-900/40 text-slate-400 border-white/5 hover:border-white/20 hover:text-white'
                         }`}
                     >
-                        <cat.icon size={18} />
+                        <cat.icon size={18} aria-hidden="true" />
                         {cat.label}
                     </button>
                 ))}
             </div>
 
             {/* Articles Grid */}
-            {loading ? (
-                <div className="text-center py-24 text-indigo-400 animate-pulse flex flex-col items-center">
-                    <Sparkles className="w-10 h-10 mb-4 animate-spin-slow"/>
-                    <span className="font-bold tracking-widest text-sm">جاري تحميل المحتوى...</span>
-                </div>
-            ) : filteredArticles.length === 0 ? (
-                <div className="text-center py-20 bg-slate-900/40 rounded-[2.5rem] border border-dashed border-slate-800 backdrop-blur-sm">
-                    <BookOpen size={48} className="mx-auto text-slate-700 mb-4"/>
-                    <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات هنا.' : 'No articles found.'}</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredArticles.map(article => (
-                        <div 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {loading ? (
+                    // Show 3 Skeletons while loading
+                    Array.from({ length: 3 }).map((_, i) => <ArticleSkeleton key={i} />)
+                ) : filteredArticles.length === 0 ? (
+                    <div className="col-span-full text-center py-20 bg-slate-900/40 rounded-[2.5rem] border border-dashed border-slate-800 backdrop-blur-sm">
+                        <BookOpen size={48} className="mx-auto text-slate-700 mb-4" aria-hidden="true"/>
+                        <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات في هذا القسم حالياً.' : 'No articles found in this category.'}</p>
+                    </div>
+                ) : (
+                    filteredArticles.map(article => (
+                        <article 
                             key={article.id}
-                            onClick={() => setReadingArticle(article)}
-                            className={`group rounded-[2rem] p-6 cursor-pointer flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border border-white/5 bg-gradient-to-br ${getCategoryGradient(article.category)}`}
+                            className={`group rounded-[2rem] p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border bg-gradient-to-br ${getCategoryGradient(article.category)}`}
                         >
-                            <div className="mb-4 relative z-10">
-                                <Badge color={getCategoryColor(article.category) as any} className="mb-4 w-fit flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent">
-                                    {getCategoryIcon(article.category)} {article.category.toUpperCase()}
-                                </Badge>
+                            <button 
+                                onClick={() => setReadingArticle(article)}
+                                className="absolute inset-0 z-10 w-full h-full focus:outline-none focus:ring-4 focus:ring-indigo-500/50 rounded-[2rem]"
+                                aria-label={`Read article: ${article.title}`}
+                            ></button>
+
+                            <div className="mb-4 relative z-0 pointer-events-none">
+                                <div className="flex justify-between items-start mb-4">
+                                    <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
+                                        {getCategoryIcon(article.category)} {article.category.toUpperCase()}
+                                    </Badge>
+                                    <span className="text-[10px] font-bold text-white/40 flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full">
+                                        <Clock size={10} /> {calculateReadingTime(article.content)} min
+                                    </span>
+                                </div>
                                 <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
                                     {article.title}
                                 </h3>
                             </div>
                             
-                            <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed">
+                            <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed relative z-0 pointer-events-none">
                                 {article.content}
                             </p>
                             
-                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-10">
+                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-0 pointer-events-none">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">
-                                        {article.authorName} {article.authorRole === 'doctor' && '(Dr)'}
+                                    <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider flex items-center gap-1">
+                                        {article.authorRole === 'doctor' && <CheckCircle size={10} className="text-blue-400" />}
+                                        {article.authorName}
                                     </span>
                                     <span className="text-[10px] text-white/40 font-mono">
                                         {new Date(article.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
                                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
-                                    <ArrowRight size={14} className={language === 'ar' ? 'rotate-180' : ''}/>
+                                    <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''}/>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                        </article>
+                    ))
+                )}
+            </div>
 
             {/* Create Article Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="create-title">
                     <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 hover:bg-white/5 rounded-full transition-colors"><X size={20}/></button>
+                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 hover:bg-white/5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label={t('close')}><X size={20}/></button>
                         
-                        <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
-                            <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><PenTool size={20}/></div>
+                        <h2 id="create-title" className="text-2xl font-black text-white mb-8 flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><PenTool size={20} aria-hidden="true"/></div>
                             {t('new_article_btn')}
                         </h2>
 
                         <div className="space-y-5">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_title_label')}</label>
+                                <label htmlFor="art-title" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_title_label')}</label>
                                 <input 
+                                    id="art-title"
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
                                     placeholder="عنوان جذاب..."
+                                    autoFocus
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_cat_label')}</label>
-                                <div className="flex gap-2">
+                                <label id="art-cat-label" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_cat_label')}</label>
+                                <div className="flex gap-2" role="radiogroup" aria-labelledby="art-cat-label">
                                     {[
                                         { id: 'medical', label: t('cat_medical'), color: 'indigo' },
                                         { id: 'motivation', label: t('cat_motivation'), color: 'rose' },
@@ -231,8 +284,10 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
+                                            role="radio"
+                                            aria-checked={newArticle.category === cat.id}
                                             onClick={() => setNewArticle({...newArticle, category: cat.id as ArticleCategory})}
-                                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-slate-900 focus:ring-${cat.color}-500 ${
                                                 newArticle.category === cat.id 
                                                 ? `bg-${cat.color}-600 border-${cat.color}-500 text-white shadow-lg` 
                                                 : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'
@@ -245,8 +300,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_content_label')}</label>
+                                <label htmlFor="art-content" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_content_label')}</label>
                                 <textarea 
+                                    id="art-content"
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 h-48 resize-none transition-all placeholder-slate-700 custom-scrollbar"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
@@ -267,21 +323,39 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Reading Modal */}
             {readingArticle && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
-                    <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative overflow-hidden rounded-[2.5rem]">
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="read-title"
+                >
+                    <div 
+                        ref={modalRef}
+                        tabIndex={-1}
+                        className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative overflow-hidden rounded-[2.5rem] outline-none"
+                    >
                         {/* Modal Header */}
                         <div className={`p-8 md:p-10 border-b border-white/5 relative bg-gradient-to-br ${getCategoryGradient(readingArticle.category)}`}>
                             <button 
                                 onClick={() => setReadingArticle(null)}
-                                className="absolute top-6 left-6 p-2 bg-black/20 rounded-full text-white/70 hover:text-white transition-colors backdrop-blur-md"
+                                className="absolute top-6 left-6 p-2 bg-black/20 rounded-full text-white/70 hover:text-white transition-colors backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-white"
+                                aria-label={t('close')}
                             >
                                 <X size={20} />
                             </button>
                             
-                            <Badge color={getCategoryColor(readingArticle.category) as any} className="mb-4 bg-black/20 border-transparent text-white shadow-none">
-                                {readingArticle.category.toUpperCase()}
-                            </Badge>
-                            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">
+                            <div className="flex gap-2 mb-4">
+                                <Badge color={getCategoryColor(readingArticle.category) as any} className="bg-black/20 border-transparent text-white shadow-none">
+                                    {readingArticle.category.toUpperCase()}
+                                </Badge>
+                                {readingArticle.authorRole === 'doctor' && (
+                                    <Badge color="blue" className="bg-blue-500/20 border-blue-500/30 text-blue-100 shadow-none">
+                                        <CheckCircle size={12} className="mr-1" /> VERIFIED DOCTOR
+                                    </Badge>
+                                )}
+                            </div>
+
+                            <h2 id="read-title" className="text-3xl md:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">
                                 {readingArticle.title}
                             </h2>
                             <div className="flex items-center gap-4 text-xs text-white/60 font-medium">
@@ -291,7 +365,9 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     </div>
                                     <span>{readingArticle.authorName}</span>
                                 </div>
-                                <span>•</span>
+                                <span aria-hidden="true">•</span>
+                                <span className="flex items-center gap-1"><Clock size={12}/> {calculateReadingTime(readingArticle.content)} min read</span>
+                                <span aria-hidden="true">•</span>
                                 <span>{new Date(readingArticle.createdAt).toLocaleDateString()}</span>
                             </div>
                         </div>

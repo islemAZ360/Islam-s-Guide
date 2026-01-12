@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone } from 'lucide-react';
 
 // Contexts
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -32,6 +32,32 @@ const addDaysSafe = (dateStr: string, days: number): string => {
   const date = new Date(dateStr);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().split('T')[0];
+};
+
+// --- New Medical Disclaimer Component (Internal) ---
+const MedicalSafetyBanner = () => {
+  const { language } = useLanguage();
+  const isAr = language === 'ar';
+
+  return (
+    <div className="w-full bg-amber-950/40 border-b border-amber-500/20 backdrop-blur-md relative z-[100] print:hidden">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-center gap-3 text-center md:text-start">
+        <div className="flex items-center gap-2 text-amber-400 font-bold text-xs md:text-sm">
+          <AlertTriangle size={16} className="shrink-0 animate-pulse" />
+          <span>
+            {isAr 
+              ? "تنبيه هام: هذا الموقع يوفر أدوات مساعدة فقط ولا يُعد بديلاً عن الاستشارة الطبية المتخصصة."
+              : "Medical Disclaimer: This site provides support tools only and is NOT a substitute for professional medical advice."}
+          </span>
+        </div>
+        <div className="hidden md:block w-px h-4 bg-amber-500/20 mx-2"></div>
+        <a href="tel:112" className="flex items-center gap-2 text-xs font-bold text-rose-400 hover:text-rose-300 transition-colors bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
+          <Phone size={12} />
+          {isAr ? "للطوارئ: اتصل بالإسعاف فوراً" : "Emergency? Call Local Services"}
+        </a>
+      </div>
+    </div>
+  );
 };
 
 function AppContent() {
@@ -250,38 +276,51 @@ function AppContent() {
   // 1. LOGIN SCREEN
   if (!currentUser && !isDemoMode) {
     return (
-        <LoginView 
-            handleLogin={handleLoginSubmit} 
-            handleGoogleLogin={loginWithGoogle} 
-            email={email} setEmail={setEmail} 
-            password={password} setPassword={setPassword} 
-            loginError={loginError || ''} 
-            setDemoCreds={enableDemoMode} 
-        />
+        <div className="min-h-screen bg-[#020617] flex flex-col">
+            <MedicalSafetyBanner />
+            <div className="flex-1 flex items-center justify-center">
+                <LoginView 
+                    handleLogin={handleLoginSubmit} 
+                    handleGoogleLogin={loginWithGoogle} 
+                    email={email} setEmail={setEmail} 
+                    password={password} setPassword={setPassword} 
+                    loginError={loginError || ''} 
+                    setDemoCreds={enableDemoMode} 
+                />
+            </div>
+        </div>
     );
   }
 
   // 2. ONBOARDING & RESUBMISSION
   if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
     return (
-        <OnboardingView 
-            userProfile={userProfile!} 
-            setUserProfile={setUserProfile} 
-            inventory={inventory} 
-            setInventory={setInventory} 
-            currentDoseHabit={currentDoseHabit} 
-            setCurrentDoseHabit={setCurrentDoseHabit} 
-            startPlan={startPlan} 
-            email={currentUser?.email || email} 
-            handleLogout={logout} 
-        />
+        <div className="min-h-screen bg-[#020617] flex flex-col">
+            <MedicalSafetyBanner />
+            <div className="flex-1">
+                <OnboardingView 
+                    userProfile={userProfile!} 
+                    setUserProfile={setUserProfile} 
+                    inventory={inventory} 
+                    setInventory={setInventory} 
+                    currentDoseHabit={currentDoseHabit} 
+                    setCurrentDoseHabit={setCurrentDoseHabit} 
+                    startPlan={startPlan} 
+                    email={currentUser?.email || email} 
+                    handleLogout={logout} 
+                />
+            </div>
+        </div>
     );
   }
 
   // 3. MAIN APP LAYOUT
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30" dir={dir}>
+    <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30 flex flex-col" dir={dir}>
       
+      {/* Medical Banner - Always visible at top */}
+      <MedicalSafetyBanner />
+
       {/* --- Ambient Background Effects (The New Magic) --- */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50"></div>
@@ -289,14 +328,14 @@ function AppContent() {
       </div>
 
       {toastMessage && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2 border border-white/10">
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2 border border-white/10">
               <Check size={18} /> {toastMessage}
           </div>
       )}
 
       {/* REJECTION SCREEN - DOCTOR */}
       {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
@@ -318,7 +357,7 @@ function AppContent() {
 
       {/* REJECTION SCREEN - PATIENT */}
       {userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
@@ -335,10 +374,10 @@ function AppContent() {
 
       {/* NORMAL APP FLOW */}
       {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
-          <>
+          <div className="flex-1 flex flex-col md:flex-row h-full">
               {/* Mobile Back Nav - Moved Top */}
               {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
-                  <button onClick={goBack} className="fixed top-6 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
+                  <button onClick={goBack} className="fixed top-24 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
                       {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                   </button>
               )}
@@ -346,7 +385,7 @@ function AppContent() {
               <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
               <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
               
-              <div className="md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
+              <div className="flex-1 md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
                 
                 {/* PENDING SCREENS */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
@@ -438,7 +477,7 @@ function AppContent() {
                     </>
                 )}
               </div>
-          </>
+          </div>
       )}
     </div>
   );

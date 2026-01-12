@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 12/1/2026, 01:47:24
+Generated: 12/1/2026, 23:21:08
 
 ## 🌳 Project Structure
 ```text
@@ -169,7 +169,7 @@ export const BreathingModal = ({ isOpen, onClose }: BreathingModalProps) => {
 ### File: `components\modals\DoctorReportModal.tsx`
 ```tsx
 import React from 'react';
-import { FileText, Printer, X } from 'lucide-react';
+import { FileText, Printer, X, Activity, Calendar, User, Ruler, Weight } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { UserProfile, DailyLog, PlanDay } from '../../types';
 import { Button } from '../ui/Button';
@@ -185,122 +185,173 @@ interface DoctorReportModalProps {
 export const DoctorReportModal = ({ 
   isOpen, onClose, userProfile, logs, plan 
 }: DoctorReportModalProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
-  // Determine Unit Label
+  if (!isOpen) return null;
+
+  // حسابات التقرير
   const unitLabel = userProfile?.medUnit || 'mg';
+  const adherenceRate = plan.length > 0 ? Math.round((logs.length / plan.filter(p => p.date <= new Date().toISOString().split('T')[0]).length) * 100) : 0;
+  const startDose = plan.length > 0 ? plan[0].plannedDose : 0;
+  const currentDose = plan.find(p => p.date === new Date().toISOString().split('T')[0])?.plannedDose || 0;
   
-  // Plan Description
   const planTypeLabel = userProfile?.planType === 'manual' 
     ? `Managed by Dr. ${userProfile.patientData?.assignedDoctorName || 'Unknown'}` 
     : 'Automated Smart Algorithm';
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300 p-4">
-      <div className="relative w-full max-w-4xl bg-white text-slate-900 rounded-[2rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-start mb-8 print:hidden">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4 print:p-0 print:bg-white print:static">
+      
+      <div className="relative w-full max-w-4xl bg-white text-slate-900 rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col print:max-h-none print:rounded-none print:shadow-none print:w-full">
+        
+        {/* Header - Screen Only */}
+        <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50 print:hidden">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
                 <FileText className="text-indigo-600" /> {t('export_report')}
             </h2>
-            <div className="flex gap-2">
-                <Button onClick={() => window.print()} className="!py-2 !px-4 !bg-indigo-600 !text-white !rounded-xl !shadow-none">
-                    <Printer size={18} /> {t('print')}
+            <div className="flex gap-3">
+                <Button onClick={() => window.print()} className="!py-2 !px-4 !bg-indigo-600 !text-white !rounded-xl !shadow-none hover:!bg-indigo-700">
+                    <Printer size={18} className="mr-2"/> {t('print')}
                 </Button>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
                     <X size={24} />
                 </button>
             </div>
         </div>
 
-        {/* Printable Area */}
-        <div className="print-area space-y-6">
-            <div className="border-b pb-6 flex justify-between items-end">
+        {/* Printable Content Area */}
+        <div className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible custom-scrollbar bg-white">
+            
+            {/* Report Header */}
+            <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 mb-1">Islam's Guide Report</h1>
-                    <p className="text-slate-500 text-sm">Recovery Progress & Adherence Log</p>
+                    <h1 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tight">Islam's Guide <span className="text-indigo-600 text-sm align-top">PRO</span></h1>
+                    <p className="text-slate-500 font-medium">Recovery Progress & Neuro-Adaptation Report</p>
                 </div>
                 <div className="text-right">
-                    <p className="font-bold text-lg">{userProfile?.name}</p>
-                    <p className="text-slate-500">{new Date().toLocaleDateString()}</p>
-                    <div className="flex flex-col items-end mt-1">
-                        <span className="text-xs font-bold text-indigo-600 uppercase">
-                            {userProfile?.medForm === 'liquid' ? 'LIQUID FORMULATION' : 'TABLET FORMULATION'}
-                        </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase">
-                            Strategy: {planTypeLabel}
-                        </span>
+                    <p className="text-slate-400 text-sm mb-1">Generated on</p>
+                    <p className="font-bold text-slate-900 font-mono">{new Date().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+            </div>
+
+            {/* Patient Info Grid */}
+            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-8 print:border print:border-slate-300">
+                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <User size={14} /> Patient Information
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <span className="block text-xs text-slate-500 mb-1">Full Name</span>
+                        <span className="block font-bold text-slate-900 text-lg">{userProfile?.name}</span>
+                    </div>
+                    <div>
+                        <span className="block text-xs text-slate-500 mb-1">Age</span>
+                        <span className="block font-bold text-slate-900 text-lg">{userProfile?.age ? `${userProfile.age} Years` : '-'}</span>
+                    </div>
+                    <div>
+                        <span className="block text-xs text-slate-500 mb-1">Weight</span>
+                        <span className="block font-bold text-slate-900 text-lg">{userProfile?.weight ? `${userProfile.weight} kg` : '-'}</span>
+                    </div>
+                    <div>
+                        <span className="block text-xs text-slate-500 mb-1">Height</span>
+                        <span className="block font-bold text-slate-900 text-lg">{userProfile?.height ? `${userProfile.height} cm` : '-'}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                     <span className="block text-xs text-slate-500 uppercase font-bold">Medication Type</span>
-                     <span className="font-bold text-lg capitalize">{userProfile?.medType || 'Standard'}</span>
+            {/* Clinical Summary */}
+            <div className="grid grid-cols-3 gap-4 mb-8 print:grid-cols-3">
+                 <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                     <span className="block text-xs text-slate-400 uppercase font-bold mb-2">Medication</span>
+                     <div className="font-black text-xl text-slate-800 capitalize">{userProfile?.medType || 'Standard'}</div>
+                     <div className="text-xs text-slate-500 mt-1">{userProfile?.medForm} ({unitLabel})</div>
                  </div>
-                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                     <span className="block text-xs text-slate-500 uppercase font-bold">Current Dose</span>
-                     <span className="font-bold text-lg">
-                        {plan.find(p => p.date === new Date().toISOString().split('T')[0])?.plannedDose || 0}{unitLabel}
-                     </span>
+                 <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                     <span className="block text-xs text-slate-400 uppercase font-bold mb-2">Dose Reduction</span>
+                     <div className="flex items-baseline gap-2">
+                         <span className="font-black text-xl text-slate-800">{startDose}</span>
+                         <span className="text-slate-400 text-sm">➔</span>
+                         <span className="font-black text-xl text-indigo-600">{currentDose}</span>
+                         <span className="text-xs text-slate-500">{unitLabel}</span>
+                     </div>
                  </div>
-                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                     <span className="block text-xs text-slate-500 uppercase font-bold">Compliance Score</span>
-                     <span className="font-bold text-lg text-indigo-600">{Math.round((logs.length / (plan.length || 1)) * 100)}%</span>
+                 <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                     <span className="block text-xs text-slate-400 uppercase font-bold mb-2">Adherence</span>
+                     <div className="font-black text-xl text-emerald-600">{adherenceRate}%</div>
+                     <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                         <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${adherenceRate}%` }}></div>
+                     </div>
                  </div>
             </div>
 
-            <table className="w-full text-sm text-left border-collapse">
-                <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200">
-                        <th className="p-3 font-bold text-slate-700">Date</th>
-                        <th className="p-3 font-bold text-slate-700">Planned</th>
-                        <th className="p-3 font-bold text-slate-700">Taken</th>
-                        <th className="p-3 font-bold text-slate-700">Mood</th>
-                        <th className="p-3 font-bold text-slate-700">Sleep</th>
-                        <th className="p-3 font-bold text-slate-700">Symptoms</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {logs.slice().reverse().map((log, i) => {
-                        const planned = plan.find(p => p.date === log.date)?.plannedDose || '-';
-                        return (
-                            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="p-3 font-mono text-slate-600">{log.date}</td>
-                                <td className="p-3 font-bold text-slate-500">{planned}{unitLabel}</td>
-                                <td className="p-3 font-bold text-indigo-600">{log.doseTaken}{unitLabel}</td>
-                                <td className="p-3">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                        log.mood === 'good' ? 'bg-emerald-100 text-emerald-700' : 
-                                        log.mood === 'bad' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
-                                    }`}>
-                                        {log.mood?.toUpperCase()}
-                                    </span>
-                                </td>
-                                <td className="p-3 text-slate-600">{log.sleepHours ? `${log.sleepHours}h` : '-'}</td>
-                                <td className="p-3 text-slate-500 text-xs">
-                                    {log.symptoms?.join(', ') || '-'}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-            
-            <div className="mt-8 border-t pt-4 text-center text-xs text-slate-400">
-                <p>Generated by Islam's Guide Recovery System.</p>
-                <p>This report is for informational purposes and does not replace professional medical advice.</p>
+            {/* Detailed Log Table */}
+            <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Activity size={16} className="text-slate-400"/> Daily Vitals Log
+                </h3>
+                <table className="w-full text-sm text-left border-collapse border border-slate-200 rounded-lg overflow-hidden">
+                    <thead className="bg-slate-100 text-slate-600">
+                        <tr>
+                            <th className="p-3 font-bold border-b border-slate-200">Date</th>
+                            <th className="p-3 font-bold border-b border-slate-200">Planned</th>
+                            <th className="p-3 font-bold border-b border-slate-200">Taken</th>
+                            <th className="p-3 font-bold border-b border-slate-200">Sleep (Prev)</th>
+                            <th className="p-3 font-bold border-b border-slate-200">Mood</th>
+                            <th className="p-3 font-bold border-b border-slate-200 w-1/3">Symptoms / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {logs.slice().reverse().map((log, i) => {
+                            const planned = plan.find(p => p.date === log.date)?.plannedDose;
+                            return (
+                                <tr key={i} className="hover:bg-slate-50 break-inside-avoid">
+                                    <td className="p-3 font-mono text-slate-500">{log.date}</td>
+                                    <td className="p-3 font-medium text-slate-400">{planned !== undefined ? `${planned}${unitLabel}` : '-'}</td>
+                                    <td className="p-3 font-bold text-indigo-600">{log.doseTaken}{unitLabel}</td>
+                                    <td className="p-3 text-slate-700">{log.sleepHours ? `${log.sleepHours} hrs` : '-'}</td>
+                                    <td className="p-3">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                            log.mood === 'good' ? 'bg-emerald-100 text-emerald-700' : 
+                                            log.mood === 'bad' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                            {log.mood}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-slate-500 text-xs italic">
+                                        {log.symptoms && log.symptoms.length > 0 ? log.symptoms.join(', ') : 'None'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Footer / Disclaimer */}
+            <div className="border-t border-slate-200 pt-6 mt-12 flex justify-between items-end text-xs text-slate-400 print:fixed print:bottom-0 print:left-0 print:w-full print:p-8 print:bg-white">
+                <div>
+                    <p className="font-bold text-slate-500 mb-1">Plan Strategy: {planTypeLabel}</p>
+                    <p>This report is computer-generated by Islam's Guide Algorithm v2.0.</p>
+                    <p>It acts as a supplementary record and does not replace official medical advice.</p>
+                </div>
+                <div className="text-center">
+                    <div className="h-10 w-32 border-b border-slate-300 mb-1"></div>
+                    <p>Doctor's Signature</p>
+                </div>
             </div>
         </div>
       </div>
+      
+      {/* Print CSS Rules */}
       <style>{`
         @media print {
+            @page { margin: 0.5cm; size: A4 portrait; }
             body * { visibility: hidden; }
             .print-area, .print-area * { visibility: visible; }
-            .print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; }
-            .fixed { position: static !important; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; }
+            .fixed { position: static !important; overflow: visible !important; }
+            /* Hide scrollbars in print */
+            ::-webkit-scrollbar { display: none; }
         }
       `}</style>
     </div>
@@ -323,12 +374,12 @@ interface ScientificPlanModalProps {
 }
 
 export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPlanModalProps) => {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300 p-4" dir={dir}>
       <div className="relative w-full max-w-2xl bg-slate-900 border border-indigo-500/30 rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* تأثير خلفية جمالي */}
@@ -406,7 +457,7 @@ export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPl
                     {t('sci_trust_msg')}
                 </p>
                 <Button onClick={onConfirm} variant="success" className="w-full md:w-auto px-8 py-4 text-lg shadow-lg shadow-emerald-500/20 rounded-xl">
-                    {t('sci_btn_understood')} <ArrowRight size={20} className={document.dir === 'rtl' ? 'mr-2 rotate-180' : 'ml-2'} />
+                    {t('sci_btn_understood')} <ArrowRight size={20} className={dir === 'rtl' ? 'mr-2 rotate-180' : 'ml-2'} />
                 </Button>
             </div>
         </div>
@@ -428,20 +479,28 @@ interface BadgeProps {
 }
 
 export const Badge = ({ children, color = 'indigo', className = '' }: BadgeProps) => {
+  // تعريف الألوان مع تأثيرات الظل والإطار المتوهج
   const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]',
-    green: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
-    emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]',
-    red: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
-    rose: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]',
-    amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]',
-    blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]',
+    indigo: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.15)]',
+    green: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
+    emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
+    red: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.15)]',
+    rose: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.15)]',
+    amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.15)]',
+    blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.15)]',
   };
 
   const selectedColor = colors[color] || colors.indigo;
 
   return (
-    <span className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${selectedColor} backdrop-blur-md flex items-center gap-1.5 animate-in fade-in zoom-in duration-300 whitespace-nowrap w-fit ${className}`}>
+    <span className={`
+      inline-flex items-center justify-center gap-1.5 
+      px-2.5 py-0.5 rounded-full 
+      text-[10px] md:text-xs font-bold uppercase tracking-wider 
+      border backdrop-blur-md 
+      transition-all duration-300 hover:brightness-125
+      ${selectedColor} ${className}
+    `}>
       {children}
     </span>
   );
@@ -456,18 +515,35 @@ import React from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'panic';
   children: React.ReactNode;
+  isLoading?: boolean; // خاصية جديدة للتحميل
 }
 
-export const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false, ...props }: ButtonProps) => {
-  const baseStyle = "relative overflow-hidden px-6 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale group select-none cursor-pointer";
+export const Button = ({ 
+  children, 
+  onClick, 
+  variant = 'primary', 
+  className = '', 
+  disabled = false, 
+  isLoading = false,
+  ...props 
+}: ButtonProps) => {
   
+  // التصميم الأساسي المشترك
+  const baseStyle = "relative overflow-hidden px-6 py-4 rounded-2xl font-bold transition-all duration-300 active:scale-[0.97] flex items-center justify-center gap-2 tracking-wide select-none disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 group";
+  
+  // الأنماط المختلفة
   const variants = {
-    primary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] border border-indigo-400/20",
-    secondary: "bg-slate-800/40 backdrop-blur-md text-slate-300 border border-white/5 hover:bg-slate-700/50 hover:text-white hover:border-white/10",
-    danger: "bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]",
-    success: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_25px_rgba(16,185,129,0.3)] border border-emerald-400/20",
-    ghost: "text-slate-400 hover:text-white hover:bg-white/5",
-    panic: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse"
+    primary: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/20 hover:shadow-indigo-500/40 hover:border-indigo-400/40",
+    
+    secondary: "bg-white/5 backdrop-blur-sm border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white hover:border-white/20",
+    
+    danger: "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/20 transition-colors",
+    
+    success: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25 border border-emerald-400/20 hover:shadow-emerald-500/40",
+    
+    ghost: "bg-transparent text-slate-400 hover:text-white hover:bg-white/5 border border-transparent",
+    
+    panic: "bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/40 animate-pulse-glow border border-rose-400/30"
   };
 
   const selectedVariant = variants[variant] || variants.primary;
@@ -475,13 +551,20 @@ export const Button = ({ children, onClick, variant = 'primary', className = '',
   return (
     <button 
       onClick={onClick} 
-      disabled={disabled} 
+      disabled={disabled || isLoading} 
       className={`${baseStyle} ${selectedVariant} ${className}`}
       {...props}
     >
-      <span className="relative z-10 flex items-center gap-2">{children}</span>
-      {variant === 'primary' && (
-        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-20 transition-opacity duration-300 mix-blend-overlay"></div>
+      {/* مؤشر التحميل */}
+      {isLoading ? (
+        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+      ) : (
+        <span className="relative z-10 flex items-center gap-2">{children}</span>
+      )}
+
+      {/* تأثير اللمعان (Shine Effect) - يعمل فقط على الأزرار الملونة */}
+      {(variant === 'primary' || variant === 'success') && !disabled && !isLoading && (
+        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 ease-in-out pointer-events-none"></div>
       )}
     </button>
   );
@@ -497,37 +580,71 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   noPadding?: boolean;
+  hoverEffect?: boolean; // خاصية جديدة لتفعيل تأثير التحويم
 }
 
-export const Card = ({ children, className = '', noPadding = false }: CardProps) => (
-  <div className={`bg-slate-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.2)] relative overflow-hidden group hover:border-white/10 transition-all duration-500 ${!noPadding ? 'p-6 md:p-10' : ''} ${className}`}>
-    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-    {children}
-  </div>
-);
+export const Card = ({ 
+  children, 
+  className = '', 
+  noPadding = false,
+  hoverEffect = false 
+}: CardProps) => {
+  return (
+    <div 
+      className={`
+        glass rounded-3xl relative overflow-hidden 
+        transition-transform duration-300 ease-out
+        ${hoverEffect ? 'hover:scale-[1.02] cursor-pointer hover:border-indigo-500/30' : 'hover:border-white/20'}
+        ${!noPadding ? 'p-6 md:p-8' : ''} 
+        ${className}
+      `}
+    >
+      {/* طبقة إضاءة خفيفة جداً من الأعلى لليسار لإعطاء عمق */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-50 pointer-events-none"></div>
+      
+      {/* المحتوى */}
+      <div className="relative z-10">
+        {children}
+      </div>
+    </div>
+  );
+};
 ```
 ---
 
 ### File: `components\ui\LanguageSwitcher.tsx`
 ```tsx
 import React from 'react';
+import { Globe } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export const LanguageSwitcher = () => {
   const { language, setLanguage } = useLanguage();
   
   return (
-    <div className="flex bg-slate-800/40 backdrop-blur-md rounded-xl p-1 border border-white/10 shadow-lg">
+    <div className="flex items-center gap-1 p-1 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl hover:border-white/20 transition-colors group">
+      
+      {/* Icon Indicator */}
+      <div className="px-2 text-slate-400 group-hover:text-indigo-400 transition-colors">
+        <Globe size={14} />
+      </div>
+
       {(['ar', 'en', 'ru'] as const).map((lang) => (
         <button
           key={lang}
           onClick={() => setLanguage(lang)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-300 ${
-            language === lang 
-              ? 'bg-indigo-600/90 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' 
-              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-          }`}
+          className={`
+            relative px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300
+            ${language === lang 
+              ? 'text-white shadow-lg shadow-indigo-500/30' 
+              : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'}
+          `}
         >
+          {/* خلفية متدرجة للعنصر النشط فقط */}
+          {language === lang && (
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl -z-10 animate-in zoom-in"></div>
+          )}
+          
           {lang}
         </button>
       ))}
@@ -601,16 +718,64 @@ export const ProgressRing = ({ radius, stroke, progress, totalSteps }: ProgressR
 
   return (
     <div className="relative flex items-center justify-center group cursor-default">
-      <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
-      <svg height={radius * 2} width={radius * 2} className="rotate-[-90deg] transform transition-transform duration-700 group-hover:scale-105">
-        <circle stroke="#1e293b" strokeWidth={stroke} fill="transparent" r={normalizedRadius} cx={radius} cy={radius} className="opacity-50" />
-        <circle stroke="url(#gradient)" strokeWidth={stroke} strokeDasharray={circumference + ' ' + circumference} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)' }} strokeLinecap="round" fill="transparent" r={normalizedRadius} cx={radius} cy={radius} />
-        <defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#818cf8" /></linearGradient></defs>
+      {/* خلفية متوهجة خلف الحلقة */}
+      <div className="absolute inset-0 bg-indigo-500/30 blur-3xl rounded-full opacity-40 group-hover:opacity-60 transition-opacity duration-700 animate-pulse-glow"></div>
+      
+      <svg height={radius * 2} width={radius * 2} className="rotate-[-90deg] transform transition-transform duration-700 group-hover:scale-105 relative z-10">
+        <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="50%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#ec4899" />
+            </linearGradient>
+            {/* فلتر التوهج */}
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        </defs>
+        
+        {/* الحلقة الخلفية (المسار) */}
+        <circle 
+            stroke="#1e293b" 
+            strokeWidth={stroke} 
+            fill="transparent" 
+            r={normalizedRadius} 
+            cx={radius} 
+            cy={radius} 
+            className="opacity-50" 
+        />
+        
+        {/* الحلقة الأمامية (التقدم) مع التوهج والتدرج */}
+        <circle 
+            stroke="url(#gradient)" 
+            strokeWidth={stroke} 
+            strokeDasharray={circumference + ' ' + circumference} 
+            style={{ strokeDashoffset, transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)' }} 
+            strokeLinecap="round" 
+            fill="transparent" 
+            r={normalizedRadius} 
+            cx={radius} 
+            cy={radius} 
+            filter="url(#glow)"
+        />
       </svg>
-      <div className="absolute flex flex-col items-center text-center animate-in fade-in zoom-in duration-700 pointer-events-none">
-        <span className="text-3xl md:text-4xl font-black text-white tracking-tighter drop-shadow-lg">{Math.round(progress)}%</span>
-        <span className="text-[9px] md:text-[10px] text-indigo-300 font-bold uppercase tracking-widest mt-1">تعافي</span>
-        <span className="text-[9px] md:text-[10px] text-slate-400 mt-2 bg-slate-800/80 px-2 py-1 rounded-full border border-slate-700">{totalSteps} {t('days_left').split(' ')[0]}</span>
+      
+      {/* النص في المنتصف */}
+      <div className="absolute flex flex-col items-center text-center animate-in zoom-in pointer-events-none z-20">
+        <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-white tracking-tighter drop-shadow-2xl">
+            {Math.round(progress)}%
+        </span>
+        <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest mt-1">تعافي</span>
+        
+        <div className="mt-2 bg-slate-900/80 px-3 py-1 rounded-full border border-white/10 shadow-lg backdrop-blur-md">
+            <span className="text-[9px] text-slate-300 font-mono">
+                {totalSteps} {t('days_left').split(' ')[0]}
+            </span>
+        </div>
       </div>
     </div>
   );
@@ -674,7 +839,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         }
     }
     
-    // الإعدادات دائماً موجودة
+    // Settings always available
     items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     
     return items;
@@ -683,37 +848,51 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
   const menuItems = getMenuItems();
 
   return (
-    // التعديل: تقليل الارتفاع (h-16) وتقريب الحواف (bottom-3) وتوزيع العناصر بالتساوي (flex-1)
-    <div className="md:hidden fixed bottom-3 left-3 right-3 h-16 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 animate-in slide-in-from-bottom-20 duration-700">
+    // الجزيرة العائمة: glass class + rounded-full + margins
+    <div className="md:hidden fixed bottom-5 left-4 right-4 h-[70px] glass rounded-[2rem] z-50 animate-in slide-in-from-bottom-8 flex items-center justify-between px-2 shadow-2xl shadow-black/50">
       
-      <div className="flex items-center justify-between px-1 h-full w-full">
-        {menuItems.map((item) => {
-          const isActive = currentView === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 relative group ${
-                  isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <div className={`p-1.5 rounded-xl transition-all duration-300 ${
-                  isActive 
-                  ? 'bg-indigo-500/10 -translate-y-1' 
-                  : 'bg-transparent'
-              }`}>
-                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              </div>
-              
-              <span className={`text-[9px] font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${
-                  isActive ? 'opacity-100' : 'opacity-60 scale-90'
-              }`}>
-                  {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {menuItems.map((item) => {
+        const isActive = currentView === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => setCurrentView(item.id)}
+            className={`
+              flex-1 flex flex-col items-center justify-center gap-1 h-full relative group transition-all duration-500
+              ${isActive ? '-translate-y-2' : ''}
+            `}
+          >
+            {/* الخلفية المضيئة للعنصر النشط */}
+            <div className={`
+              absolute top-2 w-10 h-10 rounded-full blur-lg transition-all duration-500
+              ${isActive ? 'bg-indigo-500/40 opacity-100' : 'opacity-0'}
+            `}></div>
+
+            {/* الأيقونة */}
+            <div className={`
+              relative z-10 p-2.5 rounded-full transition-all duration-300
+              ${isActive 
+                ? 'bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-[#020617]' 
+                : 'text-slate-500 hover:text-slate-300'}
+            `}>
+                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            
+            {/* النص */}
+            <span className={`
+              text-[10px] font-bold tracking-wide transition-all duration-300 absolute bottom-2
+              ${isActive ? 'opacity-100 text-white translate-y-0' : 'opacity-0 translate-y-2'}
+            `}>
+                {item.label}
+            </span>
+            
+            {/* نقطة صغيرة للعناصر غير النشطة بدلاً من النص لتوفير المساحة */}
+            {!isActive && (
+                 <span className="w-1 h-1 rounded-full bg-slate-700 absolute bottom-3 transition-all duration-300 group-hover:bg-slate-500"></span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -730,7 +909,6 @@ import {
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-// المسار الصحيح حيث أن Sidebar داخل components و LanguageSwitcher داخل components/ui
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
 
 interface SidebarProps {
@@ -743,7 +921,6 @@ interface SidebarProps {
 export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile }: SidebarProps) => {
   const { t, language } = useLanguage();
 
-  // تحديد القوائم بناءً على الدور
   const getMenuItems = () => {
     const role = userProfile?.role;
     const items = [];
@@ -752,17 +929,11 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
     if (role === 'admin') {
       items.push(
         { id: AppView.ADMIN, icon: ShieldAlert, label: t('nav_admin') }, 
-        
-        // --- تصحيح هنا: تغيير المسمى من "المستخدمين" إلى "المجتمع" وتغيير الأيقونة ---
-        // لأن إدارة المستخدمين موجودة داخل صفحة الأدمن، وهذا الزر مخصص للدردشة العامة
         { id: AppView.COMMUNITY, icon: MessageSquare, label: t('nav_community') },
-        // -----------------------------------------------------------------------
-
         { id: AppView.ARTICLES, icon: BookOpen, label: t('tab_cms') },
         { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
       );
     }
-    
     // 2. DOCTOR MENU
     else if (role === 'doctor') {
       items.push(
@@ -774,17 +945,14 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
       );
       items.push({ id: AppView.SETTINGS, icon: Settings, label: t('nav_settings') });
     }
-
     // 3. PATIENT / NORMAL USER MENU
     else {
-      // إذا كان المريض في انتظار الخطة، نعرض له فقط المجتمع والدعم
       if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
          items.push(
             { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
             { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
          );
       } else {
-         // المستخدم العادي أو المريض الذي لديه خطة
          items.push(
             { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
             { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
@@ -803,19 +971,21 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
   const menuItems = getMenuItems();
 
   return (
-    <div className="hidden md:flex flex-col w-80 bg-slate-950/80 backdrop-blur-2xl border-l border-white/5 h-screen fixed right-0 top-0 overflow-y-auto z-50 shadow-2xl transition-all">
+    <div className="hidden md:flex flex-col w-80 h-screen fixed right-0 top-0 overflow-y-auto z-50 border-l border-white/5 bg-slate-950/80 backdrop-blur-2xl shadow-2xl">
+      
       {/* Header */}
-      <div className="p-10 border-b border-white/5 relative overflow-hidden shrink-0">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+      <div className="p-8 pb-4 relative shrink-0">
+        {/* Ambient Glow behind Logo */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full pointer-events-none"></div>
         
-        <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+        <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10 mb-1">
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <Activity className="w-6 h-6 text-white" />
           </div>
           Islam's Guide
         </h2>
         
-        <div className="mr-[3.25rem] mt-2">
+        <div className="pr-[3.25rem]">
             {userProfile?.role === 'doctor' && (
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                     {language === 'ar' ? 'نسخة الأطباء' : 'Doctor Edition'}
@@ -835,36 +1005,50 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
       </div>
       
       {/* Menu */}
-      <nav className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
-        {menuItems.map((item) => (
-          <button 
-            key={item.id}
-            onClick={() => setCurrentView(item.id)}
-            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
-              currentView === item.id 
-              ? 'bg-gradient-to-r from-indigo-600/10 to-transparent text-indigo-400 border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]' 
-              : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'
-            }`}
-          >
-            {currentView === item.id && (
-              <div className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_indigo]"></div>
-            )}
-            <item.icon className={`w-5 h-5 transition-transform duration-300 ${currentView === item.id ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
-            <span className="font-bold text-lg tracking-wide truncate">{item.label}</span>
-            
-            {item.id === AppView.ADMIN && (
-                <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
-            )}
-          </button>
-        ))}
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+        {menuItems.map((item) => {
+          const isActive = currentView === item.id;
+          return (
+            <button 
+              key={item.id}
+              onClick={() => setCurrentView(item.id)}
+              className={`
+                w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden
+                ${isActive ? 'text-white' : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'}
+              `}
+            >
+              {/* Active Background Gradient */}
+              {isActive && (
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-indigo-600/5 to-transparent border-r-[3px] border-indigo-500 opacity-100 transition-opacity duration-300"></div>
+              )}
+
+              <item.icon 
+                className={`
+                  w-5 h-5 relative z-10 transition-transform duration-300 
+                  ${isActive ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]' : 'group-hover:scale-110'}
+                `} 
+              />
+              
+              <span className={`font-bold text-lg tracking-wide truncate relative z-10 ${isActive ? 'text-indigo-50' : ''}`}>
+                {item.label}
+              </span>
+              
+              {/* Admin Notification Dot */}
+              {item.id === AppView.ADMIN && (
+                  <span className="mr-auto w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)] relative z-10"></span>
+              )}
+            </button>
+          );
+        })}
       </nav>
       
       {/* Footer */}
-      <div className="p-6 border-t border-white/5 shrink-0 space-y-6">
+      <div className="p-6 shrink-0 space-y-4 relative z-10">
         <LanguageSwitcher />
         
-        <div className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex items-center gap-3 group hover:border-indigo-500/30 transition-all">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30">
+        {/* User Card */}
+        <div className="glass p-4 rounded-2xl flex items-center gap-3 group hover:border-indigo-500/30 transition-all cursor-default">
+            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 font-bold border border-white/5 group-hover:scale-105 transition-transform">
                 {userProfile?.role === 'doctor' ? <Stethoscope size={18} /> : (userProfile?.name?.charAt(0).toUpperCase() || <UserIcon size={18} />)}
             </div>
             <div className="flex-1 overflow-hidden">
@@ -873,7 +1057,7 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
             </div>
             <button 
                 onClick={handleLogout} 
-                className="p-2 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 transition-colors"
+                className="p-2 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
                 title={t('logout')}
             >
                 <LogOut size={18} />
@@ -892,11 +1076,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   User, 
   signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, // دالة إنشاء الحساب
   signInWithPopup, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  updateProfile // لتحديث اسم المستخدم فوراً
 } from 'firebase/auth';
-import { auth, googleProvider } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore'; // للكتابة في قاعدة البيانات
+import { auth, googleProvider, db } from '../services/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -904,6 +1091,8 @@ interface AuthContextType {
   error: string | null;
   isDemoMode: boolean;
   loginWithEmail: (e: string, p: string) => Promise<void>;
+  // الدالة الجديدة لإنشاء الحساب
+  signupWithEmail: (e: string, p: string, name: string, data: { age: number, weight: number, height: number }) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   enableDemoMode: () => void;
@@ -920,10 +1109,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // مراقبة حالة المستخدم (Firebase Listener)
   useEffect(() => {
-    // التحقق من وجود auth لضمان عدم حدوث أخطاء إذا لم يتم تهيئة Firebase
     if (!auth) {
         setLoading(false);
-        // لا نقوم بضبط خطأ هنا حتى لا يظهر للمستخدم العادي في حالة الديمو
         return;
     }
 
@@ -937,6 +1124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [isDemoMode]);
 
+  // تسجيل الدخول
   const loginWithEmail = async (email: string, password: string) => {
     if (!auth) {
         setError("Authentication service is not initialized.");
@@ -950,31 +1138,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       let errorMessage = 'Login Error';
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'User not found. Please check your email.';
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format.';
-      } else {
-        errorMessage = err.message;
-      }
+      if (err.code === 'auth/user-not-found') errorMessage = 'User not found.';
+      else if (err.code === 'auth/wrong-password') errorMessage = 'Incorrect password.';
+      else if (err.code === 'auth/invalid-email') errorMessage = 'Invalid email format.';
+      else errorMessage = err.message;
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const loginWithGoogle = async () => {
-    if (!auth) {
-        setError("Authentication service is not initialized.");
-        return;
-    }
+  // --- دالة إنشاء الحساب الجديدة ---
+  const signupWithEmail = async (email: string, password: string, name: string, data: { age: number, weight: number, height: number }) => {
+    if (!auth) return;
+    
+    setLoading(true);
+    setError(null);
 
+    try {
+        // 1. إنشاء الحساب في Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. تحديث الاسم في ملف Auth الشخصي
+        await updateProfile(user, { displayName: name });
+
+        // 3. إنشاء ملف المستخدم في قاعدة البيانات (Firestore) مع البيانات الفيزيائية
+        await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: email,
+            name: name,
+            role: 'normal_user', // افتراضياً مستخدم عادي
+            age: data.age,
+            weight: data.weight,
+            height: data.height,
+            setupComplete: false, // لا يزال يحتاج لإعداد الدواء
+            createdAt: new Date().toISOString(),
+            // تهيئة القيم الفارغة لتجنب الأخطاء لاحقاً
+            plan: [],
+            logs: [],
+            inventory: { boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 }
+        });
+
+    } catch (err: any) {
+        let errorMessage = 'Signup Error';
+        if (err.code === 'auth/email-already-in-use') errorMessage = 'Email already registered.';
+        else if (err.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters.';
+        else errorMessage = err.message;
+        setError(errorMessage);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    if (!auth) return;
     setLoading(true);
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
+      // ملاحظة: مع جوجل قد نحتاج خطوة إضافية لطلب العمر والوزن إذا كان مستخدماً جديداً، 
+      // لكن سنكتفي بالدخول المباشر حالياً للتبسيط.
     } catch (err: any) {
       setError('Google Login Error: ' + err.message);
     } finally {
@@ -989,7 +1213,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setIsDemoMode(false);
       setCurrentUser(null);
-      // مسح التخزين المحلي لضمان خروج نظيف
       localStorage.removeItem('taper_profile');
       localStorage.removeItem('taper_plan');
       window.location.reload();
@@ -1000,7 +1223,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const enableDemoMode = () => {
     setIsDemoMode(true);
-    // التصحيح هنا: استخدام as unknown as User لإجبار التايب سكربت على قبول الكائن الناقص
     setCurrentUser({ 
       uid: 'demo-user', 
       email: 'demo@example.com', 
@@ -1031,6 +1253,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       error, 
       isDemoMode,
       loginWithEmail, 
+      signupWithEmail, // تصدير الدالة الجديدة
       loginWithGoogle, 
       logout,
       enableDemoMode,
@@ -2330,97 +2553,28 @@ export { auth, db, googleProvider };
 import { Inventory, PlanDay, DailyLog, ManualPhase, MedForm } from '../types';
 
 // ============================================================================
-// 1. PRECISION KERNEL (النواة الدقيقة)
-// ============================================================================
-const PRECISION = 1000; 
-const MIN_SPLIT_MICRO = 250; // 0.25mg (ربع حبة) - أقل وحدة قياسية للأقراص
-
-const toMicro = (val: number) => Math.round(val * PRECISION);
-const fromMicro = (val: number) => val / PRECISION;
-
-/**
- * دالة "التقريب الذكي": 
- * للأقراص: تقرب لأقرب 0.25 (ربع حبة).
- * للسوائل: تقرب لأقرب 0.1 (عشر المليلتر).
- */
-const smartRound = (microVal: number, form: MedForm = 'tablet'): number => {
-    // 1. تحديد حجم الخطوة بناءً على الشكل الدوائي
-    // للأقراص: 250 ميكرو = 0.25
-    // للسوائل: 100 ميكرو = 0.1
-    const step = form === 'liquid' ? 100 : 250; 
-    
-    // 2. حساب الباقي
-    const remainder = microVal % step;
-    
-    // 3. التقريب (لأقرب خطوة)
-    let result = remainder < step / 2 
-        ? microVal - remainder 
-        : microVal + (step - remainder);
-
-    // 4. حماية الجرعات الصغيرة جداً
-    // إذا كانت النتيجة صغيرة جداً ولكن ليست صفراً، نجعلها تساوي أقل خطوة ممكنة
-    // هذا يمنع ظهور جرعات غريبة مثل 0.1mg للأقراص
-    if (result > 0 && result < step) {
-        return step;
-    }
-    
-    return result;
-};
-
-// ============================================================================
-// 2. NEURO-SCIENCE LOGIC (المنطق العلمي)
+// 1. UTILS (أدوات مساعدة)
 // ============================================================================
 
-/**
- * معادلة التخفيض الزائدي (Hyperbolic)
- */
-const getHyperbolicReductionRate = (currentMicro: number, startMicro: number): number => {
-    if (startMicro === 0) return 0.1;
-    
-    const ratio = currentMicro / startMicro;
-
-    // تخفيف النسب قليلاً لتكون ألطف على المستخدم
-    if (ratio > 0.75) return 0.10; // 10%
-    if (ratio > 0.40) return 0.07; // 7%
-    if (ratio > 0.15) return 0.05; // 5%
-    return 0.05;                   // تثبيت الحد الأدنى عند 5% لتجنب التخفيض البطيء جداً في النهاية
-};
-
-/**
- * تحليل جاهزية الجهاز العصبي (Neuro-Readiness)
- */
-const calculateNeuroReadiness = (logs: DailyLog[]): number => {
-    if (logs.length < 3) return 1.0; 
-
-    const recent = logs.slice(-5);
-    
-    // تحليل النوم (المعيار 7 ساعات)
-    const sleepAvg = recent.reduce((a, b) => a + (b.sleepHours || 0), 0) / recent.length;
-    const sleepFactor = Math.min(1, Math.max(0.5, sleepAvg / 7)); 
-
-    // تحليل الأعراض
-    const symptomSeverity = recent.reduce((a, b) => a + (b.symptoms?.length || 0), 0);
-    const symptomFactor = Math.max(0.4, 1 - (symptomSeverity * 0.1));
-
-    const score = (sleepFactor * 0.5) + (symptomFactor * 0.5);
-    return Math.max(0.5, score); 
-};
-
-// ============================================================================
-// 3. ENGINE CORE (محرك التوليد)
-// ============================================================================
-
+// إضافة أيام للتاريخ
 const addDays = (dateStr: string, days: number): string => {
     const date = new Date(dateStr);
     date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().split('T')[0];
 };
 
+// حساب المخزون الكلي
 export const calculateTotalInventory = (inv: Inventory): number => {
     return (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
 };
 
-// --- المولد اليدوي (للأطباء) ---
+// ============================================================================
+// 2. ENGINE CORE (المحرك المنطقي الجديد)
+// ============================================================================
+
+/**
+ * المولد اليدوي (للأطباء) - يبقى كما هو
+ */
 export const generateManualPlan = (phases: ManualPhase[], startDateStr: string): PlanDay[] => {
     const plan: PlanDay[] = [];
     let currentDate = startDateStr.split('T')[0];
@@ -2433,132 +2587,110 @@ export const generateManualPlan = (phases: ManualPhase[], startDateStr: string):
     return plan;
 };
 
-// --- المولد الذكي (الخوارزمية) ---
+/**
+ * المولد الذكي (الخوارزمية العملية)
+ * تم تعديلها لتدعم نظام "الأنصاف" و "تباعد الأيام"
+ */
 export const generatePlan = (
     totalPills: number, 
     startDose: number, 
     startDateStr: string,
-    speedModifier: number = 1.0,
+    speedModifier: number = 1.0, // 1.0 = عادي، 0.5 = بطيء، 1.5 = سريع
     recentLogs: DailyLog[] = [],
-    medForm: MedForm = 'tablet' // افتراضياً أقراص لتكون أكثر أماناً
+    medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
-    const totalInvMicro = toMicro(totalPills);
-    const startMicro = toMicro(startDose);
+    // إذا كان رصيد الحبوب 0 أو الجرعة 0، لا نولد خطة
+    if (totalPills <= 0 || startDose <= 0) return [];
+
+    const plan: PlanDay[] = [];
+    let currentDate = startDateStr.split('T')[0];
+    let remainingInventory = totalPills;
     
-    if (totalInvMicro <= 0 || startMicro <= 0) return [];
-
-    const readiness = calculateNeuroReadiness(recentLogs);
-    const effectiveSpeed = speedModifier * readiness;
-
-    let bestSteps: number[] = [];
-    let quality = 1.0;
-    let foundSolution = false;
+    // تحديد أقل وحدة كسر (للأقراص 0.5 للنص، وللسائل 0.1)
+    // بناءً على طلبك: التركيز على نظام الأنصاف (0.5)
+    const MIN_STEP = medForm === 'liquid' ? 0.1 : 0.5;
     
-    // Safety Circuit Breaker (قاطع الطوارئ لمنع التعليق)
-    let loopGuard = 0;
-    const MAX_ITERATIONS = 50; 
+    // الجرعة الحالية التي سنبدأ التخفيض منها
+    let currentDose = startDose;
 
-    while (quality > 0.1 && !foundSolution) {
-        loopGuard++;
-        if (loopGuard > MAX_ITERATIONS) {
-            console.warn("Tapering Engine: Max iterations reached. Breaking to safe mode.");
-            break;
-        }
-
-        const steps: number[] = [];
-        let currentMicro = startMicro;
-        let simulatedInventory = totalInvMicro;
-        let isFeasible = true;
-        let internalLoopGuard = 0;
-
-        while (currentMicro > 0) {
-            internalLoopGuard++;
-            if (internalLoopGuard > 5000) { isFeasible = false; break; }
-
-            // 1. حساب نسبة الخصم
-            let reductionRate = getHyperbolicReductionRate(currentMicro, startMicro);
-            reductionRate = reductionRate / (quality * effectiveSpeed);
-            
-            // 2. حساب الهدف القادم مع التقريب الذكي (هنا يتم إصلاح مشكلة الكسور)
-            let targetMicro = Math.round(currentMicro * (1 - reductionRate));
-            targetMicro = smartRound(targetMicro, medForm); 
-
-            // منع التوقف (إذا كان التقريب يعيدنا لنفس الرقم، ننزل خطوة واحدة قسراً)
-            if (targetMicro >= currentMicro) {
-                const stepSize = medForm === 'liquid' ? 100 : 250; // 0.1ml or 0.25mg
-                targetMicro = Math.max(0, currentMicro - stepSize);
-            }
-
-            // 3. تحديد المدة (أيام الثبات)
-            let daysOnDose = Math.round(14 * quality); 
-            if (daysOnDose < 4) daysOnDose = 4; // لا تقل عن 4 أيام
-
-            // 4. المحاكاة
-            for (let i = 0; i < daysOnDose; i++) {
-                steps.push(currentMicro);
-                simulatedInventory -= currentMicro;
-            }
-
-            // 5. النهاية (الذيل)
-            if (targetMicro === 0) {
-                // نمط يوم إيه / يوم لا في النهاية لتخفيف الصدمة
-                const tailCycles = Math.max(2, Math.round(4 * quality));
-                for(let i=0; i < tailCycles; i++) {
-                    steps.push(currentMicro); simulatedInventory -= currentMicro;
-                    steps.push(0);
-                }
-                break; 
-            }
-
-            // فحص المخزون
-            if (simulatedInventory < 0) {
-                isFeasible = false;
-                break;
-            }
-
-            currentMicro = targetMicro;
-        }
-
-        if (isFeasible && simulatedInventory >= 0) {
-            bestSteps = steps;
-            foundSolution = true;
-        } else {
-            // تقليل الجودة (زيادة السرعة) والمحاولة مرة أخرى
-            quality -= 0.05;
-        }
-    }
-
-    // fallback: الحل الخطي الطارئ إذا فشل كل شيء
-    if (!foundSolution) {
-        let budget = totalInvMicro;
-        let emergencyDose = startMicro;
-        const stepSize = medForm === 'liquid' ? 100 : 250;
+    // --- المرحلة الأولى: التخفيض المباشر حتى الوصول لـ 0.5 ---
+    // طالما الجرعة أكبر من 0.5، نقوم بالإنقاص تدريجياً
+    while (currentDose > 0.5 && remainingInventory >= currentDose) {
         
-        while (budget >= emergencyDose && emergencyDose > 0) {
-            bestSteps.push(emergencyDose);
-            budget -= emergencyDose;
-            emergencyDose = Math.max(0, emergencyDose - stepSize);
+        // تحديد مدة الثبات على الجرعة (تتأثر بالسرعة المختارة)
+        // السرعة العادية: 7-10 أيام لكل تخفيض
+        let daysOnDose = Math.round(7 * (1 / speedModifier));
+        if (daysOnDose < 3) daysOnDose = 3; // لا تقل عن 3 أيام
+
+        // إضافة الأيام للخطة
+        for (let i = 0; i < daysOnDose; i++) {
+            if (remainingInventory < currentDose) break; // نفاد المخزون
+
+            plan.push({
+                date: currentDate,
+                plannedDose: currentDose,
+                isPast: false
+            });
+            remainingInventory -= currentDose;
+            currentDate = addDays(currentDate, 1);
+        }
+
+        // حساب الجرعة التالية (إنقاص نصف حبة)
+        // مثال: 2 -> 1.5 -> 1 -> 0.5
+        let nextDose = currentDose - 0.5;
+        
+        // تصحيح الأرقام العشرية
+        nextDose = Math.round(nextDose * 10) / 10;
+        
+        if (nextDose < 0.5) nextDose = 0.5; // لا ننزل تحت النص في هذه المرحلة
+        currentDose = nextDose;
+    }
+
+    // --- المرحلة الثانية: نظام تباعد الأيام (Skip-Day Logic) ---
+    // عندما نصل لجرعة 0.5 (نص حبة)، نبدأ بزيادة أيام الراحة تدريجياً
+    // هذا هو النظام الذي طلبته بالضبط
+    
+    if (currentDose === 0.5 && remainingInventory >= 0.5) {
+        
+        // تعريف أنماط تباعد الأيام
+        const patterns = [
+            { label: "Day ON, Day OFF", doseSeq: [0.5, 0], cycles: 4 },           // أسبوع تقريباً
+            { label: "Day ON, 2 Days OFF", doseSeq: [0.5, 0, 0], cycles: 3 },     // 9 أيام
+            { label: "Day ON, 3 Days OFF", doseSeq: [0.5, 0, 0, 0], cycles: 2 },  // 8 أيام
+            { label: "Day ON, 4 Days OFF", doseSeq: [0.5, 0, 0, 0, 0], cycles: 2 } // 10 أيام
+        ];
+
+        // تطبيق الأنماط بالترتيب
+        for (const pattern of patterns) {
+            // نعدل عدد التكرارات (Cycles) بناءً على سرعة المستخدم
+            // إذا اختار "سريع" نقلل التكرار، إذا "بطيء" نزيد التكرار
+            const adjustedCycles = Math.max(1, Math.round(pattern.cycles * (1 / speedModifier)));
+
+            for (let c = 0; c < adjustedCycles; c++) {
+                for (const dose of pattern.doseSeq) {
+                    // التحقق من المخزون فقط في أيام الجرعة
+                    if (dose > 0 && remainingInventory < dose) break; 
+
+                    plan.push({
+                        date: currentDate,
+                        plannedDose: dose,
+                        isPast: false
+                    });
+
+                    if (dose > 0) remainingInventory -= dose;
+                    currentDate = addDays(currentDate, 1);
+                }
+                if (remainingInventory < 0.5) break;
+            }
+            if (remainingInventory < 0.5) break;
         }
     }
 
-    // تحويل النتائج لخطة نهائية
-    const finalPlan: PlanDay[] = [];
-    let currDate = startDateStr.split('T')[0];
-
-    bestSteps.forEach(microDose => {
-        finalPlan.push({
-            date: currDate,
-            plannedDose: fromMicro(microDose),
-            isPast: false
-        });
-        currDate = addDays(currDate, 1);
-    });
-
-    return finalPlan;
+    return plan;
 };
 
-// --- إعادة الحساب الديناميكي ---
+// --- إعادة الحساب الديناميكي (عند تسجيل جرعة يومية) ---
 export const adjustPlan = (
     originalPlan: PlanDay[],
     logs: DailyLog[],
@@ -2567,29 +2699,41 @@ export const adjustPlan = (
     medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
+    // ترتيب السجلات زمنياً
     const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (sortedLogs.length === 0) {
+        // إذا لم توجد سجلات، نولد خطة جديدة من البداية
         return originalPlan.length > 0 
             ? generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier, [], medForm)
             : [];
     }
 
+    // آخر يوم تم تسجيله
     const lastLog = sortedLogs[sortedLogs.length - 1];
+    
+    // حساب ما تم استهلاكه
     const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
+    
+    // المتبقي الفعلي
     const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
 
+    // الأيام الماضية (نحتفظ بها كما هي في التاريخ)
     const historyDays = originalPlan.filter(day => day.date <= lastLog.date).map(day => {
         const log = sortedLogs.find(l => l.date === day.date);
         return { ...day, isPast: true, log: log || undefined };
     });
 
+    // تحديد نقطة الانطلاق الجديدة
+    // إذا كان آخر يوم 0 (يوم راحة)، نبحث عن آخر جرعة حقيقية أخذها لنعرف مستواه
     let startPoint = lastLog.doseTaken;
     if (startPoint === 0) {
         const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
-        startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0);
+        // إذا وجدنا آخر جرعة فعالة، نعتمدها، وإلا نعود لبداية الخطة
+        startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0.5);
     }
 
+    // توليد المستقبل بناءً على المعطيات الجديدة
     const futureDays = generatePlan(
         remainingInventory,
         startPoint,
@@ -2623,7 +2767,8 @@ export const translations = {
 ### File: `views\admin\AdminCMS.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+// تمت إضافة Clock إلى الاستيراد هنا 👇
+import { Plus, Trash2, FileText, Image, Tag, AlignLeft, X, Clock } from 'lucide-react';
 import { Article, ArticleCategory } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -2647,70 +2792,141 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
         setNewArticle({ title: '', content: '', category: 'tip' });
     };
 
+    const getCategoryColor = (cat: string) => {
+        switch(cat) {
+            case 'medical': return 'indigo';
+            case 'motivation': return 'rose';
+            case 'news': return 'blue';
+            default: return 'amber';
+        }
+    };
+
     return (
-        <div className="animate-in fade-in space-y-4">
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white">{t('tab_cms')}</h2>
-                <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
-                    <Plus size={16}/> {t('new_article_btn')}
+        <div className="animate-in fade-in space-y-8">
+            {/* Header Action */}
+            <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                    <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+                        <FileText size={20} className="text-indigo-400"/>
+                    </div>
+                    {t('tab_cms')}
+                </h2>
+                <Button onClick={() => setShowArticleModal(true)} variant="primary" className="!py-2.5 !px-5 !text-sm !rounded-xl shadow-lg shadow-indigo-500/20">
+                    <Plus size={18} className="mr-2"/> {t('new_article_btn')}
                 </Button>
             </div>
 
+            {/* Create Article Modal (Inline for quick access or Overlay) */}
             {showArticleModal && (
-                 <Card className="bg-slate-900 border-indigo-500/30 mb-6">
-                     <div className="space-y-4">
-                         <input 
-                             className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 outline-none focus:border-indigo-500" 
-                             placeholder={t('article_title_label')}
-                             value={newArticle.title} 
-                             onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
-                         />
+                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 animate-in zoom-in">
+                     <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative rounded-[2rem] overflow-hidden">
+                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                          
-                         <div>
-                             <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">{t('article_cat_label')}</label>
-                             <div className="flex gap-2">
-                                 {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
-                                     <button 
-                                        key={cat}
-                                        onClick={() => setNewArticle({...newArticle, category: cat})}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${newArticle.category === cat ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
-                                     >
-                                         {cat.toUpperCase()}
-                                     </button>
-                                 ))}
+                         <div className="p-8">
+                             <div className="flex justify-between items-start mb-8">
+                                <h3 className="text-2xl font-black text-white">{t('new_article_btn')}</h3>
+                                <button onClick={() => setShowArticleModal(false)} className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white">
+                                    <X size={24} />
+                                </button>
+                             </div>
+
+                             <div className="space-y-6">
+                                 <div className="group">
+                                     <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('article_title_label')}</label>
+                                     <div className="relative">
+                                         <FileText className="absolute top-4 right-4 text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={18}/>
+                                         <input 
+                                             className="w-full bg-slate-950/50 p-4 pr-12 rounded-xl text-white border border-white/10 outline-none focus:border-indigo-500 transition-all placeholder-slate-700 font-bold text-lg" 
+                                             placeholder="Article Title..."
+                                             value={newArticle.title} 
+                                             onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
+                                             autoFocus
+                                         />
+                                     </div>
+                                 </div>
+                                 
+                                 <div>
+                                     <label className="text-xs font-bold text-slate-500 uppercase mb-3 block ml-1">{t('article_cat_label')}</label>
+                                     <div className="flex gap-3 flex-wrap">
+                                         {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
+                                             <button 
+                                                key={cat}
+                                                onClick={() => setNewArticle({...newArticle, category: cat})}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-300 ${
+                                                    newArticle.category === cat 
+                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-105' 
+                                                    : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'
+                                                }`}
+                                             >
+                                                 {cat.toUpperCase()}
+                                             </button>
+                                         ))}
+                                     </div>
+                                 </div>
+
+                                 <div className="group">
+                                     <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('article_content_label')}</label>
+                                     <textarea 
+                                         className="w-full bg-slate-950/50 p-4 rounded-xl text-white border border-white/10 h-40 outline-none focus:border-indigo-500 transition-all resize-none placeholder-slate-700 custom-scrollbar" 
+                                         placeholder="Write something amazing..."
+                                         value={newArticle.content} 
+                                         onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
+                                     />
+                                 </div>
+                                 
+                                 <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                                     <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
+                                     <Button variant="success" onClick={handlePublish} disabled={!newArticle.title || !newArticle.content}>
+                                         {t('publish_now')}
+                                     </Button>
+                                 </div>
                              </div>
                          </div>
-
-                         <textarea 
-                             className="w-full bg-slate-950 p-3 rounded-lg text-white border border-white/10 h-32 outline-none focus:border-indigo-500" 
-                             placeholder={t('article_content_label')}
-                             value={newArticle.content} 
-                             onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
-                         />
-                         
-                         <div className="flex justify-end gap-2">
-                             <Button variant="secondary" onClick={() => setShowArticleModal(false)}>{t('cancel_btn')}</Button>
-                             <Button variant="success" onClick={handlePublish}>{t('publish_now')}</Button>
-                         </div>
-                     </div>
-                 </Card>
+                     </Card>
+                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Articles Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {articles.length === 0 && (
+                    <div className="col-span-full text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600">
+                        <Image size={48} className="mx-auto mb-4 opacity-20"/>
+                        <p>No articles published yet.</p>
+                    </div>
+                )}
+                
                 {articles.map(art => (
-                    <div key={art.id} className="bg-slate-900 p-5 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all group relative">
-                        <button 
-                            onClick={() => art.id && deleteArticle(art.id)}
-                            className="absolute top-4 left-4 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                            <Trash2 size={16}/>
-                        </button>
+                    <div key={art.id} className="group relative bg-slate-900/60 backdrop-blur-md border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-indigo-500/10 flex flex-col h-full">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] pointer-events-none"></div>
+                        
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                            <Badge color={getCategoryColor(art.category) as any} className="shadow-none bg-slate-950/50 border-white/10">
+                                {art.category.toUpperCase()}
+                            </Badge>
+                            <button 
+                                onClick={() => art.id && deleteArticle(art.id)}
+                                className="text-slate-600 hover:text-rose-500 p-2 hover:bg-rose-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                title="Delete Article"
+                            >
+                                <Trash2 size={16}/>
+                            </button>
+                        </div>
 
-                        <Badge color="blue" className="mb-3">{art.category}</Badge>
-                        <h3 className="font-bold text-white mb-2 line-clamp-1">{art.title}</h3>
-                        <p className="text-xs text-slate-500 line-clamp-3 mb-4">{art.content}</p>
-                        <div className="text-[10px] text-slate-600 font-mono">
+                        <h3 className="font-bold text-white text-lg mb-3 line-clamp-2 leading-snug group-hover:text-indigo-300 transition-colors">
+                            {art.title}
+                        </h3>
+                        
+                        <div className="flex-1 mb-4">
+                            <p className="text-xs text-slate-400 line-clamp-4 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-white/5">
+                                {art.content}
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-auto pt-4 border-t border-white/5">
+                            <Clock size={12}/>
                             {new Date(art.createdAt).toLocaleDateString()}
+                            <span className="mx-1">•</span>
+                            <span className="text-slate-400 font-bold">{art.authorName}</span>
                         </div>
                     </div>
                 ))}
@@ -2724,7 +2940,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
 ### File: `views\admin\AdminDoctors.tsx`
 ```tsx
 import React from 'react';
-import { Lock, AlertCircle, Stethoscope, Eye, Ban, Trash2 } from 'lucide-react';
+import { Lock, AlertCircle, Stethoscope, Eye, Ban, Trash2, ShieldCheck, MapPin } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -2747,42 +2963,60 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
     const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
 
     return (
-        <div className="animate-in fade-in space-y-8">
-             {/* 1. Pending Approvals */}
-             <div className="space-y-4">
-                 <h2 className="text-xl font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
-                     <Lock className="text-amber-500" /> {t('pending_approvals')}
-                     <Badge color="amber">{pendingDoctors.length}</Badge>
-                 </h2>
+        <div className="space-y-10 animate-in fade-in">
+             {/* 1. Pending Approvals Section */}
+             <div className="space-y-6">
+                 <div className="flex items-center gap-3 pb-2 border-b border-white/5">
+                     <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                        <Lock className="text-amber-500" size={20} />
+                     </div>
+                     <h2 className="text-xl font-bold text-white">
+                         {t('pending_approvals')}
+                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5">{pendingDoctors.length}</span>
+                     </h2>
+                 </div>
                  
                  {pendingDoctors.length === 0 ? (
-                     <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500">
-                         <AlertCircle className="mx-auto mb-2 opacity-50" size={32} />
-                         <p>لا توجد طلبات انضمام معلقة حالياً.</p>
+                     <div className="bg-slate-900/40 border-2 border-dashed border-slate-800 rounded-3xl p-12 text-center text-slate-500 flex flex-col items-center justify-center">
+                         <ShieldCheck className="mb-4 opacity-20" size={48} />
+                         <p>No pending requests. All clear.</p>
                      </div>
                  ) : (
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {pendingDoctors.map(doc => (
-                            <div key={doc.uid} className="bg-slate-900 border border-amber-500/50 p-6 rounded-2xl relative shadow-[0_0_20px_rgba(245,158,11,0.1)]">
-                                <Badge color="amber" className="absolute top-4 left-4">Pending Request</Badge>
+                            <div key={doc.uid} className="group relative bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] hover:border-amber-500/30 transition-all duration-300 shadow-lg hover:shadow-amber-900/10">
+                                <div className="absolute top-0 right-0 p-6 opacity-50">
+                                    <Badge color="amber" className="shadow-none bg-amber-500/10 border-amber-500/20">Pending</Badge>
+                                </div>
                                 
-                                <div className="flex items-center gap-4 mb-4">
-                                    {doc.doctorData?.photoUrl ? (
-                                        <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-full object-cover border border-white/10" />
-                                    ) : (
-                                        <div className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 text-xl font-bold">Dr</div>
-                                    )}
-                                    <div>
-                                        <h3 className="font-bold text-white text-lg">{doc.name}</h3>
-                                        <p className="text-sm text-slate-400">{doc.doctorData?.specialty}</p>
+                                <div className="flex flex-col items-center text-center mb-6 pt-4">
+                                    <div className="w-20 h-20 mb-4 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-400 text-2xl font-bold border border-white/5 shadow-inner group-hover:scale-105 transition-transform">
+                                        {doc.doctorData?.photoUrl ? (
+                                            <img src={doc.doctorData.photoUrl} alt="Dr" className="w-full h-full rounded-2xl object-cover" />
+                                        ) : (
+                                            doc.name.charAt(0)
+                                        )}
+                                    </div>
+                                    <h3 className="font-bold text-white text-xl mb-1">{doc.name}</h3>
+                                    <p className="text-sm text-slate-400 flex items-center gap-1">
+                                        <Stethoscope size={12}/> {doc.doctorData?.specialty}
+                                    </p>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6">
+                                    <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-xs text-slate-400 flex justify-between">
+                                        <span>License:</span>
+                                        <span className="text-white font-mono">{doc.doctorData?.licenseNumber}</span>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-xs text-slate-400 flex justify-between">
+                                        <span>Location:</span>
+                                        <span className="text-white truncate max-w-[120px]">{doc.doctorData?.clinicLocation}</span>
                                     </div>
                                 </div>
                                 
-                                <div className="flex gap-2 mt-6">
-                                    <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="flex-1 !py-2">
-                                        <Eye size={16} className="mr-2"/> {t('view_details')}
-                                    </Button>
-                                </div>
+                                <Button onClick={() => setSelectedDoctor(doc)} variant="secondary" className="w-full !py-3 border-white/5 hover:border-white/20 hover:bg-white/5">
+                                    <Eye size={16} className="mr-2"/> {t('view_details')}
+                                </Button>
                             </div>
                         ))}
                      </div>
@@ -2790,48 +3024,81 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
              </div>
 
              {/* 2. Active Doctors List */}
-             <div>
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                     <Stethoscope className="text-emerald-500" /> {t('approved_docs_list')}
-                </h2>
-                <Card className="bg-slate-900 border-white/5 overflow-hidden !p-0">
+             <div className="space-y-6">
+                <div className="flex items-center gap-3 pb-2 border-b border-white/5">
+                     <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                        <Stethoscope className="text-emerald-500" size={20} />
+                     </div>
+                     <h2 className="text-xl font-bold text-white">
+                         {t('approved_docs_list')}
+                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5">{approvedDoctors.length}</span>
+                     </h2>
+                </div>
+
+                <Card className="bg-slate-900/60 border-white/10 overflow-hidden !p-0 backdrop-blur-md">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-right text-sm text-slate-400">
-                            <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
+                        <table className="w-full text-left text-sm text-slate-400">
+                            <thead className="bg-slate-950/80 text-slate-500 uppercase font-bold text-xs tracking-wider">
                                 <tr>
-                                    <th className="p-4">Doctor</th>
-                                    <th className="p-4">Specialty</th>
-                                    <th className="p-4 text-center">Patients</th>
-                                    <th className="p-4 text-center">Level</th>
-                                    <th className="p-4 text-center">Actions</th>
+                                    <th className="p-5">Doctor</th>
+                                    <th className="p-5">Specialty</th>
+                                    <th className="p-5 text-center">Patients</th>
+                                    <th className="p-5 text-center">Level</th>
+                                    <th className="p-5 text-center">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-white/5">
                                 {approvedDoctors.length === 0 && (
-                                    <tr><td colSpan={5} className="p-6 text-center">No approved doctors yet.</td></tr>
+                                    <tr><td colSpan={5} className="p-12 text-center text-slate-600">No approved doctors registered yet.</td></tr>
                                 )}
                                 {approvedDoctors.map(doc => {
-                                    // حساب عدد المرضى غير المتعافين لهذا الطبيب
                                     const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
                                     const level = Math.floor((doc.doctorData?.recoveredCount || 0) / 5) + 1;
 
                                     return (
-                                        <tr key={doc.uid} className="hover:bg-slate-800/50 transition-colors">
-                                            <td className="p-4 font-bold text-white flex items-center gap-3">
-                                                {doc.doctorData?.photoUrl ? (
-                                                    <img src={doc.doctorData.photoUrl} className="w-8 h-8 rounded-full object-cover" />
-                                                ) : (
-                                                    <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">Dr</div>
-                                                )}
-                                                {doc.name}
+                                        <tr key={doc.uid} className="hover:bg-white/5 transition-colors group">
+                                            <td className="p-5 font-bold text-white flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                                                    {doc.doctorData?.photoUrl ? (
+                                                        <img src={doc.doctorData.photoUrl} className="w-full h-full rounded-full object-cover" />
+                                                    ) : (
+                                                        doc.name.charAt(0)
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="text-base">{doc.name}</div>
+                                                    <div className="text-xs text-slate-500 font-mono font-normal flex items-center gap-1 mt-0.5">
+                                                        <MapPin size={10}/> {doc.doctorData?.clinicLocation || 'Online'}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="p-4">{doc.doctorData?.specialty}</td>
-                                            <td className="p-4 text-center text-indigo-400 font-bold">{patientCount}</td>
-                                            <td className="p-4 text-center"><Badge color="amber">LVL {level}</Badge></td>
-                                            <td className="p-4 text-center flex justify-center gap-2">
-                                                <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded hover:bg-blue-500/20" title={t('view_details')}><Eye size={16}/></button>
-                                                <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded hover:bg-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}><Ban size={16}/></button>
-                                                <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded hover:bg-rose-500/20" title={t('delete_user')}><Trash2 size={16}/></button>
+                                            <td className="p-5">
+                                                <Badge color="blue" className="bg-blue-500/10 border-blue-500/20 text-blue-300 shadow-none">
+                                                    {doc.doctorData?.specialty}
+                                                </Badge>
+                                            </td>
+                                            <td className="p-5 text-center">
+                                                <span className="font-mono font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-white/5">
+                                                    {patientCount}
+                                                </span>
+                                            </td>
+                                            <td className="p-5 text-center">
+                                                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+                                                    LVL {level}
+                                                </div>
+                                            </td>
+                                            <td className="p-5 text-center">
+                                                <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors border border-blue-500/20" title={t('view_details')}>
+                                                        <Eye size={16}/>
+                                                    </button>
+                                                    <button onClick={() => toggleBan(doc)} className="p-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500 hover:text-white transition-colors border border-amber-500/20" title={doc.isBanned ? t('unban_user') : t('ban_user')}>
+                                                        <Ban size={16}/>
+                                                    </button>
+                                                    <button onClick={() => doc.uid && deleteUser(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500 hover:text-white transition-colors border border-rose-500/20" title={t('delete_user')}>
+                                                        <Trash2 size={16}/>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -2850,8 +3117,8 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
 ### File: `views\admin\AdminOverview.tsx`
 ```tsx
 import React, { useMemo } from 'react';
-import { Lock, CheckCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Lock, CheckCircle, Users, Activity, AlertCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { UserProfile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -2873,63 +3140,140 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
 
     const stats = useMemo(() => {
         return [
-            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1' },
-            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981' },
-            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b' },
-            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e' },
+            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1', icon: Users },
+            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981', icon: CheckCircle },
+            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b', icon: Activity },
+            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e', icon: Lock },
         ];
     }, [users, t]);
 
+    const pieData = [
+        { name: 'Active', value: normalUsers.length - recoveredUsers.length, color: '#6366f1' },
+        { name: 'Recovered', value: recoveredUsers.length, color: '#10b981' },
+    ];
+
     return (
-        <div className="space-y-6 animate-in fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="space-y-8 animate-in fade-in">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, idx) => (
-                    <Card key={idx} className="bg-slate-900 border-white/5 p-6 flex flex-col justify-between">
-                        <h3 className="text-slate-500 text-xs font-bold uppercase mb-2">{stat.name}</h3>
-                        <div className="text-4xl font-black" style={{color: stat.color}}>{stat.value}</div>
-                    </Card>
+                    <div key={idx} className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl blur-xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                        <Card className="relative bg-slate-900/80 border-white/5 p-6 flex flex-col justify-between h-32 overflow-hidden group-hover:border-white/10 transition-all">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <stat.icon size={64} color={stat.color} />
+                            </div>
+                            <div>
+                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">{stat.name}</h3>
+                                <div className="text-4xl font-black text-white" style={{ textShadow: `0 0 20px ${stat.color}40` }}>
+                                    {stat.value}
+                                </div>
+                            </div>
+                            <div className="h-1 w-full bg-slate-800 rounded-full mt-4 overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: '70%', backgroundColor: stat.color }}></div>
+                            </div>
+                        </Card>
+                    </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-slate-900 border-white/5 min-h-[300px]">
-                    <h3 className="text-white font-bold mb-4">{t('stat_overview')}</h3>
-                    <ResponsiveContainer width="100%" height="250px">
-                        <BarChart data={stats}>
-                            <XAxis dataKey="name" stroke="#475569" fontSize={10} tick={false} />
-                            <Tooltip contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px'}} cursor={{fill: 'transparent'}} />
-                            <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                                {stats.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Chart */}
+                <Card className="lg:col-span-2 bg-slate-900/80 border-white/5 min-h-[350px] flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
+                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 z-10">
+                        <Activity size={20} className="text-indigo-400"/> {t('stat_overview')}
+                    </h3>
+                    
+                    <div className="flex-1 w-full min-h-[250px] z-10">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <defs>
+                                    {stats.map((entry, index) => (
+                                        <linearGradient key={`grad-${index}`} id={`color-${index}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={entry.color} stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor={entry.color} stopOpacity={0.1}/>
+                                        </linearGradient>
+                                    ))}
+                                </defs>
+                                <XAxis dataKey="name" stroke="#475569" fontSize={12} tick={false} axisLine={false} />
+                                <Tooltip 
+                                    contentStyle={{backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'}} 
+                                    cursor={{fill: 'rgba(255,255,255,0.05)', radius: 8}}
+                                    itemStyle={{color: '#fff', fontWeight: 'bold'}}
+                                />
+                                <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={50} animationDuration={1500}>
+                                    {stats.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={`url(#color-${index})`} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </Card>
                 
-                <Card className="bg-slate-900 border-white/5">
-                    <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                        <Lock size={16} className="text-amber-500"/> {t('pending_approvals')}
-                    </h3>
-                    {pendingDoctors.length === 0 ? (
-                        <div className="text-center text-slate-500 py-10 flex flex-col items-center">
-                            <CheckCircle size={32} className="mb-2 opacity-20"/>
-                            <p>No pending approvals.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {pendingDoctors.slice(0, 3).map(doc => (
-                                <div key={doc.uid} className="flex justify-between items-center bg-slate-950 p-3 rounded-lg border border-white/5">
-                                    <div>
-                                        <div className="font-bold text-white text-sm">{doc.name}</div>
-                                        <div className="text-xs text-slate-500">{doc.doctorData?.specialty}</div>
+                {/* Pending Requests & Ratio */}
+                <div className="flex flex-col gap-6">
+                    <Card className="bg-slate-900/80 border-white/5 flex-1 relative overflow-hidden">
+                        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                            <Lock size={18} className="text-amber-500"/> {t('pending_approvals')}
+                        </h3>
+                        {pendingDoctors.length === 0 ? (
+                            <div className="text-center text-slate-500 py-8 flex flex-col items-center justify-center h-full">
+                                <CheckCircle size={40} className="mb-3 text-emerald-500/20"/>
+                                <p className="text-sm">All clear! No pending requests.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {pendingDoctors.slice(0, 3).map(doc => (
+                                    <div key={doc.uid} className="flex justify-between items-center bg-slate-950/50 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-all group">
+                                        <div>
+                                            <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">{doc.name}</div>
+                                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">{doc.doctorData?.specialty}</div>
+                                        </div>
+                                        <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1.5 !px-3 !text-xs !rounded-lg">
+                                            {t('review_btn')}
+                                        </Button>
                                     </div>
-                                    <Button onClick={() => setActiveTab('doctors')} variant="secondary" className="!py-1 !px-3 !text-xs">{t('review_btn')}</Button>
-                                </div>
-                            ))}
+                                ))}
+                                {pendingDoctors.length > 3 && (
+                                    <div className="text-center pt-2">
+                                        <button onClick={() => setActiveTab('doctors')} className="text-xs text-slate-400 hover:text-white transition-colors">
+                                            + {pendingDoctors.length - 3} more
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+
+                    <Card className="bg-slate-900/80 border-white/5 h-48 relative overflow-hidden flex items-center justify-center">
+                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent"></div>
+                         <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={60}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '8px'}} itemStyle={{color: '#fff'}}/>
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-black text-white">{Math.round((recoveredUsers.length / (normalUsers.length || 1)) * 100)}%</span>
+                            <span className="text-[9px] text-slate-500 uppercase tracking-widest">Recovery Rate</span>
                         </div>
-                    )}
-                </Card>
+                    </Card>
+                </div>
             </div>
         </div>
     );
@@ -2940,9 +3284,10 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
 ### File: `views\admin\AdminUsers.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { Search, Ban, Trash2 } from 'lucide-react';
+import { Search, Ban, Trash2, User, Shield, Stethoscope, Mail, CheckCircle, XCircle } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button'; // استخدام الزر الموحد
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AdminUsersProps {
@@ -2955,56 +3300,116 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
     const { t } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
 
-    // تصفية المستخدمين (نستبعد الأطباء والأدمن)
+    // تصفية المستخدمين (نستبعد الأطباء والأدمن لعرض المستخدمين العاديين فقط)
     const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
 
+    // فلترة البحث
+    const filteredUsers = normalUsers.filter(u => 
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="space-y-4 animate-in fade-in">
-            {/* شريط البحث */}
-            <div className="flex bg-slate-900 p-4 rounded-2xl border border-white/5 mb-4">
-                <Search className="text-slate-500 ml-4" size={20} />
-                <input 
-                    className="bg-transparent w-full text-white outline-none"
-                    placeholder={t('search_user_placeholder')}
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
+        <div className="space-y-8 animate-in fade-in">
+            {/* شريط البحث المتطور */}
+            <div className="relative group">
+                <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative flex items-center bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+                    <div className="p-3 bg-slate-800 rounded-xl text-slate-400">
+                        <Search size={20} />
+                    </div>
+                    <input 
+                        className="w-full bg-transparent border-none text-white px-4 py-2 outline-none placeholder-slate-500 font-medium"
+                        placeholder={t('search_user_placeholder')}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                    <div className="px-4 text-xs text-slate-500 font-bold uppercase tracking-wider hidden md:block">
+                        {filteredUsers.length} Users Found
+                    </div>
+                </div>
             </div>
 
             {/* شبكة المستخدمين */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {normalUsers
-                    .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(user => (
-                    <div key={user.uid} className="bg-slate-900/80 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">
-                                {user.name.charAt(0)}
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-white flex items-center gap-2">
-                                    {user.name} 
-                                    {user.isBanned && <Ban size={12} className="text-rose-500"/>}
-                                </h4>
-                                <div className="flex gap-2 mt-1">
-                                    <Badge color="blue" className="!text-[9px] !px-1.5 !py-0.5">{user.role === 'patient' ? t('role_patient') : 'User'}</Badge>
-                                    {user.patientData?.assignedDoctorName && (
-                                        <span className="text-[9px] text-slate-500 flex items-center">Dr: {user.patientData.assignedDoctorName}</span>
-                                    )}
+            {filteredUsers.length === 0 ? (
+                <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600">
+                    <User size={48} className="mx-auto mb-4 opacity-20"/>
+                    <p>No users found matching "{searchTerm}"</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredUsers.map(user => (
+                        <div key={user.uid} className="group relative bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/90 transition-all duration-300 overflow-hidden shadow-lg">
+                            {/* زخرفة خلفية */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
+                            
+                            <div className="flex items-start justify-between mb-6 relative z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl border shadow-inner transition-transform group-hover:scale-105 ${user.isBanned ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-800 text-slate-300 border-white/5'}`}>
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-lg flex items-center gap-2">
+                                            {user.name}
+                                            {user.isBanned && <Badge color="red" className="!py-0 !px-1.5 text-[9px]">BANNED</Badge>}
+                                        </h4>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge color={user.role === 'patient' ? 'indigo' : 'blue'} className="bg-slate-950/50 border-white/5 shadow-none">
+                                                {user.role === 'patient' ? 'Patient' : 'User'}
+                                            </Badge>
+                                            {user.planType && (
+                                                <span className="text-[10px] text-slate-500 bg-slate-950/30 px-2 py-0.5 rounded border border-white/5">
+                                                    {user.planType}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
+                            <div className="space-y-3 mb-6 relative z-10">
+                                <div className="flex items-center gap-3 text-sm text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-white/5">
+                                    <Mail size={14} className="text-slate-500"/> 
+                                    <span className="truncate">{user.email}</span>
+                                </div>
+                                {user.patientData?.assignedDoctorName ? (
+                                    <div className="flex items-center gap-3 text-sm text-indigo-300 bg-indigo-900/10 p-3 rounded-xl border border-indigo-500/10">
+                                        <Stethoscope size={14}/> 
+                                        <span>Dr. {user.patientData.assignedDoctorName}</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-sm text-slate-500 bg-slate-950/40 p-3 rounded-xl border border-white/5 border-dashed">
+                                        <Shield size={14}/> 
+                                        <span>No Doctor Assigned</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-3 relative z-10 pt-2 border-t border-white/5">
+                                <button 
+                                    onClick={() => toggleBan(user)} 
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                                        user.isBanned 
+                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white' 
+                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500 hover:text-white'
+                                    }`}
+                                >
+                                    {user.isBanned ? <CheckCircle size={14}/> : <Ban size={14}/>}
+                                    {user.isBanned ? t('unban_user') : t('ban_user')}
+                                </button>
+                                
+                                <button 
+                                    onClick={() => user.uid && deleteUser(user.uid)} 
+                                    className="flex-none p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all"
+                                    title={t('delete_user')}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => toggleBan(user)} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" title={user.isBanned ? t('unban_user') : t('ban_user')}>
-                                <Ban size={16} />
-                            </button>
-                            <button onClick={() => user.uid && deleteUser(user.uid)} className="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20" title={t('delete_user')}>
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -3014,7 +3419,7 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
 ### File: `views\dashboard\DailyCheckIn.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { Edit3, Frown, Meh, Smile, Moon } from 'lucide-react';
+import { Edit3, Frown, Meh, Smile, Moon, Check, BedDouble } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { UserProfile, PlanDay } from '../../types';
@@ -3038,7 +3443,7 @@ export const DailyCheckIn = ({
     setSelectedMood,
     submitDailyLog
 }: DailyCheckInProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [isCustomDose, setIsCustomDose] = useState(false);
     const [customDoseValue, setCustomDoseValue] = useState<string>('');
     const [sleepHours, setSleepHours] = useState(7);
@@ -3067,8 +3472,9 @@ export const DailyCheckIn = ({
     // Calculate Dose Options
     const target = todayPlan?.plannedDose || 0;
     const baseStep = isLiquid ? 0.1 : 0.5;
-    const doseOptions = Array.from({ length: 7 }, (_, i) => {
-        const val = target - (3 * baseStep) + (i * baseStep);
+    
+    const doseOptions = Array.from({ length: 5 }, (_, i) => {
+        const val = target - (2 * baseStep) + (i * baseStep);
         return Math.max(0, parseFloat(val.toFixed(2)));
     }).filter((v, i, a) => a.indexOf(v) === i && v >= 0);
 
@@ -3076,47 +3482,52 @@ export const DailyCheckIn = ({
     doseOptions.sort((a,b) => a - b);
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-10 animate-in fade-in">
             {/* Step 1: Dose Selector */}
             <div>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedDose !== null ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>1</span>
+                <p className="text-indigo-200/60 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-500 font-black ${selectedDose !== null ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/40' : 'bg-white/10 text-slate-400'}`}>1</span>
                     {t('step_1')}
                 </p>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                
+                <div className="flex flex-wrap gap-3">
                     {!isCustomDose && doseOptions.map(val => (
                         <button
                             key={val}
                             onClick={() => setSelectedDose(val)}
-                            className={`min-w-[5rem] h-16 rounded-xl border transition-all font-mono font-bold text-lg flex items-center justify-center relative group overflow-hidden ${
-                                selectedDose === val
-                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105 z-10'
-                                : 'bg-slate-800/30 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-indigo-500/30 hover:text-indigo-300'
-                            }`}
+                            className={`
+                                relative min-w-[4.5rem] h-16 rounded-2xl font-mono font-bold text-lg transition-all duration-300 border
+                                flex items-center justify-center overflow-hidden group
+                                ${selectedDose === val
+                                ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30 scale-110 z-10'
+                                : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800 hover:border-white/20 hover:text-white'}
+                            `}
                         >
                             <span className="relative z-10">{val}</span>
                             {val === todayPlan?.plannedDose && (
-                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_10px_indigo]"></span>
+                                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
                             )}
+                            {selectedDose === val && <div className="absolute inset-0 bg-white/20 blur-md"></div>}
                         </button>
                     ))}
 
                     <button
                          onClick={() => setIsCustomDose(!isCustomDose)}
-                         className={`min-w-[5rem] h-16 rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all ${
-                             isCustomDose
+                         className={`
+                             min-w-[4.5rem] h-16 rounded-2xl border border-dashed transition-all flex items-center justify-center
+                             ${isCustomDose
                              ? 'bg-slate-800 border-indigo-500 text-indigo-400'
-                             : 'bg-transparent border-slate-700 text-slate-600 hover:border-slate-500'
-                         }`}
+                             : 'bg-transparent border-slate-700 text-slate-600 hover:border-slate-500 hover:text-slate-400'}
+                         `}
                     >
-                        <Edit3 size={18} />
+                        <Edit3 size={20} />
                     </button>
 
                     {isCustomDose && (
-                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4">
+                        <div className="flex items-center gap-2 animate-in slide-in-from-right-4">
                             <input
                                 type="number"
-                                className="w-20 h-16 bg-slate-800 border border-indigo-500 rounded-xl text-center text-lg font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                className="w-24 h-16 bg-slate-900/80 border border-indigo-500 rounded-2xl text-center text-xl font-bold text-white outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
                                 placeholder="0.0"
                                 value={customDoseValue}
                                 onChange={(e) => {
@@ -3124,69 +3535,90 @@ export const DailyCheckIn = ({
                                     const val = parseFloat(e.target.value);
                                     if(!isNaN(val)) setSelectedDose(val);
                                 }}
+                                autoFocus
                             />
-                            <span className="text-slate-500 font-bold text-xs">{unitLabel}</span>
+                            <span className="text-slate-500 font-bold text-sm bg-slate-900/50 px-3 py-1 rounded-lg border border-white/5">{unitLabel}</span>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Step 2: Mood & Details */}
-            <div className={`transition-all duration-700 transform ${selectedDose !== null ? 'opacity-100 translate-y-0' : 'opacity-20 translate-y-8 pointer-events-none blur-sm'}`}>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${selectedMood ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}>2</span>
+            <div className={`transition-all duration-700 ${selectedDose !== null ? 'opacity-100 translate-y-0' : 'opacity-30 translate-y-4 grayscale pointer-events-none'}`}>
+                <p className="text-indigo-200/60 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-500 font-black ${selectedMood ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/40' : 'bg-white/10 text-slate-400'}`}>2</span>
                     {t('step_2')}
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-6">
                     {[
-                        { id: 'bad', label: t('bad'), icon: Frown, color: 'rose' },
-                        { id: 'normal', label: t('stable'), icon: Meh, color: 'amber' },
-                        { id: 'good', label: t('excellent'), icon: Smile, color: 'emerald' }
+                        { id: 'bad', label: t('bad'), icon: Frown, color: 'from-rose-500 to-pink-600', shadow: 'shadow-rose-500/30' },
+                        { id: 'normal', label: t('stable'), icon: Meh, color: 'from-amber-400 to-orange-500', shadow: 'shadow-amber-500/30' },
+                        { id: 'good', label: t('excellent'), icon: Smile, color: 'from-emerald-400 to-teal-500', shadow: 'shadow-emerald-500/30' }
                     ].map((m: any) => (
                         <button
                             key={m.id}
                             onClick={() => setSelectedMood(m.id)}
-                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 group ${
-                                selectedMood === m.id
-                                ? `bg-${m.color}-500/10 border-${m.color}-500/50 text-${m.color}-400 shadow-lg scale-105`
-                                : 'bg-slate-800/30 border-white/5 text-slate-600 hover:bg-slate-800'
-                            }`}
+                            className={`
+                                py-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 group relative overflow-hidden
+                                ${selectedMood === m.id
+                                ? `bg-gradient-to-br ${m.color} border-transparent text-white shadow-xl ${m.shadow} scale-105`
+                                : 'bg-slate-900/40 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}
+                            `}
                         >
-                            <m.icon className={`w-6 h-6 ${selectedMood === m.id ? 'fill-current' : ''}`} />
-                            <span className="text-[9px] font-bold uppercase">{m.label}</span>
+                            <m.icon className={`w-8 h-8 transition-transform duration-300 ${selectedMood === m.id ? 'scale-110 rotate-6' : 'group-hover:scale-110'}`} strokeWidth={2.5} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{m.label}</span>
                         </button>
                     ))}
                 </div>
 
                 {selectedMood && (
-                    <div className="bg-slate-900/40 p-4 rounded-2xl border border-white/5 space-y-4 animate-in fade-in slide-in-from-top-4">
+                    <div className="bg-slate-950/40 backdrop-blur-md p-6 rounded-3xl border border-white/10 space-y-6 animate-in slide-in-from-bottom-4 shadow-inner">
+                        {/* Sleep Slider (تم تعديل العنوان ليكون منطقياً) */}
                         <div>
-                            <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase mb-2">
-                                <Moon size={12} /> {t('sleep_label')}: <span className="text-white text-sm font-mono">{sleepHours}h</span>
-                            </label>
+                            <div className="flex justify-between items-end mb-4">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
+                                    <BedDouble size={16} className="text-indigo-400" />
+                                    {language === 'ar' ? 'كم ساعة نمت ليلة البارحة؟' : 'Sleep hours last night?'}
+                                </label>
+                                <span className="text-2xl font-mono font-black text-white">{sleepHours}<span className="text-sm text-slate-600 font-bold ml-1">h</span></span>
+                            </div>
                             <input
                                 type="range" min="0" max="12" step="0.5"
                                 value={sleepHours}
                                 onChange={(e) => setSleepHours(parseFloat(e.target.value))}
-                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                className="w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                             />
+                            <div className="flex justify-between text-[10px] text-slate-600 mt-2 font-bold px-1">
+                                <span>0h</span>
+                                <span>6h</span>
+                                <span>12h</span>
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                            {symptomOptions.map(sym => (
-                                <button
-                                    key={sym.id}
-                                    onClick={() => toggleSymptom(sym.label)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                                        selectedSymptoms.includes(sym.label)
-                                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                                        : 'bg-slate-800 text-slate-500 border-transparent hover:border-slate-600'
-                                    }`}
-                                >
-                                    {sym.label}
-                                </button>
-                            ))}
+                        {/* Symptoms Tags */}
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase mb-3 block">{t('symptoms_label')}</label>
+                            <div className="flex flex-wrap gap-2">
+                                {symptomOptions.map(sym => {
+                                    const isSelected = selectedSymptoms.includes(sym.label);
+                                    return (
+                                        <button
+                                            key={sym.id}
+                                            onClick={() => toggleSymptom(sym.label)}
+                                            className={`
+                                                px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center gap-2
+                                                ${isSelected
+                                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-lg shadow-rose-900/20'
+                                                : 'bg-slate-900/60 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}
+                                            `}
+                                        >
+                                            {isSelected && <Check size={12} />}
+                                            {sym.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -3196,7 +3628,7 @@ export const DailyCheckIn = ({
             <div className={`transition-all duration-700 ${selectedDose !== null && selectedMood ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                  <Button
                     variant="success"
-                    className="w-full py-4 text-lg rounded-2xl shadow-emerald-500/20"
+                    className="w-full py-5 text-lg rounded-2xl shadow-xl shadow-emerald-500/20 animate-pulse-glow"
                     onClick={() => submitDailyLog(sleepHours, selectedSymptoms)}
                  >
                     {t('confirm_log')}
@@ -3211,8 +3643,8 @@ export const DailyCheckIn = ({
 ### File: `views\dashboard\DashboardCharts.tsx`
 ```tsx
 import React from 'react';
-import { FlaskConical, Clock, Info } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { FlaskConical, Clock, Info, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -3224,68 +3656,91 @@ interface DashboardChartsProps {
 }
 
 export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     
     const isLiquid = userProfile?.medForm === 'liquid';
     const isPatient = userProfile?.role === 'patient';
     const doctorName = userProfile?.patientData?.assignedDoctorName;
 
+    // تجهيز البيانات للرسم البياني (فقط أول 14 يوم أو حسب المتوفر)
+    const chartData = plan.slice(0, 30).map(p => ({
+        date: p.date.slice(5), // MM-DD
+        dose: p.plannedDose
+    }));
+
     return (
-        <div className="space-y-6">
-            {/* Plan Info Card */}
-            <Card className="flex flex-col items-center justify-center text-center py-10 bg-slate-900/40">
-                 <div className="w-20 h-20 rounded-full bg-slate-950 flex items-center justify-center mb-4 relative border border-white/5">
-                     <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping duration-[3000ms]"></div>
+        <div className="space-y-6 animate-in slide-in-from-right-4">
+            
+            {/* بطاقة معلومات الخطة */}
+            <Card className="flex flex-col items-center justify-center text-center py-10 border-white/10 relative overflow-hidden group">
+                 {/* خلفية جمالية */}
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
+                 
+                 <div className="w-20 h-20 rounded-3xl bg-slate-900/80 border border-white/5 flex items-center justify-center mb-6 relative shadow-2xl shadow-black/50 group-hover:scale-110 transition-transform duration-500">
+                     <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      {isLiquid ? (
-                        <FlaskConical className="w-8 h-8 text-indigo-400" />
+                        <FlaskConical className="w-8 h-8 text-indigo-400 relative z-10" />
                      ) : (
-                        <Clock className="w-8 h-8 text-indigo-400" />
+                        <Clock className="w-8 h-8 text-indigo-400 relative z-10" />
                      )}
                  </div>
                  
                  {isPatient ? (
-                     <>
-                        <h3 className="text-white font-bold text-lg mb-1">الخطة العلاجية الحالية</h3>
-                        <p className="text-slate-500 text-xs px-4 leading-relaxed mb-3">
-                            هذه الخطة تم وضعها بواسطة <strong>د. {doctorName}</strong>. أي تغيير في الجرعات يجب أن يتم بعد استشارته.
-                        </p>
+                     <div className="relative z-10 px-6">
+                        <h3 className="text-white font-bold text-lg mb-2">خطة طبية معتمدة</h3>
+                        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm mb-4 bg-slate-950/50 py-2 px-4 rounded-xl border border-white/5">
+                            <ShieldCheck size={16} className="text-emerald-500"/>
+                            <span>إشراف د. {doctorName}</span>
+                        </div>
                         <Badge color="indigo" className="mx-auto">Fixed Plan</Badge>
-                     </>
+                     </div>
                  ) : (
-                     <>
-                        <h3 className="text-white font-bold text-lg mb-1">{t('algo_active')}</h3>
-                        <p className="text-slate-500 text-xs px-4 leading-relaxed">
+                     <div className="relative z-10 px-6">
+                        <h3 className="text-white font-bold text-lg mb-2 flex items-center justify-center gap-2">
+                            {t('algo_active')} <BrainCircuit size={18} className="text-amber-400"/>
+                        </h3>
+                        <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto mb-4">
                           {t('algo_desc')}
                         </p>
-                     </>
+                        <Badge color="emerald">Smart Engine v2.0</Badge>
+                     </div>
                  )}
             </Card>
 
-            {/* Projection Chart Card */}
-            <Card className="min-h-[250px] relative overflow-hidden bg-indigo-950/10" noPadding>
-                <div className="p-6 pb-0 relative z-10">
-                   <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                       {t('recovery_path')} <Info size={12} className="text-slate-500"/>
-                   </h2>
-                   <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">Projection</p>
+            {/* الرسم البياني للتوقعات */}
+            <Card className="min-h-[280px] relative overflow-hidden border-white/10" noPadding>
+                <div className="p-6 pb-0 relative z-10 flex justify-between items-start">
+                   <div>
+                       <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+                           {t('recovery_path')} <Info size={14} className="text-slate-500 hover:text-white transition-colors cursor-help"/>
+                       </h2>
+                       <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">Projection 30 Days</p>
+                   </div>
                 </div>
-                <div className="absolute inset-x-0 bottom-0 top-16 opacity-60 hover:opacity-100 transition-opacity duration-500">
+                
+                <div className="absolute inset-x-0 bottom-0 top-16">
                     <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={plan.slice(0, 14)}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                         <defs>
-                        <linearGradient id="colorDose" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                        </linearGradient>
+                            <linearGradient id="colorDose" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                            </linearGradient>
                         </defs>
+                        <Tooltip 
+                            contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                            itemStyle={{color: '#fff', fontSize: '12px', fontWeight: 'bold'}}
+                            labelStyle={{display: 'none'}}
+                            formatter={(val) => [`${val} mg`, 'الجرعة']}
+                        />
                         <Area 
                             type="monotone" 
-                            dataKey="plannedDose" 
+                            dataKey="dose" 
                             stroke="#818cf8" 
                             strokeWidth={3} 
                             fillOpacity={1} 
                             fill="url(#colorDose)" 
-                            animationDuration={2000}
+                            animationDuration={1500}
                         />
                     </AreaChart>
                     </ResponsiveContainer>
@@ -3329,26 +3784,35 @@ export const DashboardHeader = ({
     const unitLabel = userProfile?.medUnit || 'mg';
 
     return (
-        <Card className="lg:col-span-8 bg-gradient-to-br from-[#0f172a] via-[#101626] to-indigo-950/20 min-h-[550px] flex flex-col justify-between !p-8 md:!p-10 border-indigo-500/10 shadow-2xl relative overflow-hidden">
-            {/* Background Effect */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        // استخدام البطاقة مع خلفية مخصصة وتأثيرات بصرية
+        <Card className="lg:col-span-8 min-h-[550px] flex flex-col relative overflow-hidden group border-white/10 shadow-2xl shadow-indigo-900/10" noPadding>
+            
+            {/* 1. خلفية متدرجة داكنة وهادئة */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e1b4b] opacity-90"></div>
+            
+            {/* 2. تأثير إضاءة محيطية (Ambient Light) خلف النص */}
+            <div className="absolute top-[-20%] right-[-10%] w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] animate-pulse-glow pointer-events-none"></div>
 
-            <div className="relative z-10 h-full flex flex-col justify-between">
-                {/* Top Section: Target Dose & Progress */}
+            <div className="relative z-10 p-8 md:p-12 flex flex-col h-full justify-between">
+                {/* القسم العلوي: الجرعة والعداد */}
                 <div className="flex justify-between items-start">
                     <div>
-                        <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <h2 className="text-xs font-bold text-indigo-300 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                             <ShieldCheck className="w-4 h-4" /> {t('target_dose')}
                         </h2>
-                        <div className="flex items-baseline gap-2 group cursor-default">
-                            <span className="text-7xl md:text-9xl font-black text-white tracking-tighter drop-shadow-2xl group-hover:text-indigo-100 transition-colors duration-500">
+                        <div className="flex items-baseline gap-2 cursor-default select-none">
+                            {/* رقم الجرعة بتدرج لوني (Gradient Text) */}
+                            <span className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter drop-shadow-xl transition-all duration-500 hover:to-indigo-200">
                                 {todayPlan ? todayPlan.plannedDose : 0}
                             </span>
-                            <span className="text-2xl text-slate-600 font-bold group-hover:text-slate-500 transition-colors">{unitLabel}</span>
+                            <span className="text-2xl text-slate-500 font-bold mb-4">{unitLabel}</span>
                         </div>
                     </div>
 
-                    <div className="hidden md:block scale-110">
+                    {/* عداد التقدم الدائري */}
+                    <div className="hidden md:block scale-110 relative">
+                        {/* توهج خلف العداد */}
+                        <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
                         <ProgressRing 
                             radius={70} 
                             stroke={8} 
@@ -3358,22 +3822,26 @@ export const DashboardHeader = ({
                     </div>
                 </div>
 
-                {/* Interaction Section OR Logged State */}
+                {/* القسم السفلي: إما رسالة النجاح أو نموذج التسجيل */}
                 {todayLog ? (
-                    <div className="mt-8 bg-emerald-500/5 border border-emerald-500/10 p-8 rounded-[2rem] flex items-center justify-between backdrop-blur-md animate-in zoom-in slide-in-from-bottom-4 duration-700">
+                    // حالة النجاح (تم التوثيق) - بطاقة زجاجية خضراء
+                    <div className="mt-8 bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-3xl flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-4 shadow-lg shadow-emerald-900/10">
                         <div>
-                            <p className="text-emerald-400 font-bold text-2xl mb-2">{t('documented')}</p>
+                            <p className="text-emerald-400 font-bold text-2xl mb-2 flex items-center gap-2">
+                                {t('documented')} <span className="text-2xl">🎉</span>
+                            </p>
                             <div className="space-y-1 text-sm">
                                 <p className="text-slate-400 font-medium">{t('dose')}: <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span></p>
                                 <p className="text-slate-400 font-medium">{t('mood')}: <span className="text-white">{todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}</span></p>
                             </div>
                         </div>
-                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-4 ring-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
                             <CheckCircle className="text-emerald-500 w-8 h-8" />
                         </div>
                     </div>
                 ) : (
-                    <div className="mt-8">
+                    // نموذج التسجيل (يتم تمريره كـ children)
+                    <div className="mt-8 animate-in slide-in-from-bottom-2">
                         {children}
                     </div>
                 )}
@@ -3391,17 +3859,17 @@ import {
     collection, updateDoc, doc, addDoc, query, orderBy, deleteDoc, onSnapshot 
 } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { UserProfile, Article, ArticleCategory } from '../types';
-// تم إضافة Trash2 هنا
-import { Activity, Users, FileText, Stethoscope, MessageSquareWarning, X, Trash2 } from 'lucide-react';
+import { UserProfile, Article } from '../types';
+import { Activity, Users, FileText, Stethoscope, MessageSquareWarning, X, Trash2, ShieldAlert } from 'lucide-react';
 
 // المكونات الأساسية
 import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 
-// المكونات الفرعية الجديدة للإدارة
+// المكونات الفرعية
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminDoctors } from './admin/AdminDoctors';
 import { AdminUsers } from './admin/AdminUsers';
@@ -3410,7 +3878,7 @@ import { AdminCMS } from './admin/AdminCMS';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export const AdminView = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
@@ -3420,7 +3888,7 @@ export const AdminView = () => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [articles, setArticles] = useState<Article[]>([]);
 
-    // -- Doctor View/Reject State (Shared Modals) --
+    // -- Modals State --
     const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -3452,7 +3920,7 @@ export const AdminView = () => {
         };
     }, []);
 
-    // -- DOCTOR MANAGEMENT ACTIONS --
+    // -- ACTIONS --
     
     const approveDoctor = async (docUid: string) => {
         if (!confirm("Are you sure you want to approve this doctor?")) return;
@@ -3488,8 +3956,6 @@ export const AdminView = () => {
         } catch (e) { console.error(e); }
     };
 
-    // -- USER MANAGEMENT ACTIONS --
-
     const toggleBan = async (user: UserProfile) => {
         if (!user.uid) return;
         const newVal = !user.isBanned;
@@ -3499,7 +3965,7 @@ export const AdminView = () => {
     };
 
     const deleteUser = async (targetUid: string) => {
-        if (!confirm("Are you sure you want to permanently delete this user?")) return;
+        if (!confirm("Warning: This will permanently delete the user and all their data. Continue?")) return;
         try {
             await deleteDoc(doc(db, "users", targetUid));
             if (selectedDoctor?.uid === targetUid) setSelectedDoctor(null);
@@ -3508,8 +3974,6 @@ export const AdminView = () => {
             alert("Failed to delete user.");
         }
     };
-
-    // -- CMS ACTIONS --
 
     const publishArticle = async (articleData: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
         const currentUser = auth?.currentUser;
@@ -3537,10 +4001,14 @@ export const AdminView = () => {
 
     return (
         <LayoutContainer>
-            <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
+            <div className="relative">
+                {/* خلفية جمالية خاصة بالأدمن */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+                <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
+            </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
+            {/* Navigation Tabs - Glass Floating Style */}
+            <div className="flex p-1.5 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-2xl relative z-10">
                 {[
                     { id: 'overview', icon: Activity, label: t('tab_overview') },
                     { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
@@ -3550,138 +4018,144 @@ export const AdminView = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap min-w-[120px] ${
                             activeTab === tab.id 
-                            ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg' 
-                            : 'bg-slate-900 text-slate-500 border-white/5 hover:bg-slate-800'
+                            ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/20' 
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                         }`}
                     >
                         <tab.icon size={16} />
                         {tab.label}
                         {tab.id === 'doctors' && pendingDoctorsCount > 0 && (
-                             <span className="ml-2 bg-rose-500 text-white text-[10px] px-1.5 rounded-full animate-pulse">{pendingDoctorsCount}</span>
+                             <span className="ml-2 bg-white text-rose-600 text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">{pendingDoctorsCount}</span>
                         )}
                     </button>
                 ))}
             </div>
 
-            {/* Main Content Area */}
-            {activeTab === 'overview' && (
-                <AdminOverview users={users} setActiveTab={setActiveTab} />
-            )}
+            {/* Main Content Area - with Fade In */}
+            <div className="animate-in slide-in-from-bottom-4 relative z-10">
+                {activeTab === 'overview' && (
+                    <AdminOverview users={users} setActiveTab={setActiveTab} />
+                )}
 
-            {activeTab === 'doctors' && (
-                <AdminDoctors 
-                    users={users} 
-                    setSelectedDoctor={setSelectedDoctor} 
-                    toggleBan={toggleBan} 
-                    deleteUser={deleteUser} 
-                />
-            )}
+                {activeTab === 'doctors' && (
+                    <AdminDoctors 
+                        users={users} 
+                        setSelectedDoctor={setSelectedDoctor} 
+                        toggleBan={toggleBan} 
+                        deleteUser={deleteUser} 
+                    />
+                )}
 
-            {activeTab === 'users' && (
-                <AdminUsers 
-                    users={users} 
-                    toggleBan={toggleBan} 
-                    deleteUser={deleteUser} 
-                />
-            )}
+                {activeTab === 'users' && (
+                    <AdminUsers 
+                        users={users} 
+                        toggleBan={toggleBan} 
+                        deleteUser={deleteUser} 
+                    />
+                )}
 
-            {activeTab === 'cms' && (
-                <AdminCMS 
-                    articles={articles} 
-                    publishArticle={publishArticle} 
-                    deleteArticle={deleteArticle} 
-                />
-            )}
+                {activeTab === 'cms' && (
+                    <AdminCMS 
+                        articles={articles} 
+                        publishArticle={publishArticle} 
+                        deleteArticle={deleteArticle} 
+                    />
+                )}
+            </div>
 
-            {/* --- SHARED MODALS --- */}
+            {/* --- SHARED MODALS (GLASS STYLE) --- */}
 
             {/* DOCTOR DETAILS MODAL */}
             {selectedDoctor && !showRejectModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-lg bg-slate-900 border-white/10 shadow-2xl relative">
-                        <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                    <Card className="w-full max-w-lg !bg-slate-900 border-white/10 shadow-2xl relative rounded-[2.5rem] overflow-hidden">
                         
-                        <div className="text-center mb-6">
-                            {selectedDoctor.doctorData?.photoUrl ? (
-                                <img src={selectedDoctor.doctorData.photoUrl} alt="Dr" className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-800 object-cover" />
-                            ) : (
-                                <div className="w-24 h-24 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-slate-500">Dr</div>
+                        {/* Modal Header */}
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+                        <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800/50 rounded-full text-slate-400 hover:text-white z-20 backdrop-blur-md hover:bg-slate-700 transition-colors"><X size={20}/></button>
+                        
+                        <div className="text-center pt-8 pb-6 relative z-10">
+                            <div className="w-28 h-28 mx-auto mb-4 rounded-full p-1 bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-xl">
+                                {selectedDoctor.doctorData?.photoUrl ? (
+                                    <img src={selectedDoctor.doctorData.photoUrl} alt="Dr" className="w-full h-full rounded-full object-cover border-4 border-slate-900" />
+                                ) : (
+                                    <div className="w-full h-full bg-slate-800 rounded-full flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-slate-900">Dr</div>
+                                )}
+                            </div>
+                            <h2 className="text-2xl font-black text-white">{selectedDoctor.name}</h2>
+                            <p className="text-indigo-400 font-bold uppercase text-xs tracking-widest mt-1">{selectedDoctor.doctorData?.specialty}</p>
+                        </div>
+
+                        <div className="px-8 pb-8 space-y-4">
+                            <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">License ID</span>
+                                    <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">Email</span>
+                                    <span className="text-white">{selectedDoctor.email}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">Phone</span>
+                                    <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500 font-bold">Location</span>
+                                    <span className="text-white">{selectedDoctor.doctorData?.clinicLocation}</span>
+                                </div>
+                            </div>
+
+                            {selectedDoctor.doctorData?.accountStatus === 'pending' && (
+                                <div className="flex gap-3 pt-2">
+                                    <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1 shadow-lg shadow-emerald-500/20">
+                                        Approve
+                                    </Button>
+                                    <Button onClick={() => handleRejectClick(selectedDoctor)} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">
+                                        Reject
+                                    </Button>
+                                </div>
                             )}
-                            <h2 className="text-2xl font-bold text-white">{selectedDoctor.name}</h2>
-                            <p className="text-indigo-400 font-medium">{selectedDoctor.doctorData?.specialty}</p>
+                            
+                            {selectedDoctor.doctorData?.accountStatus === 'approved' && (
+                                 <div className="pt-2">
+                                     <Button 
+                                         onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} 
+                                         variant="danger" 
+                                         className="w-full shadow-lg shadow-rose-900/20"
+                                     >
+                                         <Trash2 size={18} className="mr-2"/> Terminate Account
+                                     </Button>
+                                 </div>
+                            )}
                         </div>
-
-                        <div className="space-y-4 bg-slate-950/50 p-4 rounded-xl border border-white/5 text-sm">
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-500">License</span>
-                                <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
-                            </div>
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-500">Email</span>
-                                <span className="text-white">{selectedDoctor.email}</span>
-                            </div>
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-slate-500">Phone</span>
-                                <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Location</span>
-                                <span className="text-white">{selectedDoctor.doctorData?.clinicLocation}</span>
-                            </div>
-                        </div>
-
-                        {selectedDoctor.doctorData?.accountStatus === 'pending' && (
-                            <div className="flex gap-3 mt-6">
-                                <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1">
-                                    Approve
-                                </Button>
-                                <Button onClick={() => handleRejectClick(selectedDoctor)} variant="danger" className="flex-1">
-                                    Reject
-                                </Button>
-                            </div>
-                        )}
-                        
-                        {selectedDoctor.doctorData?.accountStatus === 'approved' && (
-                             <div className="mt-6 flex justify-center">
-                                 {/* التصحيح هنا: استخدام دالة سهمية للتحقق من uid قبل الحذف */}
-                                 <Button 
-                                     onClick={() => {
-                                         if (selectedDoctor.uid) {
-                                             deleteUser(selectedDoctor.uid);
-                                         }
-                                     }} 
-                                     variant="danger" 
-                                     className="w-full"
-                                 >
-                                     <Trash2 size={18} className="mr-2"/> Delete User
-                                 </Button>
-                             </div>
-                        )}
                     </Card>
                 </div>
             )}
 
             {/* REJECTION REASON MODAL */}
             {showRejectModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-md bg-slate-900 border-white/10 shadow-2xl relative">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <MessageSquareWarning className="text-rose-500" /> سبب الرفض
-                        </h3>
-                        <p className="text-slate-400 text-sm mb-4">يرجى توضيح سبب رفض طلب الطبيب ليتمكن من تصحيحه.</p>
-                        
-                        <textarea 
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-rose-500 outline-none h-32 resize-none"
-                            placeholder="مثال: رقم الترخيص غير واضح، البيانات ناقصة..."
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                        />
-                        
-                        <div className="flex gap-3 mt-6">
-                            <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">إلغاء</Button>
-                            <Button onClick={confirmReject} variant="danger" className="flex-1">تأكيد الرفض</Button>
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                    <Card className="w-full max-w-md !bg-slate-900 border-rose-500/30 shadow-2xl relative rounded-[2rem] overflow-hidden">
+                        <div className="p-6">
+                            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <ShieldAlert className="text-rose-500" /> سبب الرفض
+                            </h3>
+                            <p className="text-slate-400 text-sm mb-4">يرجى توضيح سبب رفض طلب الطبيب ليتمكن من تصحيحه.</p>
+                            
+                            <textarea 
+                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none h-32 resize-none transition-all placeholder-slate-700"
+                                placeholder="مثال: رقم الترخيص غير واضح، البيانات ناقصة..."
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                            />
+                            
+                            <div className="flex gap-3 mt-6">
+                                <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">إلغاء</Button>
+                                <Button onClick={confirmReject} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">تأكيد الرفض</Button>
+                            </div>
                         </div>
                     </Card>
                 </div>
@@ -3698,9 +4172,9 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, Plus, PenTool, Sparkles } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -3797,6 +4271,14 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         }
     };
 
+    const getCategoryGradient = (cat: string) => {
+        switch(cat) {
+            case 'medical': return 'from-indigo-500/20 to-blue-500/20 hover:from-indigo-500/30 hover:to-blue-500/30';
+            case 'motivation': return 'from-rose-500/20 to-pink-500/20 hover:from-rose-500/30 hover:to-pink-500/30';
+            default: return 'from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30';
+        }
+    };
+
     const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
 
     return (
@@ -3806,15 +4288,15 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 subtitle={t('knowledge_desc')}
                 action={
                     canPublish && (
-                        <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!py-2 !px-4 !text-sm">
-                            <PenTool size={16} /> {t('new_article_btn')}
+                        <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20">
+                            <PenTool size={18} /> {t('new_article_btn')}
                         </Button>
                     )
                 }
             />
 
             {/* Category Filters */}
-            <div className="flex gap-3 overflow-x-auto pb-4 mb-2 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide">
                 {[
                     { id: 'all', label: t('cat_all'), icon: BookOpen },
                     { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
@@ -3824,13 +4306,13 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                     <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id as any)}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap border backdrop-blur-md ${
                             selectedCategory === cat.id 
-                            ? 'bg-white text-slate-900 border-white shadow-lg shadow-white/10' 
-                            : 'bg-slate-900 text-slate-500 border-white/5 hover:border-white/10 hover:text-white'
+                            ? 'bg-white text-slate-900 border-white shadow-lg shadow-white/20 scale-105' 
+                            : 'bg-slate-900/40 text-slate-400 border-white/5 hover:border-white/20 hover:text-white'
                         }`}
                     >
-                        <cat.icon size={16} />
+                        <cat.icon size={18} />
                         {cat.label}
                     </button>
                 ))}
@@ -3838,9 +4320,12 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Articles Grid */}
             {loading ? (
-                <div className="text-center py-20 text-slate-500 animate-pulse">Loading...</div>
+                <div className="text-center py-24 text-indigo-400 animate-pulse flex flex-col items-center">
+                    <Sparkles className="w-10 h-10 mb-4 animate-spin-slow"/>
+                    <span className="font-bold tracking-widest text-sm">جاري تحميل المحتوى...</span>
+                </div>
             ) : filteredArticles.length === 0 ? (
-                <div className="text-center py-20 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
+                <div className="text-center py-20 bg-slate-900/40 rounded-[2.5rem] border border-dashed border-slate-800 backdrop-blur-sm">
                     <BookOpen size={48} className="mx-auto text-slate-700 mb-4"/>
                     <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات هنا.' : 'No articles found.'}</p>
                 </div>
@@ -3850,35 +4335,33 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                         <div 
                             key={article.id}
                             onClick={() => setReadingArticle(article)}
-                            className="group bg-slate-900 border border-white/5 rounded-[2rem] p-6 hover:border-indigo-500/30 hover:bg-slate-800 transition-all cursor-pointer flex flex-col h-full relative overflow-hidden"
+                            className={`group rounded-[2rem] p-6 cursor-pointer flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border border-white/5 bg-gradient-to-br ${getCategoryGradient(article.category)}`}
                         >
-                            <div className={`absolute top-0 right-0 w-24 h-24 bg-${getCategoryColor(article.category)}-500/10 rounded-bl-[4rem] -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
-                            
                             <div className="mb-4 relative z-10">
-                                <Badge color={getCategoryColor(article.category) as any} className="mb-3 w-fit flex items-center gap-1">
+                                <Badge color={getCategoryColor(article.category) as any} className="mb-4 w-fit flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent">
                                     {getCategoryIcon(article.category)} {article.category.toUpperCase()}
                                 </Badge>
-                                <h3 className="text-xl font-bold text-white leading-tight group-hover:text-indigo-400 transition-colors">
+                                <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
                                     {article.title}
                                 </h3>
                             </div>
                             
-                            <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1">
+                            <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed">
                                 {article.content}
                             </p>
                             
-                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-10">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] text-slate-400 font-bold">
+                                    <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">
                                         {article.authorName} {article.authorRole === 'doctor' && '(Dr)'}
                                     </span>
-                                    <span className="text-[9px] text-slate-600 font-mono">
+                                    <span className="text-[10px] text-white/40 font-mono">
                                         {new Date(article.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
-                                <span className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
-                                    {t('read_more')} <ArrowRight size={14} />
-                                </span>
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
+                                    <ArrowRight size={14} className={language === 'ar' ? 'rotate-180' : ''}/>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -3887,39 +4370,41 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Create Article Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative">
-                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in">
+                    <Card className="w-full max-w-2xl bg-slate-900 border-white/10 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 hover:bg-white/5 rounded-full transition-colors"><X size={20}/></button>
                         
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <PenTool className="text-indigo-400"/> {t('new_article_btn')}
+                        <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><PenTool size={20}/></div>
+                            {t('new_article_btn')}
                         </h2>
 
-                        <div className="space-y-4">
+                        <div className="space-y-5">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_title_label')}</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_title_label')}</label>
                                 <input 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500"
+                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
-                                    placeholder="..."
+                                    placeholder="عنوان جذاب..."
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_cat_label')}</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_cat_label')}</label>
                                 <div className="flex gap-2">
                                     {[
-                                        { id: 'medical', label: t('cat_medical') },
-                                        { id: 'motivation', label: t('cat_motivation') },
-                                        { id: 'tip', label: t('cat_tip') },
+                                        { id: 'medical', label: t('cat_medical'), color: 'indigo' },
+                                        { id: 'motivation', label: t('cat_motivation'), color: 'rose' },
+                                        { id: 'tip', label: t('cat_tip'), color: 'amber' },
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
                                             onClick={() => setNewArticle({...newArticle, category: cat.id as ArticleCategory})}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
                                                 newArticle.category === cat.id 
-                                                ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                                ? `bg-${cat.color}-600 border-${cat.color}-500 text-white shadow-lg` 
                                                 : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'
                                             }`}
                                         >
@@ -3930,16 +4415,16 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('article_content_label')}</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_content_label')}</label>
                                 <textarea 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-indigo-500 h-40 resize-none"
+                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 h-48 resize-none transition-all placeholder-slate-700 custom-scrollbar"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
-                                    placeholder="..."
+                                    placeholder="اكتب محتوى المقال هنا..."
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4">
+                            <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                                 <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('cancel_btn')}</Button>
                                 <Button variant="success" onClick={handlePublish} disabled={!newArticle.title || !newArticle.content}>
                                     {t('publish_now')}
@@ -3952,49 +4437,52 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Reading Modal */}
             {readingArticle && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative overflow-hidden !p-0">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
+                    <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative overflow-hidden rounded-[2.5rem]">
                         {/* Modal Header */}
-                        <div className="p-6 md:p-8 bg-slate-950 border-b border-white/5 relative">
+                        <div className={`p-8 md:p-10 border-b border-white/5 relative bg-gradient-to-br ${getCategoryGradient(readingArticle.category)}`}>
                             <button 
                                 onClick={() => setReadingArticle(null)}
-                                className="absolute top-6 left-6 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                                className="absolute top-6 left-6 p-2 bg-black/20 rounded-full text-white/70 hover:text-white transition-colors backdrop-blur-md"
                             >
                                 <X size={20} />
                             </button>
                             
-                            <Badge color={getCategoryColor(readingArticle.category) as any} className="mb-4">
+                            <Badge color={getCategoryColor(readingArticle.category) as any} className="mb-4 bg-black/20 border-transparent text-white shadow-none">
                                 {readingArticle.category.toUpperCase()}
                             </Badge>
-                            <h2 className="text-2xl md:text-4xl font-black text-white leading-tight mb-2">
+                            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">
                                 {readingArticle.title}
                             </h2>
-                            <div className="flex items-center gap-3 text-xs text-slate-500">
-                                <span>{t('author_by')}: {readingArticle.authorName}</span>
-                                {readingArticle.authorRole === 'doctor' && <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">Dr</Badge>}
-                                {readingArticle.authorRole === 'admin' && <Badge color="rose" className="!py-0 !px-1.5 !text-[9px]">Admin</Badge>}
+                            <div className="flex items-center gap-4 text-xs text-white/60 font-medium">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center font-bold text-white">
+                                        {readingArticle.authorName.charAt(0)}
+                                    </div>
+                                    <span>{readingArticle.authorName}</span>
+                                </div>
                                 <span>•</span>
                                 <span>{new Date(readingArticle.createdAt).toLocaleDateString()}</span>
                             </div>
                         </div>
 
                         {/* Modal Content */}
-                        <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar bg-slate-900">
+                        <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar bg-slate-950/50">
                             <article className="prose prose-invert prose-lg max-w-none">
-                                <p className="text-slate-300 leading-loose whitespace-pre-wrap">
+                                <p className="text-slate-300 leading-loose whitespace-pre-wrap text-lg">
                                     {readingArticle.content}
                                 </p>
                             </article>
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t border-white/5 bg-slate-950 flex justify-between items-center">
-                            <p className="text-xs text-slate-600">Islam's Guide Knowledge Center</p>
-                            <Button variant="secondary" onClick={() => setReadingArticle(null)} className="!py-2 !px-4 !text-xs">
+                        <div className="p-6 border-t border-white/5 bg-slate-950/80 backdrop-blur-md flex justify-between items-center">
+                            <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">Islam's Guide Knowledge Center</p>
+                            <Button variant="secondary" onClick={() => setReadingArticle(null)} className="!py-2 !px-6 !text-xs !rounded-xl">
                                 {t('close')}
                             </Button>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
         </LayoutContainer>
@@ -4006,7 +4494,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 ### File: `views\CalendarView.tsx`
 ```tsx
 import React from 'react';
-import { Check, X, Stethoscope, BrainCircuit } from 'lucide-react';
+import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon } from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
@@ -4027,12 +4515,8 @@ interface CalendarViewProps {
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
     const { t, language } = useLanguage();
 
-    // 1. حساب إزاحة بداية الشهر (لضبط التقويم)
-    // نبدأ الرسم من أول يوم في الخطة
+    // 1. ضبط بداية الشهر
     const startDate = new Date(plan[0]?.date || new Date());
-    // في JavaScript: الأحد=0، الاثنين=1... السبت=6
-    // نريد أن يبدأ الأسبوع من السبت (Saturday = 0 في مصفوفتنا)
-    // معادلة التحويل: (Day + 1) % 7 تجعل السبت هو البداية
     const startDayIndex = (startDate.getDay() + 1) % 7; 
     const blanks = Array.from({ length: startDayIndex });
 
@@ -4056,117 +4540,124 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
             action={
                 <div className="flex gap-2">
                     {isDoctorPlan ? (
-                        <Badge color="indigo" className="!text-xs md:!text-sm !py-2 !px-3 md:!px-4">
-                            <Stethoscope size={14} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
+                        <Badge color="indigo" className="!text-xs md:!text-sm !py-2 !px-4 shadow-lg shadow-indigo-500/20">
+                            <Stethoscope size={16} className="mr-2" /> {language === 'ar' ? 'خطة الطبيب' : 'Doctor Plan'}
                         </Badge>
                     ) : (
-                        <Badge color="emerald" className="!text-xs md:!text-sm !py-2 !px-3 md:!px-4">
-                            <BrainCircuit size={14} className="mr-2" /> {t('path_algo')}
+                        <Badge color="emerald" className="!text-xs md:!text-sm !py-2 !px-4 shadow-lg shadow-emerald-500/20">
+                            <BrainCircuit size={16} className="mr-2" /> {t('path_algo')}
                         </Badge>
                     )}
                 </div>
             }
         />
         
-        <Card className="overflow-hidden bg-slate-900/50 border border-white/5 shadow-2xl !p-4 md:!p-6">
-          {/* Legend (مفتاح الخريطة) */}
-          <div className="flex flex-wrap gap-3 md:gap-4 mb-6 text-[10px] md:text-xs text-slate-400 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 shadow-[0_0_8px_indigo]"></div> 
-                  {language === 'ar' ? 'اليوم' : 'Today'}
+        <Card className="overflow-hidden border-white/10 shadow-2xl !p-6 relative bg-slate-900/80">
+          
+          {/* Legend (مفتاح الخريطة) - تصميم جديد */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-8 border-b border-white/5 pb-6">
+              <div className="flex gap-4 text-[10px] md:text-xs font-bold text-slate-400">
+                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> {language === 'ar' ? 'تم' : 'Done'}
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span> {language === 'ar' ? 'تجاوز' : 'Over'}
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span> {language === 'ar' ? 'اليوم' : 'Today'}
+                  </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> 
-                  {language === 'ar' ? 'تم' : 'Done'}
-              </div>
-              <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div> 
-                  {language === 'ar' ? 'فائت' : 'Missed'}
-              </div>
-              <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-800 border border-white/10"></div> 
-                  {language === 'ar' ? 'قادم' : 'Future'}
+              
+              <div className="text-slate-500 text-xs flex items-center gap-2">
+                  <CalendarIcon size={14}/> {new Date().toLocaleDateString(language, { month: 'long', year: 'numeric' })}
               </div>
           </div>
 
           {/* ترويسة أيام الأسبوع */}
-          <div className="grid grid-cols-7 gap-1 md:gap-4 mb-2" dir={dir}>
+          <div className="grid grid-cols-7 gap-2 md:gap-4 mb-4" dir={dir}>
             {weekDays.map(d => (
-              <div key={d} className="bg-slate-950/50 p-2 text-center text-[9px] md:text-xs font-bold text-slate-500 rounded-lg">
+              <div key={d} className="text-center text-[10px] md:text-xs font-black text-slate-500 uppercase tracking-wider py-2">
                   {d}
               </div>
             ))}
           </div>
 
           {/* شبكة الأيام */}
-          <div className="grid grid-cols-7 gap-1 md:gap-4" dir={dir}>
-            {/* الأيام الفارغة لضبط بداية الشهر */}
-            {blanks.map((_, i) => <div key={`blank-${i}`} className="min-h-[60px] md:min-h-[80px]" />)}
+          <div className="grid grid-cols-7 gap-2 md:gap-4" dir={dir}>
+            {/* الأيام الفارغة */}
+            {blanks.map((_, i) => <div key={`blank-${i}`} className="min-h-[80px] md:min-h-[120px]" />)}
 
             {plan.map((day, idx) => {
               const isToday = day.date === todayDate;
               const log = logs.find(l => l.date === day.date);
               const isPast = day.date < todayDate;
               
-              // منطق الألوان
-              let bgClass = "bg-slate-900/40 border-white/5";
-              let textClass = "text-slate-500";
-              let borderClass = "border-white/5";
+              // تحديد الستايل بناءً على الحالة
+              let containerClass = "bg-slate-900/40 border-white/5 text-slate-500";
+              let statusGlow = "";
 
               if (isToday) {
-                  bgClass = "bg-indigo-600/10";
-                  borderClass = "border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
-                  textClass = "text-white";
+                  containerClass = "bg-indigo-600/20 border-indigo-500/50 text-white shadow-lg shadow-indigo-500/10 scale-105 z-10";
+                  statusGlow = "shadow-[0_0_15px_rgba(99,102,241,0.3)]";
               } else if (log) {
-                  if (log.doseTaken <= day.plannedDose) { // التزام جيد
-                      bgClass = "bg-emerald-900/10";
-                      borderClass = "border-emerald-500/30";
-                  } else { // تجاوز
-                      bgClass = "bg-rose-900/10";
-                      borderClass = "border-rose-500/30";
+                  if (log.doseTaken <= day.plannedDose) { 
+                      containerClass = "bg-emerald-500/10 border-emerald-500/20 text-emerald-100 hover:bg-emerald-500/20";
+                  } else { 
+                      containerClass = "bg-rose-500/10 border-rose-500/20 text-rose-100 hover:bg-rose-500/20";
                   }
               } else if (isPast) {
-                  bgClass = "bg-slate-950/30";
-                  textClass = "text-slate-600";
-                  borderClass = "border-dashed border-slate-700";
+                  containerClass = "bg-slate-950/20 border-white/5 opacity-60 grayscale border-dashed";
               }
 
               return (
                 <div 
                     key={idx} 
-                    className={`${bgClass} border ${borderClass} rounded-xl p-1.5 md:p-3 min-h-[70px] md:min-h-[110px] flex flex-col justify-between transition-all duration-300 relative group`}
+                    className={`
+                        relative rounded-2xl p-2 md:p-3 min-h-[80px] md:min-h-[120px] flex flex-col justify-between 
+                        transition-all duration-300 border backdrop-blur-sm group hover:scale-[1.02]
+                        ${containerClass} ${statusGlow}
+                    `}
                 >
-                   {/* Header: رقم اليوم + الأيقونة */}
+                   {/* رأس الخلية: التاريخ */}
                    <div className="flex justify-between items-start">
-                        <span className={`text-[9px] md:text-xs font-bold ${textClass}`}>
+                        <span className={`text-[10px] md:text-sm font-bold opacity-70`}>
                             {day.date.slice(8)}
                         </span>
                         
                         {log && (
-                            <span className={log.doseTaken <= day.plannedDose ? "text-emerald-400" : "text-rose-400"}>
-                                {log.doseTaken <= day.plannedDose ? <Check size={12} className="md:w-4 md:h-4" /> : <X size={12} className="md:w-4 md:h-4" />}
-                            </span>
+                            <div className={`p-1 rounded-full ${log.doseTaken <= day.plannedDose ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>
+                                {log.doseTaken <= day.plannedDose ? <Check size={10} strokeWidth={4} /> : <X size={10} strokeWidth={4} />}
+                            </div>
                         )}
-                        {isToday && !log && <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+                        
+                        {isToday && !log && (
+                            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse shadow-[0_0_10px_#818cf8]"></div>
+                        )}
                    </div>
                   
-                  {/* Content: الجرعة */}
-                  <div className="text-center mt-1">
-                    <span className={`text-sm md:text-2xl font-black ${isToday ? 'text-white' : isPast && !log ? 'text-slate-600' : 'text-slate-300'}`}>
+                  {/* محتوى الخلية: الجرعة */}
+                  <div className="text-center my-1 md:my-2">
+                    <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
                       {day.plannedDose}
                     </span>
-                    <span className="text-[7px] md:text-[10px] block uppercase text-slate-600 font-bold scale-90 md:scale-100">
+                    <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
                         {unitLabel}
                     </span>
                   </div>
 
-                  {/* Footer: شريط الحالة المزاجية */}
-                  {log && (
-                      <div className={`h-1 w-full rounded-full mt-1.5 md:mt-2 ${
-                          log.mood === 'good' ? 'bg-emerald-500' : 
-                          log.mood === 'bad' ? 'bg-rose-500' : 'bg-amber-500'
-                      }`}></div>
-                  )}
+                  {/* ذيل الخلية: شريط الحالة */}
+                  <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
+                      {log ? (
+                          <div className={`h-full w-full ${
+                              log.mood === 'good' ? 'bg-emerald-400' : 
+                              log.mood === 'bad' ? 'bg-rose-400' : 'bg-amber-400'
+                          }`}></div>
+                      ) : isPast ? (
+                          <div className="h-full w-full bg-rose-900/50"></div>
+                      ) : (
+                          <div className="h-full w-1/3 bg-slate-600 rounded-full opacity-20"></div>
+                      )}
+                  </div>
                 </div>
               );
             })}
@@ -4188,7 +4679,7 @@ import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles
 } from 'lucide-react';
 
 // المكونات
@@ -4204,7 +4695,7 @@ interface CommunityViewProps {
 }
 
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
-    const { t } = useLanguage();
+    const { t, language, dir } = useLanguage();
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
     const [rooms, setRooms] = useState<ChatRoom[]>([]);
     const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
@@ -4218,47 +4709,30 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-    // 1. جلب غرف الدردشة (Smart Filtering)
+    // 1. Fetch Rooms
     useEffect(() => {
         if (!currentUser.uid) return;
-
         const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const allRooms: ChatRoom[] = [];
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
-            // --- منطق الفلترة المحدث ---
             const filteredRooms = allRooms.filter(room => {
-                // 1. الأدمن يرى كل شيء
                 if (currentUser.role === 'admin') return true;
-
-                // 2. المريض يرى فقط غرفة طبيبه المعالج (ويتم إخفاء الغرف العامة عنه للتركيز)
-                if (currentUser.role === 'patient') {
-                    return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
-                }
-
-                // 3. الطبيب يرى غرفته الخاصة فقط
-                if (currentUser.role === 'doctor') {
-                    return room.doctorId === currentUser.uid;
-                }
-
-                // 4. المستخدم العادي يرى الغرف العامة فقط (يخفي غرف العيادات الخاصة)
-                if (currentUser.role === 'normal_user') {
-                    return !room.isDoctorRoom;
-                }
-
+                if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
+                if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
+                if (currentUser.role === 'normal_user') return !room.isDoctorRoom;
                 return false;
             });
-
             setRooms(filteredRooms);
         });
         return () => unsubscribe();
     }, [currentUser]);
 
-    // 2. جلب لوحة المتصدرين
+    // 2. Fetch Leaderboard
     useEffect(() => {
         if (tab === 'leaderboard') {
-            const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(20));
+            const q = query(collection(db, "users"), orderBy("progress", "desc"), limit(50)); // Increased limit
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const u: UserProfile[] = [];
                 snapshot.forEach((doc) => u.push({ ...doc.data(), uid: doc.id } as UserProfile));
@@ -4268,7 +4742,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     }, [tab]);
 
-    // 3. جلب الرسائل
+    // 3. Fetch Messages
     useEffect(() => {
         if (!activeRoom) return;
         const q = query(collection(db, "rooms", activeRoom.id, "messages"), orderBy("timestamp", "asc"));
@@ -4282,29 +4756,24 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     }, [activeRoom]);
 
     // --- Actions ---
-
     const createRoom = async () => {
         if (!newRoomName.trim() || !currentUser.uid) return;
-        
         const isDoctor = currentUser.role === 'doctor';
-        
         await addDoc(collection(db, "rooms"), {
             name: newRoomName,
             createdBy: currentUser.uid,
-            creatorName: currentUser.name,
+            creatorName: currentUser.name || "Unknown Doctor",
             language: 'mixed',
             createdAt: Date.now(),
-            // إذا كان طبيباً، تصبح الغرفة "عيادة"، وإلا فهي غرفة عامة
             isDoctorRoom: isDoctor,
             doctorId: isDoctor ? currentUser.uid : null
         });
-        
         setNewRoomName("");
         setShowCreateModal(false);
     };
 
     const deleteRoom = async (roomId: string) => {
-        if (confirm("هل أنت متأكد من حذف هذه الغرفة؟")) {
+        if (confirm("Are you sure?")) {
             await deleteDoc(doc(db, "rooms", roomId));
             if (activeRoom?.id === roomId) setActiveRoom(null);
         }
@@ -4312,11 +4781,10 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
-        
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: newMessage,
             senderId: currentUser.uid,
-            senderName: currentUser.name,
+            senderName: currentUser.name || "Anonymous",
             timestamp: Date.now(),
             role: currentUser.role,
             isDoctor: currentUser.role === 'doctor',
@@ -4325,68 +4793,103 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         setNewMessage("");
     };
 
-    // السماح بإنشاء الغرفة للجميع ما عدا المريض
     const canCreateRoom = currentUser.role !== 'patient';
 
     return (
-        <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col">
-            {/* Tabs */}
-            <div className="flex p-1 bg-slate-900/50 rounded-2xl border border-white/5 mb-4 shrink-0">
-                <button 
-                    onClick={() => {setTab('rooms'); setActiveRoom(null);}} 
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${tab === 'rooms' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-                >
-                    <MessageCircle size={18} /> {t('comm_rooms')}
-                </button>
-                <button 
-                    onClick={() => setTab('leaderboard')} 
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${tab === 'leaderboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-                >
-                    <Trophy size={18} /> {t('comm_leaderboard')}
-                </button>
-            </div>
+        <LayoutContainer className="h-[calc(100vh-140px)] flex flex-col relative">
+            
+            {/* Tabs Navigation (Floating Island Style) */}
+            {!activeRoom && (
+                <div className="flex p-1.5 bg-slate-900/80 rounded-full border border-white/10 mb-8 shrink-0 backdrop-blur-xl shadow-2xl w-fit mx-auto relative z-10">
+                    <button 
+                        onClick={() => setTab('rooms')} 
+                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 ${tab === 'rooms' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <MessageCircle size={18} /> {t('comm_rooms')}
+                    </button>
+                    <button 
+                        onClick={() => setTab('leaderboard')} 
+                        className={`flex items-center justify-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-500 ${tab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/40 scale-105' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Trophy size={18} /> {t('comm_leaderboard')}
+                    </button>
+                </div>
+            )}
 
             {/* LEADERBOARD TAB */}
-            {tab === 'leaderboard' && (
-                <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
+            {tab === 'leaderboard' && !activeRoom && (
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 space-y-4 animate-in slide-in-from-bottom-8">
                     {leaderboard.map((user, idx) => {
-                        let rankColor = 'bg-slate-800 text-slate-400';
-                        let borderClass = 'border-white/5';
-                        if (idx === 0) { rankColor = 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-amber-500/20 shadow-lg'; borderClass = 'border-amber-500/30'; }
-                        else if (idx === 1) { rankColor = 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-500/20 shadow-lg'; borderClass = 'border-slate-400/30'; }
-                        else if (idx === 2) { rankColor = 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-orange-500/20 shadow-lg'; borderClass = 'border-orange-500/30'; }
+                        let rankStyle = 'bg-slate-900/60 border-white/5';
+                        let rankBadge = null;
+                        let progressColor = 'bg-slate-700';
+                        let nameColor = 'text-white';
+                        
+                        // Top 3 Styling
+                        if (idx === 0) { 
+                            rankStyle = 'bg-gradient-to-r from-yellow-900/40 to-amber-900/10 border-amber-500/30 shadow-lg shadow-amber-500/10'; 
+                            rankBadge = <div className="p-2 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 shadow-lg shadow-amber-500/40"><Crown size={20} className="text-white" fill="white"/></div>;
+                            progressColor = 'bg-amber-500';
+                            nameColor = 'text-amber-200';
+                        }
+                        else if (idx === 1) { 
+                            rankStyle = 'bg-gradient-to-r from-slate-700/40 to-slate-800/10 border-slate-400/30 shadow-lg shadow-slate-500/10'; 
+                            rankBadge = <div className="p-2 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 shadow-lg shadow-slate-500/40"><Medal size={20} className="text-white" fill="white"/></div>;
+                            progressColor = 'bg-slate-400';
+                            nameColor = 'text-slate-200';
+                        }
+                        else if (idx === 2) { 
+                            rankStyle = 'bg-gradient-to-r from-orange-900/40 to-red-900/10 border-orange-500/30 shadow-lg shadow-orange-500/10'; 
+                            rankBadge = <div className="p-2 rounded-full bg-gradient-to-br from-orange-400 to-red-600 shadow-lg shadow-orange-500/40"><Medal size={20} className="text-white" fill="white"/></div>;
+                            progressColor = 'bg-orange-500';
+                            nameColor = 'text-orange-200';
+                        } else {
+                            rankBadge = <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-500 border border-white/5">{idx + 1}</div>;
+                        }
 
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
-                            <div key={idx} className={`flex items-center justify-between p-4 bg-slate-900/80 rounded-2xl border ${borderClass} relative overflow-hidden group`}>
-                                {idx < 3 && <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-                                <div className="flex items-center gap-4 relative z-10">
-                                    <div className={`w-12 h-12 flex items-center justify-center rounded-xl font-black text-xl ${rankColor}`}>
-                                        {idx === 0 ? <Crown size={24} /> : idx + 1}
+                            <div key={idx} className={`flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
+                                <div className="flex items-center gap-5">
+                                    {/* Rank Indicator */}
+                                    <div className="shrink-0">
+                                        {rankBadge}
                                     </div>
+                                    
+                                    {/* User Info */}
                                     <div>
-                                        <p className="font-bold text-white flex items-center gap-2">
-                                            {user.name} 
-                                            {user.role === 'admin' && <ShieldCheck size={14} className="text-rose-400" />}
-                                            {user.role === 'doctor' && <Stethoscope size={14} className="text-blue-400" />}
+                                        <p className={`font-bold text-lg flex items-center gap-2 ${nameColor}`}>
+                                            {user.name || t('guest')}
+                                            {user.role === 'admin' && <ShieldCheck size={16} className="text-rose-500" />}
+                                            {user.role === 'doctor' && <Stethoscope size={16} className="text-blue-400" />}
+                                            {idx === 0 && <Sparkles size={14} className="text-yellow-400 animate-pulse"/>}
                                         </p>
-                                        <div className="flex gap-2 mt-1">
-                                            {user.medType && (
-                                                <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 flex items-center gap-1">
-                                                    <MedIcon size={10} /> {user.medType}
-                                                </span>
-                                            )}
-                                            {user.streak ? (
-                                                <span className="text-[10px] text-amber-500 flex items-center gap-1 font-bold">
-                                                    <Zap size={10} /> {user.streak} days
-                                                </span>
-                                            ) : null}
+                                        
+                                        {/* Progress Bar Visual */}
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full ${progressColor}`} style={{width: `${user.progress || 0}%`}}></div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {user.medType && (
+                                                    <span className="text-[10px] text-slate-400 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-md">
+                                                        <MedIcon size={10} /> {user.medType}
+                                                    </span>
+                                                )}
+                                                {user.streak && (
+                                                    <span className="text-[10px] text-amber-400 flex items-center gap-1 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/10">
+                                                        <Zap size={10} fill="currentColor" /> {user.streak} Days
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right relative z-10">
-                                    <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500">%</span></span>
+
+                                {/* Percentage */}
+                                <div className="text-right">
+                                    <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
                                 </div>
                             </div>
                         );
@@ -4394,80 +4897,92 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 </div>
             )}
 
-            {/* ROOMS TAB (List) */}
+            {/* ROOMS TAB (Cards) */}
             {tab === 'rooms' && !activeRoom && (
-                <div className="flex-1 flex flex-col h-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-4 shrink-0">
+                <div className="flex-1 flex flex-col h-full overflow-hidden animate-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-center mb-6 shrink-0 px-1">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <Globe size={20} className="text-indigo-400"/> 
-                            {currentUser.role === 'patient' ? t('community_clinic') : t('comm_rooms')}
+                            {currentUser.role === 'patient' ? "Your Clinic" : t('comm_rooms')}
                         </h2>
-                        {/* زر الإنشاء يظهر للمستخدم العادي، الأدمن، والطبيب فقط */}
                         {canCreateRoom && (
-                            <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-full">
+                            <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/20">
                                 <Plus size={16} /> {t('create_room')}
                             </Button>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pb-20 custom-scrollbar pr-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pb-20 custom-scrollbar pr-1">
                         {rooms.length === 0 && (
-                            <div className="col-span-full text-center py-10 text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
-                                لا توجد غرف متاحة حالياً.
+                            <div className="col-span-full text-center py-20 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500 flex flex-col items-center">
+                                <MessageCircle size={48} className="mb-4 opacity-20"/>
+                                <p>No rooms available at the moment.</p>
                             </div>
                         )}
                         {rooms.map(room => (
-                            <div key={room.id} onClick={() => setActiveRoom(room)} className={`bg-slate-900 border p-5 rounded-2xl hover:bg-slate-800 transition-all cursor-pointer group relative flex flex-col justify-between h-32 ${room.isDoctorRoom ? 'border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${room.isDoctorRoom ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
-                                        {room.isDoctorRoom ? <Stethoscope size={20} /> : <MessageCircle size={20} />}
+                            <Card 
+                                key={room.id} 
+                                hoverEffect={true}
+                                className={`!p-0 cursor-pointer flex flex-col justify-between min-h-[140px] border-white/5 relative group ${room.isDoctorRoom ? 'bg-gradient-to-br from-indigo-900/40 to-slate-900/80' : 'bg-slate-900/60'}`}
+                            >
+                                <div className="absolute inset-0 z-20" onClick={() => setActiveRoom(room)}></div>
+                                
+                                {/* Decor */}
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors"></div>
+
+                                <div className="p-6 flex flex-col h-full justify-between relative z-10">
+                                    <div className="flex justify-between items-start">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg ${room.isDoctorRoom ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-800 text-slate-400 border border-white/5'}`}>
+                                            {room.isDoctorRoom ? <Stethoscope size={24} /> : <MessageCircle size={24} />}
+                                        </div>
+                                        
+                                        {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
+                                                className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </div>
-                                    {/* حذف الغرفة: للأدمن أو لمنشئ الغرفة */}
-                                    {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
-                                            className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-full transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white truncate flex items-center gap-2 group-hover:text-indigo-300 transition-colors">
+                                            {room.name}
+                                            {room.isDoctorRoom && <Lock size={14} className="text-indigo-400"/>}
+                                        </h3>
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">
+                                            {room.isDoctorRoom ? "Private Clinic" : `Host: ${room.creatorName || 'Unknown'}`}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-white truncate flex items-center gap-2">
-                                        {room.name}
-                                        {room.isDoctorRoom && <Lock size={12} className="text-indigo-400"/>}
-                                    </h3>
-                                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                                        {room.isDoctorRoom ? t('community_clinic') : `By ${room.creatorName}`}
-                                    </p>
-                                </div>
-                            </div>
+                            </Card>
                         ))}
                     </div>
 
                     {/* Create Room Modal */}
                     {showCreateModal && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-                            <Card className="w-full max-w-sm bg-slate-900 border-white/10 shadow-2xl">
-                                <h3 className="text-lg font-bold text-white mb-4">
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+                            <Card className="w-full max-w-sm bg-slate-900 border-white/10 shadow-2xl relative">
+                                <h3 className="text-lg font-bold text-white mb-6">
                                     {currentUser.role === 'doctor' ? t('community_clinic') : t('create_room')}
                                 </h3>
                                 <input 
-                                    className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-4 outline-none focus:border-indigo-500"
+                                    className="w-full bg-slate-950 p-4 rounded-xl border border-white/10 text-white mb-6 outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
                                     placeholder={t('room_name')}
                                     value={newRoomName}
                                     onChange={(e) => setNewRoomName(e.target.value)}
+                                    autoFocus
                                 />
                                 {currentUser.role === 'doctor' ? (
-                                    <p className="text-xs text-indigo-400 mb-4 bg-indigo-500/10 p-2 rounded-lg">
+                                    <p className="text-xs text-indigo-300 mb-6 bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20">
                                         {t('community_doctor_room_hint')}
                                     </p>
                                 ) : (
-                                    <p className="text-xs text-slate-500 mb-4">
+                                    <p className="text-xs text-slate-500 mb-6">
                                         {t('community_public_room_hint')}
                                     </p>
                                 )}
-                                <div className="flex gap-2 justify-end">
+                                <div className="flex gap-3 justify-end">
                                     <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('close')}</Button>
                                     <Button variant="primary" onClick={createRoom}>{t('create_room')}</Button>
                                 </div>
@@ -4477,56 +4992,61 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 </div>
             )}
 
-            {/* CHAT INTERFACE */}
+            {/* CHAT INTERFACE (Modern Message Bubbles) */}
             {tab === 'rooms' && activeRoom && (
-                <div className="flex-1 flex flex-col h-full bg-slate-900 rounded-3xl border border-white/5 overflow-hidden shadow-2xl relative">
+                <div className="flex-1 flex flex-col h-full bg-slate-900/80 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl relative animate-in zoom-in backdrop-blur-xl">
+                    
                     {/* Header */}
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-md absolute top-0 left-0 right-0 z-10">
-                        <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${activeRoom.isDoctorRoom ? 'bg-indigo-600' : 'bg-slate-700'}`}>
-                                {activeRoom.isDoctorRoom ? <Stethoscope size={16}/> : <MessageCircle size={16} />}
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50 backdrop-blur-md absolute top-0 left-0 right-0 z-20">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setActiveRoom(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors md:hidden">
+                                <ChevronLeft size={24} />
+                            </button>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg ${activeRoom.isDoctorRoom ? 'bg-gradient-to-br from-indigo-600 to-blue-600' : 'bg-slate-800'}`}>
+                                {activeRoom.isDoctorRoom ? <Stethoscope size={18}/> : <MessageCircle size={18} />}
                             </div>
                             <div>
-                                <h3 className="font-bold text-white text-sm">{activeRoom.name}</h3>
-                                <span className="text-[10px] text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online</span>
+                                <h3 className="font-bold text-white text-base">{activeRoom.name}</h3>
+                                <span className="text-[10px] text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live</span>
                             </div>
                         </div>
-                        <Button variant="secondary" className="!py-1.5 !px-3 !text-xs !rounded-full" onClick={() => setActiveRoom(null)}>
+                        <Button variant="secondary" className="!py-2 !px-4 !text-xs !rounded-xl hidden md:flex" onClick={() => setActiveRoom(null)}>
                             {t('close')}
                         </Button>
                     </div>
 
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 pt-20 space-y-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 pt-24 space-y-4 custom-scrollbar bg-gradient-to-b from-transparent to-black/20">
                         {messages.map((msg, i) => {
                             const isMe = msg.senderId === currentUser.uid;
                             const showAvatar = i === 0 || messages[i-1].senderId !== msg.senderId;
                             
-                            let bubbleClass = 'bg-slate-800 text-slate-200';
-                            if (isMe) bubbleClass = 'bg-indigo-600 text-white';
-                            else if (msg.isDoctor || msg.role === 'doctor') bubbleClass = 'bg-blue-900/40 border border-blue-500/30 text-blue-100';
-                            else if (msg.isAdmin || msg.role === 'admin') bubbleClass = 'bg-rose-900/40 border border-rose-500/30 text-rose-100';
+                            // أنماط الرسائل الحديثة
+                            let bubbleStyle = 'bg-slate-800/80 text-slate-200 border-white/5';
+                            if (isMe) bubbleStyle = 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-indigo-500';
+                            else if (msg.isDoctor || msg.role === 'doctor') bubbleStyle = 'bg-gradient-to-br from-blue-900/90 to-blue-800/90 border-blue-500/30 text-blue-100 shadow-lg';
+                            else if (msg.isAdmin || msg.role === 'admin') bubbleStyle = 'bg-gradient-to-br from-rose-900/90 to-rose-800/90 border-rose-500/30 text-rose-100 shadow-lg';
 
                             return (
-                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}>
                                     {/* Avatar */}
-                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${showAvatar ? (isMe ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300') : 'opacity-0'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border border-white/10 shadow-md ${showAvatar ? (isMe ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400') : 'opacity-0'}`}>
                                         {msg.senderName.charAt(0).toUpperCase()}
                                     </div>
 
-                                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[75%]`}>
+                                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]`}>
                                         {showAvatar && !isMe && (
-                                            <span className="text-[10px] text-slate-500 mb-1 ml-1 flex items-center gap-1">
+                                            <span className="text-[10px] text-slate-500 mb-1 ml-1 flex items-center gap-1 font-bold">
                                                 {msg.senderName}
-                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0">DR</Badge>}
-                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0">ADMIN</Badge>}
+                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0 shadow-none">DR</Badge>}
+                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0 shadow-none">ADMIN</Badge>}
                                             </span>
                                         )}
                                         
-                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${bubbleClass} ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}`}>
+                                        <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-sm ${bubbleStyle} ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
                                             {msg.text}
                                         </div>
-                                        <span className="text-[9px] text-slate-600 mt-1 px-1 opacity-70">
+                                        <span className="text-[9px] text-slate-600 mt-1 px-1 opacity-70 font-mono">
                                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         </span>
                                     </div>
@@ -4537,9 +5057,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-3 bg-slate-950/80 border-t border-white/5 flex gap-2 backdrop-blur-md">
+                    <div className="p-4 bg-slate-950/80 border-t border-white/5 flex gap-3 backdrop-blur-xl relative z-20">
                         <input 
-                            className="flex-1 bg-slate-900 border border-white/10 rounded-full px-5 py-3 text-white text-sm outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all placeholder-slate-600"
+                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all placeholder-slate-600 shadow-inner"
                             placeholder={t('type_msg')}
                             value={newMessage}
                             onChange={e => setNewMessage(e.target.value)}
@@ -4548,9 +5068,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         <button 
                             onClick={sendMessage} 
                             disabled={!newMessage.trim()}
-                            className="p-3 bg-indigo-600 rounded-full text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
+                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95"
                         >
-                            <Send size={18} />
+                            <Send size={20} />
                         </button>
                     </div>
                 </div>
@@ -4564,7 +5084,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 ### File: `views\DashboardView.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope } from 'lucide-react';
+import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope, Shield } from 'lucide-react';
 
 // المكونات الأساسية
 import { Button } from '../components/ui/Button';
@@ -4577,7 +5097,7 @@ import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { BreathingModal } from '../components/modals/BreathingModal';
 import { DoctorReportModal } from '../components/modals/DoctorReportModal';
 
-// المكونات الفرعية الجديدة للوحة التحكم
+// المكونات الفرعية للوحة التحكم
 import { DashboardHeader } from './dashboard/DashboardHeader';
 import { DailyCheckIn } from './dashboard/DailyCheckIn';
 import { DashboardCharts } from './dashboard/DashboardCharts';
@@ -4609,7 +5129,7 @@ export const DashboardView = ({
   selectedDose, setSelectedDose, selectedMood, setSelectedMood, submitDailyLog,
   handleFreezePlan
 }: DashboardViewProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   
@@ -4620,6 +5140,7 @@ export const DashboardView = ({
 
   return (
     <LayoutContainer>
+      {/* النوافذ المنبثقة */}
       <BreathingModal isOpen={isSosOpen} onClose={() => setIsSosOpen(false)} />
       <DoctorReportModal 
         isOpen={isReportOpen} 
@@ -4629,63 +5150,73 @@ export const DashboardView = ({
         plan={plan} 
       />
       
+      {/* ترويسة الصفحة مع الأزرار العلوية */}
       <PageHeader 
         title={t('daily_report')}
-        subtitle={`${t('welcome')} ${userProfile?.name || ''}`}
+        subtitle={`${t('welcome')}, ${userProfile?.name || ''}`}
         action={
-            <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex flex-wrap gap-3 items-center">
                 <div className="hidden md:block"><LanguageSwitcher /></div>
-                <Button onClick={() => setIsReportOpen(true)} variant="secondary" className="!py-2 !px-4 !text-sm !rounded-full">
-                    <FileText size={16} /> {t('export_report')}
+                
+                <Button onClick={() => setIsReportOpen(true)} variant="secondary" className="!py-2.5 !px-5 !text-xs !rounded-xl shadow-lg hover:shadow-white/5 border-white/10">
+                    <FileText size={16} className="mr-2" /> {t('export_report')}
                 </Button>
-                <Button variant="panic" onClick={() => setIsSosOpen(true)} className="!py-2 !px-4 !text-sm !rounded-full">
-                    <HeartPulse size={16} /> {t('sos_button')}
+                
+                <Button variant="panic" onClick={() => setIsSosOpen(true)} className="!py-2.5 !px-5 !text-xs !rounded-xl shadow-rose-500/20">
+                    <HeartPulse size={16} className="mr-2 animate-pulse" /> {t('sos_button')}
                 </Button>
             </div>
         }
       />
 
-      {/* Patient Specific Banner - يظهر فقط للمرضى التابعين لطبيب */}
+      {/* 1. لافتة المريض (تظهر فقط للمرضى المرتبطين بأطباء) */}
       {isPatient && (
-          <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 p-4 rounded-2xl flex items-center justify-between mb-6 backdrop-blur-md animate-in slide-in-from-top-2">
-              <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 ring-1 ring-indigo-500/40">
-                      <Stethoscope size={24} />
+          <div className="relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-indigo-500/20 p-5 rounded-3xl flex items-center justify-between mb-8 backdrop-blur-xl shadow-lg animate-in slide-in-from-top-2 group">
+              <div className="absolute inset-0 bg-indigo-500/5 blur-xl group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
+              <div className="flex items-center gap-5 relative z-10">
+                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                      <Stethoscope size={28} />
                   </div>
                   <div>
-                      <p className="text-xs text-indigo-300 font-bold uppercase mb-1">تحت إشراف طبي</p>
-                      <p className="text-white font-bold text-lg flex items-center gap-2">
-                          د. {doctorName}
-                          <Badge color="blue" className="!text-[10px] !py-0">معتمد</Badge>
-                      </p>
+                      <div className="flex items-center gap-2 mb-1">
+                          <p className="text-xs text-indigo-300 font-bold uppercase tracking-wider">تحت إشراف طبي</p>
+                          <Badge color="blue" className="!py-0 !px-1.5 !text-[9px] border-blue-400/30 bg-blue-500/10">VERIFIED</Badge>
+                      </div>
+                      <p className="text-white font-bold text-lg">د. {doctorName}</p>
                   </div>
               </div>
-              <div className="text-left hidden md:block">
-                  <span className="text-[10px] text-slate-400 block">نوع الخطة</span>
-                  <span className="text-xs font-bold text-white">جدول طبي مخصص</span>
+              <div className="hidden md:block text-right relative z-10 opacity-70">
+                  <span className="text-[10px] text-slate-300 block font-mono mb-1">PLAN ID</span>
+                  <span className="text-xs font-bold text-white tracking-widest">#{userProfile?.uid?.slice(0,8).toUpperCase()}</span>
               </div>
           </div>
       )}
 
-      {/* Safety Warning & Freeze Option */}
+      {/* 2. تحذير الأمان (Safety Guard) */}
       {showDoctorWarning && !isManualPlan && (
-        <div className="bg-rose-500/5 border border-rose-500/20 p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md animate-in zoom-in duration-500 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-rose-500/20 p-4 rounded-full ring-1 ring-rose-500/30"><AlertTriangle className="text-rose-500 w-6 h-6" /></div>
+        <div className="relative overflow-hidden bg-rose-950/40 border border-rose-500/30 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-500 mb-8">
+          <div className="absolute inset-0 bg-rose-500/5 animate-pulse"></div>
+          <div className="flex items-center gap-5 relative z-10">
+            <div className="bg-rose-500/20 p-4 rounded-2xl border border-rose-500/30 shadow-inner">
+                <AlertTriangle className="text-rose-500 w-8 h-8" />
+            </div>
             <div>
-                <h3 className="font-bold text-rose-400 text-lg mb-1">{t('safety_active')}</h3>
-                <p className="text-rose-200/70 text-sm max-w-lg">{t('safety_desc')}</p>
+                <h3 className="font-bold text-rose-200 text-xl mb-1 flex items-center gap-2">
+                    {t('safety_active')} <Shield size={18} className="text-rose-400"/>
+                </h3>
+                <p className="text-rose-300/70 text-sm max-w-lg leading-relaxed">{t('safety_desc')}</p>
             </div>
           </div>
-          <Button onClick={handleFreezePlan} className="!bg-rose-500 hover:!bg-rose-600 !border-rose-400 w-full md:w-auto">
-             <PauseCircle size={18} /> {t('freeze_plan_btn')}
+          <Button onClick={handleFreezePlan} variant="danger" className="w-full md:w-auto !py-3 !px-6 relative z-10 shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40">
+             <PauseCircle size={20} className="mr-2" /> {t('freeze_plan_btn')}
           </Button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* 3. الشبكة الرئيسية (Main Grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         
-        {/* Main Header & Interaction Area */}
+        {/* العمود الرئيسي: الرأس + تسجيل الدخول */}
         <DashboardHeader
             todayPlan={todayPlan}
             todayLog={todayLog}
@@ -4694,7 +5225,7 @@ export const DashboardView = ({
             daysCompleted={daysCompleted}
             userProfile={userProfile}
         >
-            {/* هذا المكون سيظهر فقط إذا لم يتم التسجيل اليوم (children) */}
+            {/* نموذج التسجيل اليومي (يظهر داخل الهيدر) */}
             <DailyCheckIn 
                 userProfile={userProfile}
                 todayPlan={todayPlan}
@@ -4706,8 +5237,8 @@ export const DashboardView = ({
             />
         </DashboardHeader>
 
-        {/* Side Info Cards */}
-        <div className="lg:col-span-4">
+        {/* العمود الجانبي: الرسوم البيانية والمعلومات */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
             <DashboardCharts userProfile={userProfile} plan={plan} />
         </div>
 
@@ -4728,15 +5259,15 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, ManualPhase } from '../types';
 import { 
     Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
-    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser 
+    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser, Stethoscope, LineChart
 } from 'lucide-react';
 import { 
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid 
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -4752,7 +5283,7 @@ export const DoctorDashboardView = () => {
     const [patients, setPatients] = useState<UserProfile[]>([]);
     const [pendingPatients, setPendingPatients] = useState<UserProfile[]>([]);
     
-    // -- Modal State (For Plan Creation) --
+    // -- Modal State --
     const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
     const [phases, setPhases] = useState<ManualPhase[]>([]);
     
@@ -4762,7 +5293,7 @@ export const DoctorDashboardView = () => {
     const [doctorNote, setDoctorNote] = useState('');
 
     // Pattern Builder State
-    const [patternSeq, setPatternSeq] = useState('0.5, 1'); // Default example
+    const [patternSeq, setPatternSeq] = useState('0.5, 1');
     const [patternRepeat, setPatternRepeat] = useState('4');
     const [patternDaysPerDose, setPatternDaysPerDose] = useState('1');
 
@@ -4774,15 +5305,12 @@ export const DoctorDashboardView = () => {
             
             setLoading(true);
             try {
-                // 1. Get Doctor Profile
                 const docRef = doc(db, "users", currentUser.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     setDoctorProfile(docSnap.data() as UserProfile);
                 }
 
-                // 2. Get Assigned Patients
-                // Note: We fetch ALL assigned patients here to categorize them
                 const q = query(
                     collection(db, "users"), 
                     where("patientData.assignedDoctorId", "==", currentUser.uid)
@@ -4793,9 +5321,6 @@ export const DoctorDashboardView = () => {
                     allPatients.push({ uid: doc.id, ...doc.data() } as UserProfile);
                 });
 
-                // Filter Logic:
-                // Pending Plan: Request approved BUT no plan assigned yet
-                // Active: Plan assigned AND not recovered
                 setPendingPatients(allPatients.filter(p => p.patientData?.requestStatus === 'approved' && !p.patientData?.isPlanAssigned));
                 setPatients(allPatients.filter(p => p.patientData?.isPlanAssigned));
 
@@ -4809,8 +5334,6 @@ export const DoctorDashboardView = () => {
     }, []);
 
     // -- Actions --
-
-    // A. Add Single Phase
     const handleAddPhase = () => {
         const dose = parseFloat(newDose);
         const days = parseInt(newDays);
@@ -4820,7 +5343,6 @@ export const DoctorDashboardView = () => {
         }
     };
 
-    // B. Apply Pattern (The Fix for Complex Plans)
     const handleApplyPattern = () => {
         const sequence = patternSeq.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
         const repeat = parseInt(patternRepeat);
@@ -4837,7 +5359,6 @@ export const DoctorDashboardView = () => {
                 newPhases.push({ dose, days });
             });
         }
-
         setPhases([...phases, ...newPhases]);
     };
 
@@ -4847,10 +5368,8 @@ export const DoctorDashboardView = () => {
 
     const saveTreatmentPlan = async () => {
         if (!selectedPatient?.uid || phases.length === 0) return;
-
         if (!confirm("Are you sure you want to activate this plan for the patient?")) return;
 
-        // Generate full calendar plan from phases
         const fullPlan = generateManualPlan(phases, new Date().toISOString());
 
         try {
@@ -4863,7 +5382,6 @@ export const DoctorDashboardView = () => {
                 lastActive: new Date().toISOString()
             });
 
-            // Update UI Locally
             setPendingPatients(prev => prev.filter(p => p.uid !== selectedPatient.uid));
             setPatients(prev => [...prev, { 
                 ...selectedPatient, 
@@ -4877,7 +5395,7 @@ export const DoctorDashboardView = () => {
 
         } catch (e) {
             console.error("Error saving plan:", e);
-            alert("Failed to save plan. Check console.");
+            alert("Failed to save plan.");
         }
     };
 
@@ -4901,7 +5419,7 @@ export const DoctorDashboardView = () => {
         { name: t('stat_recovered'), value: patients.filter(p => p.patientData?.isRecovered).length, color: '#10b981' },
     ];
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 animate-pulse">Loading clinic data...</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold tracking-widest">LOADING CLINIC DATA...</div>;
 
     return (
         <LayoutContainer>
@@ -4911,46 +5429,49 @@ export const DoctorDashboardView = () => {
             />
 
             {/* STATS CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <Card className="bg-slate-900 border-white/5 p-5">
-                    <div className="flex justify-between items-start">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-in slide-in-from-top-4">
+                <Card className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-white/10 p-6 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
+                    <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase mb-1">{t('stat_total_patients')}</p>
-                            <h3 className="text-3xl font-black text-white">{patients.length + pendingPatients.length}</h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase mb-2 tracking-wider">{t('stat_total_patients')}</p>
+                            <h3 className="text-4xl font-black text-white">{patients.length + pendingPatients.length}</h3>
                         </div>
-                        <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400"><Users size={20}/></div>
+                        <div className="p-3 bg-blue-500/20 rounded-2xl text-blue-400 border border-blue-500/20"><Users size={24}/></div>
                     </div>
                 </Card>
                 
-                <Card className="bg-amber-900/10 border-amber-500/20 p-5">
-                    <div className="flex justify-between items-start">
+                <Card className="bg-gradient-to-br from-amber-900/20 to-slate-900/80 border-amber-500/20 p-6 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors"></div>
+                    <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-amber-500/70 text-xs font-bold uppercase mb-1">{t('pending_approvals')}</p>
-                            <h3 className="text-3xl font-black text-amber-500">{pendingPatients.length}</h3>
+                            <p className="text-amber-500/80 text-xs font-bold uppercase mb-2 tracking-wider">{t('pending_approvals')}</p>
+                            <h3 className="text-4xl font-black text-amber-500">{pendingPatients.length}</h3>
                         </div>
-                        <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 animate-pulse"><Clock size={20}/></div>
+                        <div className="p-3 bg-amber-500/20 rounded-2xl text-amber-500 border border-amber-500/20 animate-pulse-glow"><Clock size={24}/></div>
                     </div>
                 </Card>
 
-                <Card className="bg-emerald-900/10 border-emerald-500/20 p-5">
-                    <div className="flex justify-between items-start">
+                <Card className="bg-gradient-to-br from-emerald-900/20 to-slate-900/80 border-emerald-500/20 p-6 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
+                    <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-emerald-500/70 text-xs font-bold uppercase mb-1">{t('stat_recovered')}</p>
-                            <h3 className="text-3xl font-black text-emerald-500">{patients.filter(p => p.patientData?.isRecovered).length}</h3>
+                            <p className="text-emerald-500/80 text-xs font-bold uppercase mb-2 tracking-wider">{t('stat_recovered')}</p>
+                            <h3 className="text-4xl font-black text-emerald-500">{patients.filter(p => p.patientData?.isRecovered).length}</h3>
                         </div>
-                        <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500"><CheckCircle size={20}/></div>
+                        <div className="p-3 bg-emerald-500/20 rounded-2xl text-emerald-500 border border-emerald-500/20"><CheckCircle size={24}/></div>
                     </div>
                 </Card>
 
-                <Card className="bg-slate-900 border-white/5 p-5">
-                    <p className="text-slate-500 text-xs font-bold uppercase mb-4">{t('stat_overview')}</p>
-                    <div className="h-16">
+                <Card className="bg-slate-900/80 border-white/10 p-6 shadow-xl relative overflow-hidden">
+                    <p className="text-slate-400 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2"><LineChart size={14}/> {t('stat_overview')}</p>
+                    <div className="h-16 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={statsData} layout="vertical">
+                            <BarChart data={statsData} layout="vertical" margin={{top:0, right:0, left:0, bottom:0}}>
                                 <XAxis type="number" hide />
                                 <YAxis type="category" dataKey="name" hide />
-                                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155'}} itemStyle={{color: '#fff'}} />
-                                <Bar dataKey="value" barSize={12} radius={[0, 4, 4, 0]}>
+                                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155'}} itemStyle={{color: '#fff', fontSize: '12px'}} />
+                                <Bar dataKey="value" barSize={16} radius={[0, 6, 6, 0]}>
                                     {statsData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
@@ -4964,28 +5485,29 @@ export const DoctorDashboardView = () => {
             {/* PENDING PATIENTS (Waiting for Plan) */}
             {pendingPatients.length > 0 && (
                 <div className="mb-8 animate-in slide-in-from-bottom-4">
-                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <AlertCircle className="text-amber-500" /> Patients Waiting for Plan
+                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                        <div className="p-2 bg-amber-500/20 rounded-lg"><AlertCircle className="text-amber-500" size={20} /></div>
+                        Waiting for Plan
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {pendingPatients.map(patient => (
-                            <div key={patient.uid} className="bg-slate-900 border border-amber-500/30 p-5 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.05)]">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold">
+                            <div key={patient.uid} className="glass p-6 rounded-3xl relative group hover:border-amber-500/40 transition-all">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-slate-300 font-bold border border-white/5 shadow-inner">
                                         {patient.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-white">{patient.name}</h3>
-                                        <p className="text-xs text-slate-500">{patient.email}</p>
+                                        <h3 className="font-bold text-white text-lg leading-tight">{patient.name}</h3>
+                                        <p className="text-xs text-slate-500 font-mono">{patient.email}</p>
                                     </div>
-                                    <Badge color="amber" className="mr-auto">Needs Plan</Badge>
+                                    <Badge color="amber" className="mr-auto absolute top-6 right-6">Action Needed</Badge>
                                 </div>
-                                <div className="bg-slate-950 p-3 rounded-lg text-xs text-slate-400 mb-4 space-y-1">
-                                    <div className="flex justify-between"><span>Type:</span> <span className="text-white">{patient.medType}</span></div>
-                                    <div className="flex justify-between"><span>Form:</span> <span className="text-white">{patient.medForm}</span></div>
-                                    <div className="flex justify-between"><span>Unit:</span> <span className="text-white">{patient.medUnit}</span></div>
+                                <div className="bg-slate-950/50 p-4 rounded-2xl text-xs text-slate-400 mb-6 space-y-2 border border-white/5">
+                                    <div className="flex justify-between border-b border-white/5 pb-1"><span>Medication:</span> <span className="text-white font-bold">{patient.medType}</span></div>
+                                    <div className="flex justify-between border-b border-white/5 pb-1"><span>Form:</span> <span className="text-white font-bold">{patient.medForm}</span></div>
+                                    <div className="flex justify-between"><span>Unit:</span> <span className="text-white font-bold">{patient.medUnit}</span></div>
                                 </div>
-                                <Button onClick={() => setSelectedPatient(patient)} className="w-full" variant="primary">
+                                <Button onClick={() => setSelectedPatient(patient)} className="w-full shadow-lg shadow-indigo-500/20" variant="primary">
                                     {t('create_plan_btn')} <ChevronRight size={16} />
                                 </Button>
                             </div>
@@ -4995,64 +5517,69 @@ export const DoctorDashboardView = () => {
             )}
 
             {/* ACTIVE PATIENTS LIST */}
-            <Card className="bg-slate-900 border-white/5 overflow-hidden">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Users className="text-indigo-400" /> {t('stat_total_patients')}
+            <Card className="bg-slate-900/60 border-white/10 overflow-hidden backdrop-blur-xl" noPadding>
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Users className="text-indigo-400" size={20} /></div>
+                        {t('stat_total_patients')}
                     </h2>
-                    <div className="text-sm text-slate-500">
-                        Total: {patients.length}
-                    </div>
+                    <Badge color="indigo">Total: {patients.length}</Badge>
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-right text-sm text-slate-400">
-                        <thead className="bg-slate-950 text-slate-500 uppercase font-bold text-xs">
+                    <table className="w-full text-left text-sm text-slate-400">
+                        <thead className="bg-slate-950/80 text-slate-500 uppercase font-bold text-xs tracking-wider">
                             <tr>
-                                <th className="p-4">Patient</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4">Progress</th>
-                                <th className="p-4">Last Active</th>
-                                <th className="p-4">Actions</th>
+                                <th className="p-5">Patient</th>
+                                <th className="p-5">Status</th>
+                                <th className="p-5">Progress</th>
+                                <th className="p-5">Last Active</th>
+                                <th className="p-5 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-white/5">
                             {patients.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">No active patients with plans.</td>
+                                    <td colSpan={5} className="p-12 text-center text-slate-600 italic flex flex-col items-center justify-center">
+                                        <Users size={40} className="mb-4 opacity-20"/>
+                                        No active patients with plans.
+                                    </td>
                                 </tr>
                             )}
                             {patients.map(patient => (
-                                <tr key={patient.uid} className="hover:bg-slate-800/50 transition-colors">
-                                    <td className="p-4 font-medium text-white flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs">
+                                <tr key={patient.uid} className="hover:bg-white/5 transition-colors group">
+                                    <td className="p-5 font-medium text-white flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/20 group-hover:scale-110 transition-transform">
                                             {patient.name.charAt(0)}
                                         </div>
-                                        {patient.name}
-                                    </td>
-                                    <td className="p-4">
-                                        {patient.patientData?.isRecovered ? (
-                                            <Badge color="green">Recovered</Badge>
-                                        ) : (
-                                            <Badge color="indigo">On Plan</Badge>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-500" style={{width: `${patient.progress || 0}%`}}></div>
-                                            </div>
-                                            <span className="text-xs">{Math.round(patient.progress || 0)}%</span>
+                                        <div>
+                                            <div className="font-bold">{patient.name}</div>
+                                            <div className="text-xs text-slate-500 font-mono">{patient.email}</div>
                                         </div>
                                     </td>
-                                    <td className="p-4 font-mono text-xs">
+                                    <td className="p-5">
+                                        {patient.patientData?.isRecovered ? (
+                                            <Badge color="green" className="shadow-none bg-emerald-500/10 border-emerald-500/20">Recovered</Badge>
+                                        ) : (
+                                            <Badge color="indigo" className="shadow-none bg-indigo-500/10 border-indigo-500/20">On Plan</Badge>
+                                        )}
+                                    </td>
+                                    <td className="p-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                                                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{width: `${patient.progress || 0}%`}}></div>
+                                            </div>
+                                            <span className="text-xs font-bold text-indigo-300">{Math.round(patient.progress || 0)}%</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-5 font-mono text-xs">
                                         {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : '-'}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-5 text-right">
                                         {!patient.patientData?.isRecovered && (
                                             <button 
                                                 onClick={() => markAsRecovered(patient)}
-                                                className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all"
+                                                className="text-xs font-bold text-emerald-400 hover:text-white hover:bg-emerald-500 px-4 py-2 rounded-xl border border-emerald-500/30 hover:border-emerald-500 transition-all shadow-lg shadow-emerald-900/20"
                                             >
                                                 Mark Recovered
                                             </button>
@@ -5067,124 +5594,136 @@ export const DoctorDashboardView = () => {
 
             {/* PLAN CREATION MODAL */}
             {selectedPatient && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-4xl bg-slate-900 border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col">
-                        <button type="button" onClick={() => setSelectedPatient(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20">
-                            <X size={20} />
-                        </button>
-
-                        <div className="p-6 border-b border-white/5">
-                            <h2 className="text-2xl font-bold text-white mb-1">{t('create_plan_btn')}</h2>
-                            <p className="text-slate-500">Patient: <span className="text-indigo-400 font-bold">{selectedPatient.name}</span></p>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                    <div className="w-full max-w-5xl bg-slate-900 border border-white/10 shadow-2xl relative max-h-[90vh] flex flex-col rounded-[2.5rem] overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="p-8 border-b border-white/5 bg-slate-950/50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black text-white mb-2 flex items-center gap-3">
+                                    <Stethoscope className="text-indigo-500" size={28}/> {t('create_plan_btn')}
+                                </h2>
+                                <p className="text-slate-400 flex items-center gap-2">Patient: <Badge color="blue">{selectedPatient.name}</Badge></p>
+                            </div>
+                            <button type="button" onClick={() => setSelectedPatient(null)} className="p-3 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-all">
+                                <X size={24} />
+                            </button>
                         </div>
 
-                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                        <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-8 bg-slate-900/30">
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* LEFT: Pattern Builder (NEW) */}
-                                <div className="bg-indigo-900/10 border border-indigo-500/20 p-4 rounded-xl">
-                                    <h3 className="text-indigo-400 font-bold mb-3 flex items-center gap-2">
-                                        <Repeat size={16}/> {t('pattern_builder')}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* LEFT: Pattern Builder (Glass Style) */}
+                                <div className="bg-indigo-900/10 border border-indigo-500/20 p-6 rounded-3xl shadow-inner">
+                                    <h3 className="text-indigo-300 font-bold mb-6 flex items-center gap-2 text-lg">
+                                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Repeat size={18}/></div> 
+                                        {t('pattern_builder')}
                                     </h3>
-                                    <div className="space-y-3">
+                                    <div className="space-y-5">
                                         <div>
-                                            <label className="text-[10px] text-slate-400 block mb-1">{t('pattern_sequence')}</label>
+                                            <label className="text-xs font-bold text-slate-400 uppercase mb-2 block ml-1">{t('pattern_sequence')}</label>
                                             <input 
-                                                className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                className="w-full bg-slate-950 border border-indigo-500/30 rounded-xl p-4 text-white font-mono text-sm focus:border-indigo-500 outline-none transition-all placeholder-indigo-900/50"
                                                 placeholder="0.5, 1, 0.5, 1"
                                                 value={patternSeq}
                                                 onChange={e => setPatternSeq(e.target.value)}
                                             />
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-4">
                                             <div className="flex-1">
-                                                <label className="text-[10px] text-slate-400 block mb-1">{t('repeat_count')}</label>
+                                                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block ml-1">{t('repeat_count')}</label>
                                                 <input 
-                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-xl p-4 text-white font-mono text-sm focus:border-indigo-500 outline-none"
                                                     value={patternRepeat} onChange={e => setPatternRepeat(e.target.value)}
                                                 />
                                             </div>
                                             <div className="flex-1">
-                                                <label className="text-[10px] text-slate-400 block mb-1">{t('days_per_dose')}</label>
+                                                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block ml-1">{t('days_per_dose')}</label>
                                                 <input 
-                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-lg p-2 text-white font-mono text-sm"
+                                                    type="number" className="w-full bg-slate-950 border border-indigo-500/30 rounded-xl p-4 text-white font-mono text-sm focus:border-indigo-500 outline-none"
                                                     value={patternDaysPerDose} onChange={e => setPatternDaysPerDose(e.target.value)}
                                                 />
                                             </div>
                                         </div>
-                                        <Button onClick={handleApplyPattern} className="w-full !py-2 !bg-indigo-600 !text-xs">
-                                            <Copy size={14} className="mr-2"/> {t('apply_pattern')}
+                                        <Button onClick={handleApplyPattern} className="w-full !py-3 !bg-indigo-600 shadow-lg shadow-indigo-900/40">
+                                            <Copy size={16} className="mr-2"/> {t('apply_pattern')}
                                         </Button>
                                     </div>
                                 </div>
 
-                                {/* RIGHT: Manual Entry */}
-                                <div className="bg-slate-950 border border-white/5 p-4 rounded-xl">
-                                    <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                                        <Plus size={16}/> Manual Entry
+                                {/* RIGHT: Manual Entry (Glass Style) */}
+                                <div className="bg-slate-950/60 border border-white/5 p-6 rounded-3xl">
+                                    <h3 className="text-white font-bold mb-6 flex items-center gap-2 text-lg">
+                                        <div className="p-2 bg-slate-800 rounded-lg"><Plus size={18}/></div>
+                                        Manual Entry
                                     </h3>
-                                    <div className="flex gap-2 mb-3">
+                                    <div className="flex gap-4 mb-5">
                                         <div className="flex-1">
-                                            <label className="text-[10px] text-slate-500 block mb-1">{t('dose')}</label>
-                                            <input type="number" className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-white" value={newDose} onChange={e => setNewDose(e.target.value)}/>
+                                            <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{t('dose')}</label>
+                                            <input type="number" className="w-full bg-slate-900 border border-white/10 p-4 rounded-xl text-white focus:border-indigo-500 outline-none" value={newDose} onChange={e => setNewDose(e.target.value)}/>
                                         </div>
                                         <div className="flex-1">
-                                            <label className="text-[10px] text-slate-500 block mb-1">{t('duration_days')}</label>
-                                            <input type="number" className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-white" value={newDays} onChange={e => setNewDays(e.target.value)}/>
+                                            <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{t('duration_days')}</label>
+                                            <input type="number" className="w-full bg-slate-900 border border-white/10 p-4 rounded-xl text-white focus:border-indigo-500 outline-none" value={newDays} onChange={e => setNewDays(e.target.value)}/>
                                         </div>
                                     </div>
-                                    <Button onClick={handleAddPhase} variant="secondary" className="w-full !py-2 !text-xs">Add Phase</Button>
+                                    <Button onClick={handleAddPhase} variant="secondary" className="w-full !py-3 !text-xs">Add Single Phase</Button>
                                 </div>
                             </div>
 
                             {/* Phases List */}
-                            <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-white font-bold flex items-center gap-2"><Activity size={16}/> {t('plan_phases')}</h3>
+                            <div className="bg-slate-950/80 p-6 rounded-3xl border border-white/5">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-white font-bold flex items-center gap-2 text-lg"><Activity size={20} className="text-emerald-400"/> {t('plan_phases')}</h3>
                                     {phases.length > 0 && (
-                                        <button onClick={() => setPhases([])} className="text-rose-500 text-xs flex items-center gap-1 hover:text-rose-400">
-                                            <Eraser size={12}/> {t('clear_phases')}
+                                        <button onClick={() => setPhases([])} className="text-rose-400 text-xs font-bold flex items-center gap-1 hover:text-rose-300 bg-rose-900/20 px-3 py-1.5 rounded-lg transition-colors border border-rose-500/20">
+                                            <Eraser size={14}/> {t('clear_phases')}
                                         </button>
                                     )}
                                 </div>
-                                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                                    {phases.length === 0 && <p className="text-center text-slate-600 text-sm py-4">No phases added yet.</p>}
+                                <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                                    {phases.length === 0 && (
+                                        <div className="text-center py-8 border-2 border-dashed border-slate-800 rounded-2xl text-slate-600">
+                                            No phases added yet. Start building the plan above.
+                                        </div>
+                                    )}
                                     {phases.map((phase, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-white/5 animate-in slide-in-from-right-2">
-                                            <span className="text-white font-bold text-sm flex items-center gap-2">
-                                                <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px]">{idx + 1}</span>
-                                                <span className="text-indigo-400 text-lg">{phase.dose}{selectedPatient.medUnit || 'mg'}</span> 
-                                                <span className="text-slate-500 text-xs">x {phase.days} days</span>
+                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-white/5 animate-in slide-in-from-right-2 hover:border-indigo-500/30 transition-colors">
+                                            <span className="text-white font-bold text-sm flex items-center gap-3">
+                                                <span className="bg-slate-800 text-slate-400 w-6 h-6 flex items-center justify-center rounded-full text-[10px]">{idx + 1}</span>
+                                                <span className="text-indigo-400 text-xl font-black">{phase.dose} <span className="text-xs font-normal text-indigo-300/60">{selectedPatient.medUnit || 'mg'}</span></span> 
+                                                <span className="w-px h-4 bg-slate-700 mx-2"></span>
+                                                <span className="text-slate-400 text-xs font-mono">{phase.days} days</span>
                                             </span>
-                                            <button type="button" onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded"><Trash2 size={14}/></button>
+                                            <button type="button" onClick={() => handleRemovePhase(idx)} className="text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-white/5 flex justify-between text-sm font-bold text-slate-400">
+                                <div className="mt-6 pt-6 border-t border-white/5 flex justify-between text-sm font-bold text-slate-400">
                                     <span>Total Duration: <span className="text-white">{phases.reduce((a,b) => a + b.days, 0)} days</span></span>
                                     <span>Total Phases: <span className="text-white">{phases.length}</span></span>
                                 </div>
                             </div>
 
                             {/* Notes */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('plan_notes')}</label>
+                            <div className="group">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3 ml-1 group-focus-within:text-indigo-400 transition-colors">{t('plan_notes')}</label>
                                 <textarea 
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white h-20 outline-none focus:border-indigo-500"
-                                    placeholder="..."
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-4 text-white h-24 outline-none focus:border-indigo-500 transition-all resize-none"
+                                    placeholder="Add instructions or comments for the patient..."
                                     value={doctorNote}
                                     onChange={e => setDoctorNote(e.target.value)}
                                 />
                             </div>
                         </div>
 
-                        <div className="p-4 border-t border-white/5 bg-slate-900 flex justify-end gap-3">
+                        <div className="p-6 border-t border-white/5 bg-slate-950/80 backdrop-blur-md flex justify-end gap-4">
                             <Button variant="secondary" onClick={() => setSelectedPatient(null)}>{t('close')}</Button>
-                            <Button variant="success" onClick={saveTreatmentPlan} disabled={phases.length === 0}>
+                            <Button variant="success" onClick={saveTreatmentPlan} disabled={phases.length === 0} className="shadow-lg shadow-emerald-500/20">
                                 <Save size={18} className="mr-2"/> {t('submit_plan')}
                             </Button>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
         </LayoutContainer>
@@ -5202,14 +5741,14 @@ import {
 import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
 import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock
+    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock, BarChart2
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -5221,7 +5760,7 @@ export const DoctorPatientsView = () => {
 
     // -- State --
     const [myPatients, setMyPatients] = useState<UserProfile[]>([]);
-    const [pendingRequests, setPendingRequests] = useState<UserProfile[]>([]); // New State
+    const [pendingRequests, setPendingRequests] = useState<UserProfile[]>([]);
     const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -5239,7 +5778,6 @@ export const DoctorPatientsView = () => {
         
         setLoading(true);
         try {
-            // 1. Fetch Assigned Patients (Both Approved and Pending)
             const q = query(
                 collection(db, "users"), 
                 where("patientData.assignedDoctorId", "==", currentUser.uid)
@@ -5248,7 +5786,6 @@ export const DoctorPatientsView = () => {
             const allAssigned: UserProfile[] = [];
             snapshot.forEach(d => allAssigned.push({ uid: d.id, ...d.data() } as UserProfile));
 
-            // Split into buckets
             setMyPatients(allAssigned.filter(p => p.patientData?.requestStatus === 'approved'));
             setPendingRequests(allAssigned.filter(p => p.patientData?.requestStatus === 'pending'));
 
@@ -5269,10 +5806,9 @@ export const DoctorPatientsView = () => {
         try {
             await updateDoc(doc(db, "users", patient.uid), {
                 "patientData.requestStatus": "approved",
-                "patientData.isPlanAssigned": false // Needs plan now
+                "patientData.isPlanAssigned": false 
             });
             
-            // Move from pending to active locally
             setPendingRequests(prev => prev.filter(p => p.uid !== patient.uid));
             setMyPatients(prev => [...prev, { 
                 ...patient, 
@@ -5289,12 +5825,10 @@ export const DoctorPatientsView = () => {
             await updateDoc(doc(db, "users", patient.uid), {
                 "patientData.requestStatus": "rejected"
             });
-            // Remove from list locally
             setPendingRequests(prev => prev.filter(p => p.uid !== patient.uid));
         } catch (e) { console.error(e); }
     };
 
-    // -- Existing Logic for Manual Add --
     const fetchAvailableUsers = async () => {
         setLoading(true);
         try {
@@ -5330,7 +5864,7 @@ export const DoctorPatientsView = () => {
                 patientData: {
                     assignedDoctorId: currentUser.uid,
                     assignedDoctorName: currentUser.displayName || 'Doctor',
-                    requestStatus: 'approved', // Manual add is auto-approved
+                    requestStatus: 'approved',
                     isPlanAssigned: false, 
                     isRecovered: false
                 },
@@ -5364,11 +5898,11 @@ export const DoctorPatientsView = () => {
                 subtitle="Track progress and manage your clinic."
                 action={
                     viewMode === 'LIST' ? (
-                        <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary">
+                        <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary" className="!rounded-xl shadow-indigo-500/20">
                             <UserPlus size={18} /> {t('add_patient_btn')}
                         </Button>
                     ) : (
-                        <Button onClick={() => setViewMode('LIST')} variant="secondary">
+                        <Button onClick={() => setViewMode('LIST')} variant="secondary" className="!rounded-xl">
                             <ChevronLeft size={18} /> {t('back_list_btn')}
                         </Button>
                     )
@@ -5378,25 +5912,33 @@ export const DoctorPatientsView = () => {
             {/* --- ADD NEW PATIENT MODE --- */}
             {viewMode === 'ADD_NEW' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
-                    <Card className="bg-slate-900 border-white/5 mb-6">
-                        <h3 className="text-xl font-bold text-white mb-4">Find Users</h3>
-                        <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-white/5 mb-6">
-                            <Search className="text-slate-500" />
+                    <Card className="bg-slate-900/80 border-white/10 mb-6 backdrop-blur-xl">
+                        <h3 className="text-xl font-bold text-white mb-6">Find Users</h3>
+                        <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-white/5 mb-6 group focus-within:border-indigo-500/50 transition-colors">
+                            <Search className="text-slate-500 group-focus-within:text-indigo-400" />
                             <input 
                                 className="bg-transparent w-full text-white outline-none placeholder-slate-600"
                                 placeholder={t('search_available_placeholder')}
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
+                                autoFocus
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             {filteredAvailable.map(user => (
-                                <div key={user.uid} className="flex justify-between items-center p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">{user.name.charAt(0)}</div>
-                                        <div><h4 className="font-bold text-white">{user.name}</h4><p className="text-xs text-slate-500">{user.email}</p></div>
+                                <div key={user.uid} className="flex justify-between items-center p-5 rounded-2xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-800/60 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5 group-hover:scale-110 transition-transform">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white text-lg">{user.name}</h4>
+                                            <p className="text-xs text-slate-500 font-mono">{user.email}</p>
+                                        </div>
                                     </div>
-                                    <Button onClick={() => handleManualAdd(user)} variant="success" className="!py-2 !px-3 !text-xs"><UserPlus size={14} className="mr-1"/> {t('add_btn')}</Button>
+                                    <Button onClick={() => handleManualAdd(user)} variant="success" className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/10">
+                                        <UserPlus size={16} className="mr-2"/> {t('add_btn')}
+                                    </Button>
                                 </div>
                             ))}
                         </div>
@@ -5408,54 +5950,58 @@ export const DoctorPatientsView = () => {
             {viewMode === 'LIST' && (
                 <div className="animate-in fade-in">
                     {/* TABS */}
-                    <div className="flex gap-4 mb-6 border-b border-white/10 pb-1">
+                    <div className="flex p-1.5 bg-slate-900/50 rounded-2xl border border-white/10 mb-8 w-fit backdrop-blur-md">
                         <button 
                             onClick={() => setActiveTab('MY_PATIENTS')}
-                            className={`pb-3 px-4 text-sm font-bold transition-all relative ${activeTab === 'MY_PATIENTS' ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'MY_PATIENTS' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             {t('stat_total_patients')}
-                            <span className="ml-2 bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full">{myPatients.length}</span>
-                            {activeTab === 'MY_PATIENTS' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-t-full"></div>}
+                            <Badge color="blue" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent">{myPatients.length}</Badge>
                         </button>
                         
                         <button 
                             onClick={() => setActiveTab('REQUESTS')}
-                            className={`pb-3 px-4 text-sm font-bold transition-all relative ${activeTab === 'REQUESTS' ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'REQUESTS' ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             {t('patient_requests_title')}
-                            {pendingRequests.length > 0 && <span className="ml-2 bg-amber-500 text-slate-900 text-[10px] px-2 py-0.5 rounded-full animate-pulse font-black">{pendingRequests.length}</span>}
-                            {activeTab === 'REQUESTS' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 rounded-t-full"></div>}
+                            {pendingRequests.length > 0 && <Badge color="red" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent animate-pulse">{pendingRequests.length}</Badge>}
                         </button>
                     </div>
 
                     {/* TAB: REQUESTS */}
                     {activeTab === 'REQUESTS' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-left-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-left-4">
                             {pendingRequests.length === 0 && (
-                                <div className="col-span-full text-center py-12 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800 text-slate-500">
-                                    <Clock size={40} className="mx-auto mb-2 opacity-20"/> {t('no_requests')}
+                                <div className="col-span-full text-center py-16 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500">
+                                    <Clock size={48} className="mx-auto mb-4 opacity-20"/> {t('no_requests')}
                                 </div>
                             )}
                             {pendingRequests.map(patient => (
-                                <div key={patient.uid} className="bg-slate-900 border border-amber-500/20 p-6 rounded-2xl relative">
-                                    <Badge color="amber" className="absolute top-4 right-4 !py-0.5 !px-2">Pending</Badge>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold text-lg">{patient.name.charAt(0)}</div>
+                                <div key={patient.uid} className="bg-slate-900/80 backdrop-blur-xl border border-amber-500/20 p-6 rounded-[2rem] relative shadow-lg hover:shadow-amber-900/10 transition-all">
+                                    <Badge color="amber" className="absolute top-6 right-6 !py-1 !px-3 shadow-none bg-amber-500/10 border-amber-500/20">Pending</Badge>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 font-bold text-xl border border-white/5">
+                                            {patient.name.charAt(0)}
+                                        </div>
                                         <div>
-                                            <h3 className="font-bold text-white">{patient.name}</h3>
-                                            <p className="text-xs text-slate-500">{patient.email}</p>
+                                            <h3 className="font-bold text-white text-lg">{patient.name}</h3>
+                                            <p className="text-xs text-slate-500 font-mono">{patient.email}</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 text-xs text-slate-400 bg-slate-950 p-3 rounded-lg mb-4">
-                                        <div className="flex-1 text-center border-r border-white/5"><span className="block font-bold text-white">{patient.medType}</span>Type</div>
-                                        <div className="flex-1 text-center"><span className="block font-bold text-white">{patient.medForm}</span>Form</div>
+                                    <div className="flex gap-2 text-xs text-slate-400 bg-slate-950/50 p-4 rounded-xl mb-6 border border-white/5">
+                                        <div className="flex-1 text-center border-r border-white/10">
+                                            <span className="block font-bold text-white text-base mb-1">{patient.medType}</span>Type
+                                        </div>
+                                        <div className="flex-1 text-center">
+                                            <span className="block font-bold text-white text-base mb-1">{patient.medForm}</span>Form
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-2 !text-xs">
-                                            <UserCheck size={14} className="mr-1"/> {t('accept_patient')}
+                                    <div className="flex gap-3">
+                                        <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-3 !text-xs shadow-emerald-500/10">
+                                            <UserCheck size={16} className="mr-2"/> {t('accept_patient')}
                                         </Button>
-                                        <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-2 !text-xs">
-                                            <UserX size={14} className="mr-1"/> {t('reject_patient')}
+                                        <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-3 !text-xs shadow-rose-500/10">
+                                            <UserX size={16} className="mr-2"/> {t('reject_patient')}
                                         </Button>
                                     </div>
                                 </div>
@@ -5465,26 +6011,47 @@ export const DoctorPatientsView = () => {
 
                     {/* TAB: MY PATIENTS */}
                     {activeTab === 'MY_PATIENTS' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-in slide-in-from-right-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-right-4">
                             {filteredMyPatients.map(patient => (
                                 <div 
                                     key={patient.uid} 
                                     onClick={() => openPatientDetails(patient)}
-                                    className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-indigo-500/50 hover:bg-slate-800 cursor-pointer transition-all group relative overflow-hidden"
+                                    className="bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/80 cursor-pointer transition-all group relative overflow-hidden backdrop-blur-md shadow-lg"
                                 >
-                                    <div className="flex justify-between items-start mb-4 relative z-10">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+                                    
+                                    <div className="flex justify-between items-start mb-6 relative z-10">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-xl">{patient.name.charAt(0)}</div>
-                                            <div><h3 className="text-lg font-bold text-white">{patient.name}</h3><p className="text-sm text-slate-500">{patient.email}</p></div>
+                                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500/10 to-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-2xl border border-white/5 shadow-inner group-hover:scale-105 transition-transform">
+                                                {patient.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">{patient.name}</h3>
+                                                <p className="text-sm text-slate-500 font-mono">{patient.email}</p>
+                                            </div>
                                         </div>
-                                        <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'}>
+                                        <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'} className="shadow-none">
                                             {patient.patientData?.isRecovered ? 'Recovered' : patient.patientData?.isPlanAssigned ? 'Active' : 'Needs Plan'}
                                         </Badge>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Progress</span><span className="block font-bold text-indigo-400">{Math.round(patient.progress || 0)}%</span></div>
-                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Status</span><span className="block font-bold text-white">{patient.patientData?.isPlanAssigned ? 'On Track' : 'Waiting'}</span></div>
-                                        <div className="bg-slate-950 p-2 rounded-lg border border-white/5"><span className="block text-[10px] text-slate-500 uppercase">Last Active</span><span className="block font-bold text-slate-300 text-[10px] mt-1">{patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}</span></div>
+                                    
+                                    <div className="grid grid-cols-3 gap-3 relative z-10">
+                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
+                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Progress</span>
+                                            <span className="block font-black text-indigo-400 text-lg">{Math.round(patient.progress || 0)}%</span>
+                                        </div>
+                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
+                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Status</span>
+                                            <span className={`block font-bold text-sm mt-1 ${patient.patientData?.isPlanAssigned ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                {patient.patientData?.isPlanAssigned ? 'On Track' : 'Waiting'}
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
+                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Last Active</span>
+                                            <span className="block font-bold text-slate-300 text-xs mt-1.5 font-mono">
+                                                {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -5495,40 +6062,112 @@ export const DoctorPatientsView = () => {
 
             {/* --- PATIENT DETAILS MODAL --- */}
             {selectedPatient && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in">
-                    <Card className="w-full max-w-5xl h-[90vh] flex flex-col bg-slate-900 border-white/10 shadow-2xl relative !p-0 overflow-hidden">
-                        <div className="p-6 bg-slate-950 border-b border-white/5 flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">{selectedPatient.name.charAt(0)}</div>
-                                <div><h2 className="text-2xl font-bold text-white">{selectedPatient.name}</h2><div className="flex items-center gap-2 text-xs text-slate-500"><FileText size={12}/> {selectedPatient.medType || 'General'} • {selectedPatient.medForm} • {selectedPatient.medUnit}</div></div>
-                            </div>
-                            <button type="button" onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={24} /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 custom-scrollbar">
-                            <div className="lg:col-span-2 space-y-6">
-                                <Card className="bg-slate-950 border-white/5">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Activity size={16} className="text-indigo-400"/> Adherence</h3>
-                                    <div className="h-64 w-full">
-                                        {patientLogs.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%"><AreaChart data={patientLogs.slice(-30)}><defs><linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} /><XAxis dataKey="date" hide /><YAxis stroke="#475569" fontSize={10} /><Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b'}} /><Area type="monotone" dataKey="doseTaken" stroke="#6366f1" fill="url(#colorDoseP)" /></AreaChart></ResponsiveContainer>
-                                        ) : (<div className="h-full flex items-center justify-center text-slate-600">No data available</div>)}
-                                    </div>
-                                </Card>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center"><span className="text-xs text-slate-500 uppercase block mb-1">{t('sleep_label')}</span><span className="text-xl font-bold text-white flex items-center justify-center gap-1"><Moon size={16} className="text-blue-400"/> {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'}h</span></div>
-                                     <div className="bg-slate-950 p-4 rounded-xl border border-white/5 text-center"><span className="text-xs text-slate-500 uppercase block mb-1">{t('mood')}</span><span className="text-xl font-bold text-white flex items-center justify-center gap-1"><Smile size={16} className="text-emerald-400"/>Good</span></div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                    <div className="w-full max-w-6xl h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative rounded-[2.5rem] overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="p-8 bg-slate-950/80 border-b border-white/5 flex justify-between items-center backdrop-blur-md">
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-500/30">
+                                    {selectedPatient.name.charAt(0)}
                                 </div>
-                                <Card className="bg-slate-900 border-white/5 flex-1 max-h-[400px] overflow-hidden flex flex-col">
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-slate-950 pb-2"><Calendar size={16} className="text-indigo-400"/> Daily Logs</h3>
-                                    <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
-                                        {patientLogs.slice().reverse().map((log, i) => (<div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-900 border border-white/5 text-xs"><span className="text-slate-400">{log.date}</span><span className="font-bold text-white">{log.doseTaken} {selectedPatient.medUnit}</span><span>{log.mood === 'good' ? <Smile size={14} className="text-emerald-500"/> : log.mood === 'bad' ? <Frown size={14} className="text-rose-500"/> : <Meh size={14} className="text-amber-500"/>}</span></div>))}
+                                <div>
+                                    <h2 className="text-3xl font-black text-white mb-1">{selectedPatient.name}</h2>
+                                    <div className="flex items-center gap-3 text-sm text-slate-400">
+                                        <FileText size={16} className="text-indigo-400"/> 
+                                        <span className="text-white font-bold">{selectedPatient.medType || 'General'}</span> 
+                                        <span>•</span>
+                                        <span>{selectedPatient.medForm}</span>
+                                        <span>•</span>
+                                        <span className="bg-slate-800 px-2 py-0.5 rounded text-xs">{selectedPatient.medUnit}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedPatient(null)} className="p-3 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-all border border-white/5">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 custom-scrollbar bg-slate-900/30">
+                            
+                            {/* Charts Area */}
+                            <div className="lg:col-span-2 space-y-8">
+                                <Card className="bg-slate-900/60 border-white/5 p-6 h-[400px] flex flex-col shadow-inner">
+                                    <h3 className="text-white font-bold mb-6 flex items-center gap-3 text-lg">
+                                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Activity size={20} className="text-indigo-400"/></div>
+                                        Adherence & Dosage
+                                    </h3>
+                                    <div className="flex-1 w-full">
+                                        {patientLogs.length > 0 ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={patientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                    <defs>
+                                                        <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                                    <XAxis dataKey="date" hide />
+                                                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                                    <Tooltip 
+                                                        contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                                        itemStyle={{color: '#fff'}}
+                                                    />
+                                                    <Area type="monotone" dataKey="doseTaken" stroke="#6366f1" strokeWidth={3} fill="url(#colorDoseP)" animationDuration={1500} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-2xl">
+                                                <BarChart2 size={40} className="mb-2 opacity-20"/> No data available
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
+
+                            {/* Stats & Logs */}
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                     <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
+                                         <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('sleep_label')}</span>
+                                         <span className="text-2xl font-black text-white flex items-center justify-center gap-2">
+                                             <Moon size={20} className="text-blue-400"/> 
+                                             {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'} <span className="text-sm text-slate-600">h</span>
+                                         </span>
+                                     </div>
+                                     <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
+                                         <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('mood')}</span>
+                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-2 mt-1">
+                                             <Smile size={24} className="text-emerald-400"/> Good
+                                         </span>
+                                     </div>
+                                </div>
+                                
+                                <Card className="bg-slate-900/60 border-white/5 flex-1 max-h-[500px] overflow-hidden flex flex-col !p-0 shadow-lg">
+                                    <div className="p-6 border-b border-white/5 bg-slate-900/40">
+                                        <h3 className="text-white font-bold flex items-center gap-3">
+                                            <Calendar size={20} className="text-amber-400"/> Recent Logs
+                                        </h3>
+                                    </div>
+                                    <div className="overflow-y-auto custom-scrollbar flex-1 p-4 space-y-2">
+                                        {patientLogs.slice().reverse().map((log, i) => (
+                                            <div key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors">
+                                                <span className="text-slate-400 font-mono">{log.date}</span>
+                                                <span className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></span>
+                                                <span>
+                                                    {log.mood === 'good' ? <Smile size={18} className="text-emerald-500"/> : 
+                                                     log.mood === 'bad' ? <Frown size={18} className="text-rose-500"/> : 
+                                                     <Meh size={18} className="text-amber-500"/>}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </Card>
                             </div>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             )}
         </LayoutContainer>
@@ -5539,12 +6178,13 @@ export const DoctorPatientsView = () => {
 
 ### File: `views\LoginView.tsx`
 ```tsx
-import React from 'react';
-import { Activity, Chrome, LogIn } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
-import { useLanguage } from '../contexts/LanguageContext';
 
 interface LoginViewProps {
   handleLogin: (e: React.FormEvent) => void;
@@ -5560,91 +6200,188 @@ interface LoginViewProps {
 export const LoginView = ({ 
   handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds 
 }: LoginViewProps) => {
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
+  const { signupWithEmail } = useAuth(); // استخدام دالة الإنشاء الجديدة من السياق
+
+  // حالة التبديل بين الدخول والتسجيل
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // بيانات التسجيل الإضافية
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    if (isSignUp) {
+        // منطق إنشاء الحساب
+        if (!name || !age || !weight || !height) {
+            alert(language === 'ar' ? "يرجى تعبئة جميع البيانات الصحية" : "Please fill all health data");
+            setIsLoading(false);
+            return;
+        }
+        await signupWithEmail(email, password, name, {
+            age: parseInt(age),
+            weight: parseFloat(weight),
+            height: parseFloat(height)
+        });
+    } else {
+        // منطق تسجيل الدخول (الموجود مسبقاً)
+        await handleLogin(e);
+    }
+    setIsLoading(false);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-6 relative overflow-hidden" dir={dir}>
-      {/* خلفية تفاعلية (Ambient Background Effects) */}
-      <div className="absolute top-0 left-0 w-[500px] md:w-[800px] h-[500px] md:h-[800px] bg-indigo-600/10 rounded-full blur-[100px] md:blur-[150px] -translate-x-1/2 -translate-y-1/2 animate-pulse duration-[10000ms]"></div>
-      <div className="absolute bottom-0 right-0 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-violet-600/5 rounded-full blur-[80px] md:blur-[120px] translate-x-1/2 translate-y-1/2"></div>
+    <div className="min-h-screen flex items-center justify-center bg-[#020617] p-4 relative overflow-hidden" dir={dir}>
       
-      {/* مبدل اللغة في الزاوية */}
+      {/* خلفية حية */}
+      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-60 pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[100px] animate-float opacity-50 delay-1000 pointer-events-none"></div>
+      
       <div className="absolute top-6 right-6 z-50">
         <LanguageSwitcher />
       </div>
 
-      <Card className="w-full max-w-md p-8 md:p-10 relative z-10 border-white/10 shadow-[0_0_80px_rgba(79,70,229,0.15)] bg-slate-900/80 backdrop-blur-2xl">
-        <div className="text-center mb-10">
-          <div className="relative inline-block group">
-              <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-full"></div>
-              <div className="bg-gradient-to-br from-indigo-500 to-violet-600 w-20 h-20 md:w-24 md:h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl relative z-10 border border-white/20 transform transition-transform duration-500 group-hover:scale-105 group-hover:rotate-3">
-                  <Activity className="w-10 h-10 md:w-12 md:h-12 text-white" />
-              </div>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Islam's Guide<span className="text-indigo-500">.</span></h1>
-          <p className="text-slate-400 font-bold tracking-[0.2em] uppercase text-[10px]">{t('subtitle')}</p>
-        </div>
-
-        <div className="space-y-6">
-            {/* Google Login */}
-            <Button 
-                onClick={handleGoogleLogin}
-                className="w-full py-4 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3 font-bold"
-            >
-                <Chrome className="w-5 h-5" />
-                <span>{t('login_google')}</span>
-            </Button>
-
-            <div className="flex items-center gap-4 text-xs text-slate-600 font-bold uppercase tracking-widest">
-                <div className="h-px bg-slate-800 flex-1"></div>
-                {t('or')}
-                <div className="h-px bg-slate-800 flex-1"></div>
+      <Card className="w-full max-w-lg relative z-10 !bg-slate-900/70 border-white/10 shadow-2xl backdrop-blur-xl" noPadding>
+        <div className="p-8 md:p-10">
+            
+            {/* الشعار والعنوان */}
+            <div className="text-center mb-8">
+                <div className="inline-flex p-4 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4 animate-in zoom-in">
+                    <Activity className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
+                    {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
+                </h1>
+                <p className="text-slate-400 font-medium text-sm">
+                    {isSignUp 
+                        ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') 
+                        : t('subtitle')}
+                </p>
             </div>
 
-            {/* Email/Password Login */}
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                
+                {/* حقول التسجيل الإضافية (تظهر فقط عند isSignUp) */}
+                {isSignUp && (
+                    <div className="space-y-4 animate-in slide-in-from-bottom-4">
+                        <div className="relative group">
+                            <User className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                            <input 
+                                type="text" 
+                                placeholder={language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Calendar size={16}/></div>
+                                <input type="number" placeholder={language === 'ar' ? 'العمر' : 'Age'} value={age} onChange={(e) => setAge(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Weight size={16}/></div>
+                                <input type="number" placeholder={language === 'ar' ? 'وزن (kg)' : 'Weight'} value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 flex items-center justify-center w-10 text-slate-500"><Ruler size={16}/></div>
+                                <input type="number" placeholder={language === 'ar' ? 'طول (cm)' : 'Height'} value={height} onChange={(e) => setHeight(e.target.value)} className="w-full pl-10 pr-2 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 text-white outline-none text-sm text-center" />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* الحقول الأساسية (البريد وكلمة المرور) */}
                 <div className="space-y-4">
-                    <div className="group relative">
+                    <div className="relative group">
+                        <Mail className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
                         <input 
-                            type="text" 
+                            type="email" 
                             placeholder={t('email')}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
                         />
                     </div>
-                    <div className="group relative">
+                    <div className="relative group">
+                        <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
                         <input 
                             type="password" 
                             placeholder={t('password')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-4 bg-slate-950/60 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white outline-none transition-all placeholder-slate-600 font-medium group-hover:border-slate-700"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:bg-slate-900/80 text-white outline-none transition-all placeholder-slate-600"
                         />
                     </div>
                 </div>
                 
+                {/* رسائل الخطأ */}
                 {loginError && (
-                    <div className="text-rose-400 text-sm bg-rose-500/10 p-4 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
-                        {t('error_prefix')}{loginError}
+                    <div className="text-rose-400 text-xs bg-rose-500/10 p-3 rounded-lg border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> {loginError}
                     </div>
                 )}
                 
-                <Button className="w-full py-5 text-lg shadow-indigo-500/25" type="submit">
-                    {t('login_email')} <LogIn size={18} className="ml-2"/>
+                {/* زر الإرسال الرئيسي */}
+                <Button className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" type="submit" isLoading={isLoading}>
+                    {isSignUp 
+                        ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
+                        : t('login_email')} 
+                    {!isLoading && (isSignUp ? <UserPlus size={18} className="ml-2"/> : <LogIn size={18} className="ml-2"/>)}
                 </Button>
             </form>
+
+            {/* الفواصل وأزرار التواصل الاجتماعي */}
+            <div className="my-6 flex items-center gap-4 text-xs text-slate-600 font-bold uppercase tracking-widest">
+                <div className="h-px bg-slate-800 flex-1"></div>
+                {t('or')}
+                <div className="h-px bg-slate-800 flex-1"></div>
+            </div>
+
+            <Button 
+                onClick={handleGoogleLogin}
+                variant="secondary"
+                className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 flex items-center justify-center gap-2 font-bold"
+            >
+                <Chrome className="w-5 h-5 text-slate-900" />
+                <span>{t('login_google')}</span>
+            </Button>
+
+            {/* التبديل بين الدخول والتسجيل */}
+            <div className="mt-8 text-center">
+                <p className="text-slate-400 text-sm">
+                    {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
+                    <button 
+                        onClick={() => {
+                            setIsSignUp(!isSignUp);
+                            loginError = ''; // محاولة لتصفير الخطأ ظاهرياً
+                        }}
+                        className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4"
+                    >
+                        {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
+                    </button>
+                </p>
+            </div>
+
+            {/* زر الديمو */}
+            {!isSignUp && (
+                <div className="mt-6 pt-6 border-t border-white/5 text-center">
+                    <button 
+                        onClick={setDemoCreds}
+                        className="text-slate-600 text-xs font-mono hover:text-slate-400 transition-colors"
+                    >
+                        {t('demo_account')}
+                    </button>
+                </div>
+            )}
         </div>
-          
-          {/* Demo Mode Link */}
-          <div className="mt-8 pt-6 border-t border-white/5 text-center space-y-4">
-             <p 
-                onClick={setDemoCreds}
-                className="text-slate-500 text-xs cursor-pointer hover:text-indigo-400 transition-colors"
-             >
-                {t('demo_account')}
-             </p>
-          </div>
       </Card>
     </div>
   );
@@ -5657,7 +6394,7 @@ export const LoginView = ({
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
-  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User
+  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
@@ -5667,7 +6404,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import { Badge } from '../components/ui/Badge';
-import { ScientificPlanModal } from '../components/modals/ScientificPlanModal'; // استيراد المودال الجديد
+import { ScientificPlanModal } from '../components/modals/ScientificPlanModal';
 
 import { UserProfile, Inventory, PlanDay, MedForm, MedUnit, DoctorProfileData } from '../types';
 import { calculateTotalInventory, generatePlan } from '../services/taperingEngine';
@@ -5699,7 +6436,7 @@ export const OnboardingView = ({
   userProfile, setUserProfile, inventory, setInventory, 
   currentDoseHabit, setCurrentDoseHabit, startPlan, email, handleLogout
 }: OnboardingViewProps) => {
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
   
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
   const [loading, setLoading] = useState(false);
@@ -5744,10 +6481,10 @@ export const OnboardingView = ({
   const NavBackBtn = ({ to }: { to?: OnboardingStep }) => (
       <button 
         onClick={() => to ? setStep(to) : handleLogout?.()}
-        className="absolute top-6 left-6 z-20 p-2 rounded-full bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+        className="absolute top-6 left-6 z-50 p-3 rounded-full glass hover:bg-white/10 text-slate-400 hover:text-white transition-all shadow-lg"
         disabled={loading}
       >
-        {dir === 'rtl' ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
+        {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
       </button>
   );
 
@@ -5880,136 +6617,403 @@ export const OnboardingView = ({
   };
 
   const generatePreview = () => {
-      // توليد الخطة
       const plan = generatePlan(totalInventory, currentDoseHabit, new Date().toISOString(), 1.0, [], medForm || 'tablet');
       setPreviewPlan(plan);
-      
-      // فتح المودال العلمي أولاً قبل عرض المعاينة
+      setStep('ALGO_PREVIEW');
       setShowSciModal(true);
   };
 
   // --- RENDERS ---
 
+  // Wrapper with Ambient Background
+  const OnboardingWrapper = ({ children }: { children: React.ReactNode }) => (
+      <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center relative overflow-hidden" dir={dir}>
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50 pointer-events-none"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000 pointer-events-none"></div>
+          <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
+          {children}
+      </div>
+  );
+
   if (step === 'ROLE_SELECT') {
       return (
-        <div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center relative">
-             <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
+        <OnboardingWrapper>
              {handleLogout && <NavBackBtn />}
-             <header className="mb-12 text-center animate-in slide-in-from-top-4">
-                <h1 className="text-4xl font-black text-white mb-4">{t('onboard_title')}</h1>
-                <p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p>
+             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10">
+                <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('onboard_title')}</h1>
+                <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
              </header>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-                 <button onClick={() => setStep('USER_PATH_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <UserPlus size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">{t('role_patient')}</h3>
-                     <p className="text-slate-500 leading-relaxed">{t('role_patient_desc')}</p>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full relative z-10">
+                 {/* خيار المريض */}
+                 <button onClick={() => setStep('USER_PATH_SELECT')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <div className="w-16 h-16 bg-indigo-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/20 border border-indigo-500/30">
+                        <UserPlus size={32} className="text-indigo-400"/>
+                     </div>
+                     <h3 className="text-3xl font-bold text-white mb-3">{t('role_patient')}</h3>
+                     <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('role_patient_desc')}</p>
                  </button>
-                 <button onClick={() => setStep('DOCTOR_FORM')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                     <Stethoscope size={40} className="text-emerald-400 mb-6 group-hover:scale-110 transition-transform"/>
-                     <h3 className="text-2xl font-bold text-white mb-2">{t('role_doctor')}</h3>
-                     <p className="text-slate-500 leading-relaxed">{t('role_doctor_desc')}</p>
+                 
+                 {/* خيار الطبيب */}
+                 <button onClick={() => setStep('DOCTOR_FORM')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <div className="w-16 h-16 bg-emerald-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/20 border border-emerald-500/30">
+                        <Stethoscope size={32} className="text-emerald-400"/>
+                     </div>
+                     <h3 className="text-3xl font-bold text-white mb-3">{t('role_doctor')}</h3>
+                     <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('role_doctor_desc')}</p>
                  </button>
              </div>
-        </div>
+        </OnboardingWrapper>
       );
   }
 
-  // ... (DOCTOR_FORM omitted for brevity, logic remains same) ...
   if (step === 'DOCTOR_FORM') {
-      // (نفس كود نموذج الطبيب السابق بدون تغيير)
       return (
-          <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
+          <OnboardingWrapper>
               <NavBackBtn to="ROLE_SELECT" />
-              <div className="max-w-2xl w-full animate-in fade-in slide-in-from-bottom-8">
+              <div className="max-w-2xl w-full animate-in fade-in slide-in-from-bottom-8 relative z-10 pt-20">
                   <header className="text-center mb-8">
                       <h1 className="text-3xl font-black text-white mb-2">{t('doc_req_title')}</h1>
                       <p className="text-slate-400">{t('doc_req_desc')}</p>
                   </header>
-                  <Card className="bg-slate-900 border-white/5 space-y-6">
-                      {/* ... Form Fields ... */}
-                      <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_fullname')}</label><div className="relative"><User className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_fullname')} value={doctorName} onChange={e => setDoctorName(e.target.value)}/></div></div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_specialty')}</label><div className="relative"><Award className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_specialty')} value={doctorForm.specialty} onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}/></div></div><div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_license')}</label><div className="relative"><FileText className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_license')} value={doctorForm.licenseNumber} onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}/></div></div></div>
-                      <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_location')}</label><div className="relative"><MapPin className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder={t('doc_location')} value={doctorForm.clinicLocation} onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}/></div></div>
-                      <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_phone')}</label><div className="relative"><Phone className="absolute top-3 right-3 text-slate-500" size={18} /><input className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none" placeholder="+966..." value={doctorForm.phoneNumber} onChange={e => setDoctorForm({...doctorForm, phoneNumber: e.target.value})}/></div></div>
-                      <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('doc_bio')}</label><textarea className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none h-24 resize-none" placeholder={t('doc_bio')} value={doctorForm.bio} onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}/></div>
+                  <Card className="!bg-slate-900/80 border-white/10 shadow-2xl backdrop-blur-xl space-y-6">
+                      <div className="group">
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_fullname')}</label>
+                          <div className="relative">
+                              <User className="absolute top-3.5 right-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                              <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-12 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" placeholder={t('doc_fullname')} value={doctorName} onChange={e => setDoctorName(e.target.value)}/>
+                          </div>
+                      </div>
                       
-                      <Button variant="success" className="w-full py-4 text-lg" onClick={handleDoctorSubmit} disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_specialty')}</label>
+                              <div className="relative">
+                                  <Award className="absolute top-3.5 right-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                  <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-12 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" placeholder={t('doc_specialty')} value={doctorForm.specialty} onChange={e => setDoctorForm({...doctorForm, specialty: e.target.value})}/>
+                              </div>
+                          </div>
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_license')}</label>
+                              <div className="relative">
+                                  <FileText className="absolute top-3.5 right-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                  <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-12 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" placeholder={t('doc_license')} value={doctorForm.licenseNumber} onChange={e => setDoctorForm({...doctorForm, licenseNumber: e.target.value})}/>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_location')}</label>
+                              <div className="relative">
+                                  <MapPin className="absolute top-3.5 right-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                  <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-12 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" placeholder={t('doc_location')} value={doctorForm.clinicLocation} onChange={e => setDoctorForm({...doctorForm, clinicLocation: e.target.value})}/>
+                              </div>
+                          </div>
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_phone')}</label>
+                              <div className="relative">
+                                  <Phone className="absolute top-3.5 right-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                  <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-12 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" placeholder="+966..." value={doctorForm.phoneNumber} onChange={e => setDoctorForm({...doctorForm, phoneNumber: e.target.value})}/>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="group">
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-2 block group-focus-within:text-indigo-400 transition-colors">{t('doc_bio')}</label>
+                          <textarea className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none h-24 resize-none transition-all" placeholder={t('doc_bio')} value={doctorForm.bio} onChange={e => setDoctorForm({...doctorForm, bio: e.target.value})}/>
+                      </div>
+                      
+                      <Button variant="success" className="w-full py-4 text-lg shadow-lg shadow-emerald-500/20" onClick={handleDoctorSubmit} disabled={!doctorName || !doctorForm.specialty || !doctorForm.licenseNumber || !doctorForm.phoneNumber || loading}>
                           {loading ? 'جاري الإرسال...' : t('doc_submit')}
                       </Button>
                   </Card>
               </div>
-          </div>
+          </OnboardingWrapper>
       );
   }
 
-  if (step === 'USER_PATH_SELECT') { return (<div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center"><NavBackBtn to="ROLE_SELECT" /><header className="mb-12 text-center animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('path_select_title')}</h1><p className="text-slate-400 max-w-lg mx-auto">{t('onboard_desc')}</p></header><div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full"><button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><BrainCircuit size={40} className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3><p className="text-slate-500 leading-relaxed">{t('path_algo_desc')}</p></button><button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900 border border-white/5 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div><Stethoscope size={40} className="text-blue-400 mb-6 group-hover:scale-110 transition-transform"/><h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3><p className="text-slate-500 leading-relaxed">{t('path_doctor_desc')}</p></button></div></div>); }
+  if (step === 'USER_PATH_SELECT') { 
+      return (
+        <OnboardingWrapper>
+            <NavBackBtn to="ROLE_SELECT" />
+            <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10 pt-20">
+                <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('path_select_title')}</h1>
+                <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full relative z-10">
+                <button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="w-16 h-16 bg-indigo-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/20 border border-indigo-500/30">
+                        <BrainCircuit size={32} className="text-indigo-400"/>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3>
+                    <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('path_algo_desc')}</p>
+                </button>
+                <button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="w-16 h-16 bg-blue-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/20 border border-blue-500/30">
+                        <Stethoscope size={32} className="text-blue-400"/>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3>
+                    <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('path_doctor_desc')}</p>
+                </button>
+            </div>
+        </OnboardingWrapper>
+      ); 
+  }
   
   if (step === 'DOCTOR_SELECT') { 
       const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); 
       return (
-        <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
+        <OnboardingWrapper>
             <NavBackBtn to="USER_PATH_SELECT" />
-            <div className="max-w-4xl w-full animate-in fade-in">
+            <div className="max-w-4xl w-full animate-in fade-in relative z-10 pt-20">
                 <header className="mb-8 text-center">
                     <h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1>
                     <p className="text-slate-400">{t('path_doctor_desc')}</p>
                 </header>
-                <div className="relative mb-6"><Search className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-500" size={18}/><input className="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-12 text-white outline-none focus:border-blue-500" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/></div>
+                <div className="relative mb-8 group">
+                    <Search className="absolute top-1/2 right-6 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20}/>
+                    <input className="w-full bg-slate-900/70 border border-white/10 rounded-2xl py-4 px-14 text-white outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all shadow-lg" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredDocs.length === 0 ? (<div className="col-span-2 text-center py-20 bg-slate-900 rounded-3xl border border-dashed border-slate-800"><Stethoscope className="mx-auto mb-4 text-slate-700" size={48} /><p className="text-slate-500">{availableDoctors.length === 0 ? 'No approved doctors available yet.' : 'No results found.'}</p></div>) : (
+                    {filteredDocs.length === 0 ? (
+                        <div className="col-span-2 text-center py-20 bg-slate-900/50 rounded-3xl border border-dashed border-slate-700">
+                            <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
+                            <p className="text-slate-500">{availableDoctors.length === 0 ? 'لا يوجد أطباء متاحين حالياً.' : 'لم يتم العثور على نتائج.'}</p>
+                        </div>
+                    ) : (
                         filteredDocs.map(doc => (
-                            <div key={doc.uid} className="bg-slate-900 border border-white/5 p-6 rounded-2xl hover:border-blue-500/30 transition-all group flex flex-col h-full">
-                                <div className="flex justify-between items-start mb-4"><div className="flex items-center gap-4">{doc.doctorData?.photoUrl ? (<img src={doc.doctorData.photoUrl} alt="Dr" className="w-12 h-12 rounded-full object-cover border border-white/10" />) : (<div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 font-bold text-lg">Dr</div>)}<div><h3 className="font-bold text-white text-lg">{doc.name}</h3><Badge color="blue">{doc.doctorData?.specialty}</Badge></div></div></div>
-                                <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-3 rounded-lg border border-white/5 flex-1">{doc.doctorData?.bio || "No bio available."}</p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500 mb-4"><MapPin size={14}/> {doc.doctorData?.clinicLocation || "Online"}</div>
-                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full" variant="secondary" disabled={loading}>{loading ? 'Sending...' : t('doc_select_btn')}</Button>
+                            <div key={doc.uid} className="bg-slate-900/80 backdrop-blur-xl border border-white/5 p-6 rounded-3xl hover:border-indigo-500/30 transition-all group flex flex-col h-full shadow-xl hover:shadow-indigo-500/10">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                        {doc.doctorData?.photoUrl ? (
+                                            <img src={doc.doctorData.photoUrl} alt="Dr" className="w-14 h-14 rounded-2xl object-cover border border-white/10 shadow-lg" />
+                                        ) : (
+                                            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20">Dr</div>
+                                        )}
+                                        <div>
+                                            <h3 className="font-bold text-white text-lg">{doc.name}</h3>
+                                            <Badge color="blue">{doc.doctorData?.specialty}</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-4 rounded-xl border border-white/5 flex-1 leading-relaxed">
+                                    {doc.doctorData?.bio || "لا توجد نبذة تعريفية."}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-slate-500 mb-4 font-bold uppercase tracking-wider">
+                                    <MapPin size={14}/> {doc.doctorData?.clinicLocation || "عيادة افتراضية"}
+                                </div>
+                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full py-3" variant="secondary" disabled={loading}>
+                                    {loading ? 'جاري الإرسال...' : t('doc_select_btn')}
+                                </Button>
                             </div>
                         ))
                     )}
                 </div>
             </div>
-        </div>
+        </OnboardingWrapper>
       ); 
   }
 
-  if (step === 'ALGO_SETUP_MED') { if (blockedState) return (<div className="min-h-screen flex flex-col items-center justify-center bg-red-950 p-6 text-center animate-in zoom-in"><div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mb-6 animate-bounce"><AlertTriangle size={48} className="text-white" /></div><h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1><p className="text-red-200 text-xl max-w-lg mb-8">{t('med_type_narcotic_desc')}</p><Button onClick={() => setBlockedState(false)} variant="secondary">{t('close')}</Button></div>); if (psychWarning) return (<div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in"><Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]"><div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse"><AlertTriangle size={32} className="text-amber-500" /></div><h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2><p className="text-slate-300 text-center mb-6 leading-relaxed">{t('med_type_psych_desc')}</p><div className="flex gap-4"><Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button><Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">OK</Button></div></Card></div>); return (<div className="min-h-screen bg-[#020617] p-6 pt-20"><NavBackBtn to="USER_PATH_SELECT" /><header className="text-center mb-12 animate-in slide-in-from-top-4"><h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1></header><div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">{[{ type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }].map((item: any) => (<button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-10 rounded-[2.5rem] border border-white/5 bg-slate-900 hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/30`}><div className={`w-20 h-20 rounded-3xl bg-${item.color}-500/10 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}><item.icon className={`w-10 h-10 text-${item.color}-500`} /></div><h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3><p className="text-sm text-slate-500 font-bold">{item.desc}</p></button>))}</div></div>); }
+  if (step === 'ALGO_SETUP_MED') { 
+      if (blockedState) return (
+        <OnboardingWrapper>
+            <div className="text-center animate-in zoom-in max-w-lg">
+                <div className="w-24 h-24 bg-rose-600/20 rounded-full flex items-center justify-center mb-6 mx-auto border border-rose-500/30 shadow-2xl shadow-rose-900/50 animate-bounce">
+                    <AlertTriangle size={48} className="text-rose-500" />
+                </div>
+                <h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1>
+                <p className="text-rose-200/80 text-xl leading-relaxed mb-8 bg-rose-900/20 p-6 rounded-2xl border border-rose-500/10">
+                    {t('med_type_narcotic_desc')}
+                </p>
+                <Button onClick={() => setBlockedState(false)} variant="secondary" className="px-8">{t('close')}</Button>
+            </div>
+        </OnboardingWrapper>
+      ); 
+      
+      if (psychWarning) return (
+        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in" dir={dir}>
+            <Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+                <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse border border-amber-500/30">
+                    <AlertTriangle size={32} className="text-amber-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2>
+                <p className="text-slate-300 text-center mb-8 leading-relaxed bg-slate-950/50 p-4 rounded-xl border border-white/5">
+                    {t('med_type_psych_desc')}
+                </p>
+                <div className="flex gap-4">
+                    <Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button>
+                    <Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">موافق، تابع</Button>
+                </div>
+            </Card>
+        </div>
+      ); 
+      
+      return (
+        <OnboardingWrapper>
+            <NavBackBtn to="USER_PATH_SELECT" />
+            <header className="text-center mb-12 animate-in slide-in-from-top-4 relative z-10 pt-20">
+                <h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1>
+                <p className="text-slate-400">حدد نوع الدواء الذي تريد التعافي منه</p>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full relative z-10">
+                {[
+                    { type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, 
+                    { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, 
+                    { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }
+                ].map((item: any) => (
+                    <button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`group relative p-8 rounded-[2.5rem] border border-white/10 bg-slate-900/60 backdrop-blur-md hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/50 hover:shadow-2xl shadow-lg hover:scale-105 duration-300`}>
+                        <div className={`w-16 h-16 rounded-2xl bg-${item.color}-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-${item.color}-500/20`}>
+                            <item.icon className={`w-8 h-8 text-${item.color}-500`} />
+                        </div>
+                        <h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3>
+                        <p className="text-sm text-slate-400 font-medium leading-relaxed">{item.desc}</p>
+                    </button>
+                ))}
+            </div>
+        </OnboardingWrapper>
+      ); 
+  }
   
-  if (step === 'ALGO_SETUP_FORM') { return (<div className="min-h-screen bg-[#020617] p-6 flex flex-col items-center justify-center pt-20"><NavBackBtn to="ALGO_SETUP_MED" /><div className="max-w-2xl w-full animate-in zoom-in"><h1 className="text-3xl font-black text-white text-center mb-8">{t('med_form_title')}</h1><div className="grid grid-cols-2 gap-4 mb-8"><button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><Pill className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_tablet')}</span></button><button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-400 hover:bg-slate-800'}`}><FlaskConical className="mx-auto mb-4" size={40} /><span className="block text-center font-bold text-lg">{t('form_liquid')}</span></button></div>{medForm && (<div className="animate-in fade-in slide-in-from-bottom-4"><h2 className="text-xl font-bold text-white text-center mb-4">{t('unit_title')}</h2><div className="flex justify-center gap-4 mb-8">{(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (<button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-6 py-3 rounded-xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-slate-900 border-white/10 text-slate-500 hover:text-white'}`}>{u}</button>))}</div></div>)}<Button variant="success" className="w-full py-5 text-xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>Next <ArrowRight /></Button></div></div>); }
+  if (step === 'ALGO_SETUP_FORM') { 
+      return (
+        <OnboardingWrapper>
+            <NavBackBtn to="ALGO_SETUP_MED" />
+            <div className="max-w-2xl w-full animate-in zoom-in relative z-10 pt-20 text-center">
+                <h1 className="text-3xl font-black text-white mb-8">{t('med_form_title')}</h1>
+                <div className="grid grid-cols-2 gap-6 mb-10">
+                    <button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all duration-300 group ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/30 scale-105' : 'bg-slate-900/60 border-white/10 text-slate-400 hover:bg-slate-800 hover:border-white/20'}`}>
+                        <Pill className={`mx-auto mb-4 w-12 h-12 ${medForm === 'tablet' ? 'text-white' : 'text-indigo-400'}`} />
+                        <span className="block font-bold text-xl">{t('form_tablet')}</span>
+                    </button>
+                    <button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all duration-300 group ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/30 scale-105' : 'bg-slate-900/60 border-white/10 text-slate-400 hover:bg-slate-800 hover:border-white/20'}`}>
+                        <FlaskConical className={`mx-auto mb-4 w-12 h-12 ${medForm === 'liquid' ? 'text-white' : 'text-indigo-400'}`} />
+                        <span className="block font-bold text-xl">{t('form_liquid')}</span>
+                    </button>
+                </div>
+                
+                {medForm && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 mb-10">
+                        <h2 className="text-xl font-bold text-white mb-4">{t('unit_title')}</h2>
+                        <div className="flex justify-center gap-4">
+                            {(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (
+                                <button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-8 py-4 rounded-2xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-900/50 border-white/10 text-slate-500 hover:text-white hover:bg-slate-800'}`}>
+                                    {u}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                <Button variant="success" className="w-full py-5 text-xl rounded-2xl shadow-xl shadow-emerald-500/20" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>
+                    التالي <ArrowRight className={dir === 'rtl' ? 'rotate-180 mr-2' : 'ml-2'} />
+                </Button>
+            </div>
+        </OnboardingWrapper>
+      ); 
+  }
   
-  if (step === 'ALGO_SETUP_INV') { const formLabel = medForm === 'liquid' ? 'Bottles' : 'Boxes'; const unitLabel = medUnit || 'mg'; return (<div className="min-h-screen bg-[#020617] p-4 md:p-10 pt-20"><NavBackBtn to="ALGO_SETUP_FORM" /><div className="max-w-4xl mx-auto space-y-8 animate-in fade-in"><Card className="border-white/5 bg-slate-900"><h2 className="text-3xl font-bold text-white mb-10 flex items-center gap-4"><span className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400"><Pill size={24} /></span>{t('inventory_title')}</h2><div className="grid grid-cols-1 md:grid-cols-3 gap-8"><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('boxes')} ({formLabel})</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('pills_per_box')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} /></div><div><label className="block text-xs font-bold text-indigo-400 uppercase mb-4">{t('loose_pills')}</label><input type="number" className="w-full bg-slate-950 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none focus:bg-slate-900 transition-all" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} /></div></div><div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center"><span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span><span className="text-5xl font-mono font-black text-emerald-400">{calculateTotalInventory(inventory)} <span className="text-sm text-emerald-600">{unitLabel}</span></span></div></Card><Card className="bg-slate-900 border-white/5"><h2 className="text-2xl font-bold text-white mb-8">{t('current_habit')} ({unitLabel})</h2><div className="flex flex-wrap gap-4">{[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (<button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-16 w-24 rounded-2xl font-mono font-bold border transition-all ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800'}`}>{dose}</button>))}<input type="number" placeholder="..." className="h-16 w-32 bg-slate-950 rounded-2xl border border-white/10 px-4 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all" onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} /></div></Card><Button className="w-full text-2xl py-8 rounded-3xl shadow-2xl shadow-indigo-900/20" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>{t('analyze_plan')}</Button></div></div>); }
+  if (step === 'ALGO_SETUP_INV') { 
+      const formLabel = medForm === 'liquid' ? 'عبوات' : 'علب'; 
+      const unitLabel = medUnit || 'mg'; 
+      return (
+        <OnboardingWrapper>
+            <NavBackBtn to="ALGO_SETUP_FORM" />
+            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in relative z-10 pt-20 w-full">
+                <Card className="border-white/10 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
+                    <h2 className="text-3xl font-bold text-white mb-8 flex items-center gap-4">
+                        <span className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 border border-indigo-500/30"><Pill size={28} /></span>
+                        {t('inventory_title')}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="group">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('boxes')} ({formLabel})</label>
+                            <input type="number" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: parseInt(e.target.value) || 0})} />
+                        </div>
+                        <div className="group">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('pills_per_box')}</label>
+                            <input type="number" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: parseInt(e.target.value) || 0})} />
+                        </div>
+                        <div className="group">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('loose_pills')}</label>
+                            <input type="number" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: parseInt(e.target.value) || 0})} />
+                        </div>
+                    </div>
+                    <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center bg-slate-950/30 -mx-8 -mb-8 p-8 rounded-b-[2.5rem]">
+                        <span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span>
+                        <span className="text-5xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
+                            {calculateTotalInventory(inventory)} <span className="text-lg text-slate-500">{unitLabel}</span>
+                        </span>
+                    </div>
+                </Card>
+                
+                <Card className="bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-xl">
+                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                        <Activity className="text-amber-400"/> {t('current_habit')} ({unitLabel})
+                    </h2>
+                    <div className="flex flex-wrap gap-3">
+                        {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
+                            <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
+                        ))}
+                        <input 
+                            type="number" 
+                            placeholder="جرعة أخرى..." 
+                            className="h-14 min-w-[8rem] bg-slate-950/50 rounded-xl border border-white/10 px-6 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all text-center placeholder-slate-600" 
+                            onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} 
+                        />
+                    </div>
+                </Card>
+                
+                <Button className="w-full text-2xl py-6 rounded-3xl shadow-2xl shadow-indigo-500/20 animate-pulse-glow" variant="success" disabled={currentDoseHabit === 0 || calculateTotalInventory(inventory) === 0} onClick={generatePreview}>
+                    {t('analyze_plan')} <BrainCircuit className="ml-3" size={28}/>
+                </Button>
+            </div>
+        </OnboardingWrapper>
+      ); 
+  }
   
   if (step === 'ALGO_PREVIEW') { 
       return (
-        <div className="min-h-screen bg-[#020617] p-6 pt-20 flex flex-col items-center">
-            {/* Scientific Modal */}
+        <OnboardingWrapper>
             <ScientificPlanModal 
                 isOpen={showSciModal} 
-                onClose={() => setShowSciModal(false)} // User can close and see preview
+                onClose={() => setShowSciModal(false)} 
                 onConfirm={() => setShowSciModal(false)} 
             />
 
             <NavBackBtn to="ALGO_SETUP_INV" />
-            <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in">
-                <h1 className="text-4xl font-black text-white">Plan Ready!</h1>
-                <p className="text-slate-400">Calculated duration: {previewPlan.length} days.</p>
-                <div className="grid grid-cols-2 gap-4">
-                    <Card className="bg-slate-900 text-center">
-                        <div className="text-xs text-slate-500 uppercase">{t('duration_days')}</div>
-                        <div className="text-3xl font-bold text-white">{previewPlan.length}</div>
+            <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in relative z-10 pt-20">
+                <div className="inline-flex p-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4 shadow-[0_0_60px_rgba(16,185,129,0.2)]">
+                    <CheckCircle size={64} className="text-emerald-400" />
+                </div>
+                <h1 className="text-5xl font-black text-white tracking-tight">تم إنشاء الخطة بنجاح!</h1>
+                <p className="text-slate-400 text-xl">بناءً على مخزونك الحالي وجرعتك، هذه هي التوقعات:</p>
+                
+                <div className="grid grid-cols-2 gap-6">
+                    <Card className="text-center border-indigo-500/30 bg-slate-900/80">
+                        <div className="text-sm text-indigo-300 font-bold uppercase mb-2 tracking-widest">{t('duration_days')}</div>
+                        <div className="text-6xl font-black text-white">{previewPlan.length}</div>
+                        <div className="text-xs text-slate-500 mt-2 font-bold">يوم حتى التعافي</div>
                     </Card>
-                    <Card className="bg-slate-900 text-center">
-                        <div className="text-xs text-slate-500 uppercase">Coverage</div>
-                        <div className="text-3xl font-bold text-emerald-400">100%</div>
+                    <Card className="text-center border-emerald-500/30 bg-slate-900/80">
+                        <div className="text-sm text-emerald-300 font-bold uppercase mb-2 tracking-widest">تغطية المخزون</div>
+                        <div className="text-6xl font-black text-emerald-400">100%</div>
+                        <div className="text-xs text-slate-500 mt-2 font-bold">كافٍ تماماً</div>
                     </Card>
                 </div>
-                <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl" disabled={loading}>
-                    {loading ? 'Setting up...' : t('confirm_log')}
+
+                <div className="bg-indigo-600/10 p-6 rounded-3xl border border-indigo-500/20 text-indigo-200 text-sm font-medium leading-relaxed backdrop-blur-md">
+                    <p>سيتم الآن نقلك إلى لوحة القيادة المركزية. تذكر أن الالتزام اليومي هو مفتاح النجاح. يمكنك دائماً تعديل سرعة الخطة من الإعدادات إذا شعرت بأي تعب.</p>
+                </div>
+
+                <Button onClick={confirmAlgorithmPlan} variant="success" className="w-full py-6 text-xl shadow-2xl shadow-emerald-500/20" disabled={loading}>
+                    {loading ? 'جاري الإعداد...' : t('confirm_log')} <ChevronRight className={dir === 'rtl' ? 'rotate-180 mr-2' : 'ml-2'} />
                 </Button>
             </div>
-        </div>
+        </OnboardingWrapper>
       ); 
   }
 
@@ -6023,7 +7027,7 @@ export const OnboardingView = ({
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw
+    User, Award, Clock, Package, Pill, RefreshCw, Trash2
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -6079,19 +7083,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         }
     }, [userProfile]);
 
-    // --- الإصلاح هنا: منطق مزامنة أذكى ---
-    // هذا الكود يمنع البيانات القادمة من السيرفر من مسح ما يكتبه المستخدم
+    // مزامنة المخزون (الحل الذكي لمنع التصفير)
     useEffect(() => {
         if (inventory) {
-            // نحدث الحالة المحلية فقط إذا كانت فارغة تماماً (أول تحميل للصفحة)
-            // هذا يضمن أننا نرى البيانات المحفوظة، لكن إذا بدأنا التعديل لا يتم الكتابة عليه
             setLocalInventory(prev => {
                 const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
-                // إذا كانت الحقول فارغة، نملأها بالبيانات من القاعدة
-                if (isPrevEmpty) {
-                    return inventory;
-                }
-                // إذا كان المستخدم قد كتب شيئاً، لا نلمسه
+                if (isPrevEmpty) return inventory;
                 return prev;
             });
         }
@@ -6117,20 +7114,14 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     };
 
     const handleUpdateInventory = () => {
-        // حساب المجموع الجديد
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
-        
-        // تحديث السياق العام (ليتم حفظه في القاعدة)
         setInventory(updatedInv);
-        
-        // تحديث الحالة المحلية أيضاً لتأكيد القيم
-        setLocalInventory(updatedInv);
-        
+        setLocalInventory(updatedInv); // تأكيد التحديث محلياً
         alert(language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
-    // --- واجهة الطبيب ---
+    // --- واجهة الطبيب (بتصميم جديد) ---
     if (userProfile.role === 'doctor') {
         const level = userProfile.doctorData?.doctorLevel || 1;
         const recovered = userProfile.doctorData?.recoveredCount || 0;
@@ -6142,11 +7133,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="space-y-6">
-                        <Card className="bg-slate-900 border-white/5 text-center relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+                        {/* بطاقة الهوية للطبيب */}
+                        <Card className="text-center relative overflow-hidden group border-white/10 !bg-slate-900/80">
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/30 to-transparent"></div>
                             
-                            <div className="relative z-10">
-                                <div className="w-32 h-32 mx-auto bg-slate-950 rounded-full border-4 border-slate-800 flex items-center justify-center mb-4 overflow-hidden shadow-2xl relative group-hover:border-indigo-500/50 transition-colors">
+                            <div className="relative z-10 pt-8">
+                                <div className="w-32 h-32 mx-auto bg-slate-950 rounded-full border-4 border-slate-800/80 flex items-center justify-center mb-4 overflow-hidden shadow-2xl relative group-hover:border-indigo-500/50 transition-colors">
                                     {formData.photoUrl ? (
                                         <img src={formData.photoUrl} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
@@ -6155,18 +7147,18 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
                                 
                                 <h2 className="text-2xl font-black text-white mb-1">{formData.name}</h2>
-                                <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mb-4">
+                                <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mb-6">
                                     {userProfile.doctorData?.specialty}
                                 </p>
                                 
-                                <div className="flex justify-center gap-2 mb-6">
+                                <div className="flex justify-center gap-2 mb-8">
                                     <Badge color="amber">LVL {level}</Badge>
                                     <Badge color={userProfile.doctorData?.accountStatus === 'approved' ? 'green' : 'red'}>
                                         {userProfile.doctorData?.accountStatus.toUpperCase()}
                                     </Badge>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6">
+                                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6 bg-slate-950/30 -mx-6 md:-mx-8 -mb-6 md:-mb-8 p-6">
                                     <div>
                                         <span className="block text-2xl font-black text-white">{active}</span>
                                         <span className="text-[10px] text-slate-500 uppercase font-bold">Active Patients</span>
@@ -6181,52 +7173,53 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                     </div>
 
                     <div className="lg:col-span-2">
-                        <Card className="bg-slate-900 border-white/5 h-full">
-                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <User className="text-indigo-400" /> {t('edit_profile')}
+                        <Card className="h-full border-white/10">
+                            <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
+                                <div className="p-2 bg-indigo-500/10 rounded-lg"><User className="text-indigo-400" size={20} /></div> 
+                                {t('edit_profile')}
                             </h3>
                             
                             <div className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_fullname')}</label>
+                                <div className="group">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_fullname')}</label>
                                     <input 
-                                        className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                         value={formData.name}
                                         onChange={e => setFormData({...formData, name: e.target.value})}
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('photo_url_label')}</label>
+                                <div className="group">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('photo_url_label')}</label>
                                     <div className="relative">
-                                        <Camera className="absolute top-3 right-3 text-slate-600" size={18} />
+                                        <Camera className="absolute top-4 right-4 text-slate-600" size={18} />
                                         <input 
-                                            className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
-                                            placeholder="https://example.com/photo.jpg"
+                                            className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
+                                            placeholder="https://..."
                                             value={formData.photoUrl}
                                             onChange={e => setFormData({...formData, photoUrl: e.target.value})}
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_phone')}</label>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_phone')}</label>
                                         <div className="relative">
-                                            <Phone className="absolute top-3 right-3 text-slate-600" size={18} />
+                                            <Phone className="absolute top-4 right-4 text-slate-600" size={18} />
                                             <input 
-                                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
+                                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                                 value={formData.phoneNumber}
                                                 onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_location')}</label>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_location')}</label>
                                         <div className="relative">
-                                            <MapPin className="absolute top-3 right-3 text-slate-600" size={18} />
+                                            <MapPin className="absolute top-4 right-4 text-slate-600" size={18} />
                                             <input 
-                                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 pr-10 text-white focus:border-indigo-500 outline-none"
+                                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                                 value={formData.clinicLocation}
                                                 onChange={e => setFormData({...formData, clinicLocation: e.target.value})}
                                             />
@@ -6235,16 +7228,16 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('doc_bio')}</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_bio')}</label>
                                     <textarea 
-                                        className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none"
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none h-32 resize-none transition-all"
                                         value={formData.bio}
                                         onChange={e => setFormData({...formData, bio: e.target.value})}
                                     />
                                 </div>
 
-                                <div className="pt-4 border-t border-white/5 flex justify-end">
-                                    <Button onClick={handleSaveProfile} variant="primary" disabled={loading}>
+                                <div className="pt-6 border-t border-white/5 flex justify-end">
+                                    <Button onClick={handleSaveProfile} variant="primary" disabled={loading} className="w-full md:w-auto">
                                         <Save size={18} className="mr-2" /> {loading ? 'Saving...' : t('save_changes')}
                                     </Button>
                                 </div>
@@ -6256,121 +7249,154 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         );
     }
 
-    // --- واجهة المستخدم العادي / المريض ---
+    // --- واجهة المستخدم العادي / المريض (بتصميم جديد) ---
     return (
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
             
-            {/* إعدادات السرعة */}
-            <Card className="bg-slate-900 border-white/5 mb-8">
+            {/* إعدادات السرعة - بطاقات تفاعلية */}
+            <Card className="mb-8 border-white/10">
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                     <Activity className="text-indigo-400" /> {t('pace_control')}
                 </h2>
-                <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl">{t('pace_desc')}</p>
+                <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl bg-slate-950/30 p-4 rounded-xl border border-white/5">
+                    {t('pace_desc')}
+                </p>
                 
                 {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
-                        <div className="p-8 bg-slate-950 rounded-[2rem] border border-dashed border-slate-800 text-slate-500 text-center flex flex-col items-center gap-4">
-                            <ShieldCheck size={40} className="text-slate-700" />
-                            <p>هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي للسرعة غير متاح.</p>
+                        <div className="p-8 bg-slate-950/50 rounded-[2rem] border border-dashed border-slate-700 text-slate-500 text-center flex flex-col items-center gap-4">
+                            <ShieldCheck size={40} className="text-slate-600" />
+                            <p className="max-w-md">هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي للسرعة غير متاح.</p>
                         </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* زر بطيء */}
                         <button 
                             onClick={() => updateSpeedSettings(0.8)} 
-                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
                         >
-                            <Clock size={32} className="mx-auto mb-4" />
-                            <span className="block font-bold mb-1">{t('pace_slow')}</span>
-                            <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
+                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                                <Clock size={28} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-lg">{t('pace_slow')}</span>
+                                <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
+                            </div>
                         </button>
                         
+                        {/* زر متوازن */}
                         <button 
                             onClick={() => updateSpeedSettings(1.0)} 
-                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl shadow-emerald-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
                         >
-                            <ShieldCheck size={32} className="mx-auto mb-4" />
-                            <span className="block font-bold mb-1">{t('pace_balanced')}</span>
-                            <span className="text-[10px] opacity-70">الوضع القياسي</span>
+                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                                <ShieldCheck size={28} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-lg">{t('pace_balanced')}</span>
+                                <span className="text-[10px] opacity-70">الوضع القياسي</span>
+                            </div>
                         </button>
                         
+                        {/* زر سريع */}
                         <button 
                             onClick={() => updateSpeedSettings(1.2)} 
-                            className={`p-6 rounded-[2rem] border transition-all relative overflow-hidden ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl' : 'bg-slate-950 border-slate-800 text-slate-500 hover:bg-slate-800'}`}
+                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl shadow-rose-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
                         >
-                            <Zap size={32} className="mx-auto mb-4" />
-                            <span className="block font-bold mb-1">{t('pace_fast')}</span>
-                            <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
+                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                                <Zap size={28} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-lg">{t('pace_fast')}</span>
+                                <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
+                            </div>
                         </button>
                     </div>
                 )}
             </Card>
 
-            {/* إعدادات المخزون (للمستخدم العادي) */}
+            {/* إعدادات المخزون (للمستخدم العادي) - تصميم جديد */}
             {userProfile?.role === 'normal_user' && (
-                <Card className="bg-slate-900 border-white/5 mb-8">
+                <Card className="mb-8 border-white/10">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <Package className="text-blue-400" /> {t('inventory_title')}
                     </h2>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('boxes')}</label>
+                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
                             <div className="flex items-center gap-3">
-                                <Package className="text-slate-600" size={20} />
+                                <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
                                 <input 
                                     type="number" 
-                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
-                                    value={localInventory.boxes}
+                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                    value={localInventory.boxes || ''} 
                                     onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
+                                    placeholder="0"
                                 />
                             </div>
                         </div>
 
-                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('pills_per_box')}</label>
+                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
                             <div className="flex items-center gap-3">
-                                <span className="text-slate-600 font-bold">x</span>
+                                <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
                                 <input 
                                     type="number" 
-                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
-                                    value={localInventory.pillsPerBox}
+                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                    value={localInventory.pillsPerBox || ''}
                                     onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
+                                    placeholder="0"
                                 />
                             </div>
                         </div>
 
-                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5">
-                            <label className="text-xs text-slate-500 font-bold block mb-2">{t('loose_pills')}</label>
+                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
                             <div className="flex items-center gap-3">
-                                <Pill className="text-slate-600" size={20} />
+                                <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
                                 <input 
                                     type="number" 
-                                    className="bg-transparent text-white font-bold text-xl w-full outline-none"
-                                    value={localInventory.loosePills}
+                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                    value={localInventory.loosePills || ''}
                                     onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
+                                    placeholder="0"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
-                        <div className="text-sm">
+                    <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
+                        <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
                             <span className="text-slate-500">{t('total_balance')}: </span>
-                            <span className="text-white font-bold font-mono text-lg">
-                                {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} {userProfile.medUnit || 'mg'}
+                            <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
+                                {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
                             </span>
                         </div>
-                        <Button onClick={handleUpdateInventory} variant="secondary" className="!py-2 !px-4">
-                            <RefreshCw size={16} className="mr-2"/> {t('save_changes')}
+                        <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
+                            <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
                         </Button>
                     </div>
                 </Card>
             )}
 
-            {/* منطقة الخطر */}
-            <Card className="border-rose-500/10 bg-rose-900/5">
-                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><AlertTriangle className="text-rose-500"/> {t('danger_zone')}</h2>
-                <Button variant="danger" onClick={resetAllData}>{t('factory_reset_btn')}</Button>
+            {/* منطقة الخطر - حذف الحساب */}
+            <Card className="border-rose-500/20 bg-rose-900/10 hover:bg-rose-900/20 transition-colors">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div>
+                        <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
+                        </h2>
+                        <p className="text-rose-200/60 text-sm max-w-md">
+                            {language === 'ar' 
+                                ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً من النظام. لا يمكن التراجع عن هذه الخطوة.' 
+                                : 'This action will permanently delete your account and all data. This cannot be undone.'}
+                        </p>
+                    </div>
+                    <Button variant="danger" onClick={resetAllData} className="w-full md:w-auto whitespace-nowrap !py-3 !px-6 shadow-lg shadow-rose-900/20">
+                        <Trash2 size={18} className="mr-2"/> {language === 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account'}
+                    </Button>
+                </div>
             </Card>
         </LayoutContainer>
     );
@@ -6382,15 +7408,14 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 ```tsx
 import React, { useMemo } from 'react';
 import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine, ComposedChart, Line, Legend
 } from 'recharts';
-import { Smile, Activity, Zap, Moon, Shield, Award } from 'lucide-react';
+import { Smile, Activity, Zap, Moon, Shield, Award, TrendingUp } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
-import { Badge } from '../components/ui/Badge';
 
 import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -6402,63 +7427,59 @@ interface StatsViewProps {
 }
 
 export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const unitLabel = userProfile?.medUnit || 'mg';
 
-    // 1. حساب بيانات الحالة المزاجية (Pie Chart)
+    // 1. بيانات الحالة المزاجية (Pie Chart)
     const moodData = useMemo(() => [
-        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, // Emerald
-        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, // Amber
-        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    // Rose
+        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, 
+        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, 
+        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    
     ].filter(d => d.value > 0), [logs, t]);
 
-    // 2. حساب بيانات الالتزام (مخطط vs فعلي)
-    const adherenceData = useMemo(() => {
-        // ندمج السجلات مع التواريخ لرسم الخط
-        return logs.map(log => {
-            const planned = plan.find(p => p.date === log.date)?.plannedDose || 0;
-            return {
-                date: log.date.slice(5), // MM-DD
-                fullDate: log.date,
-                planned: planned,
-                actual: log.doseTaken,
-                diff: log.doseTaken - planned // الفرق (للتلوين إذا لزم الأمر)
-            };
-        });
-    }, [plan, logs]);
+    // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
+    const correlationData = useMemo(() => {
+        return logs.slice(-14).map(log => ({ // آخر 14 يوم فقط للوضوح
+            date: log.date.slice(5),
+            dose: log.doseTaken,
+            sleep: log.sleepHours || 0,
+            moodScore: log.mood === 'good' ? 10 : log.mood === 'normal' ? 5 : 2
+        }));
+    }, [logs]);
 
-    // 3. منطق الأوسمة (Gamification Logic)
+    // 3. منطق الأوسمة (Gamification)
     const badges = [
         {
             id: 'warrior',
             title: t('badge_7days'),
             icon: Shield,
             color: 'indigo',
-            achieved: logs.length >= 7
+            achieved: logs.length >= 7,
+            desc: "7 أيام متواصلة"
         },
         {
             id: 'halfway',
             title: t('badge_halfway'),
             icon: Zap,
             color: 'amber',
-            // تم تحقيق الوسام إذا كانت الجرعة الحالية أقل من نصف جرعة البداية
-            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2)
+            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2),
+            desc: "نصف الكمية"
         },
         {
             id: 'sleep',
             title: t('badge_sleep'),
             icon: Moon,
             color: 'blue',
-            // معدل النوم آخر 3 أيام جيد (>= 7 ساعات)
-            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7
+            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
+            desc: "نوم مستقر"
         },
         {
             id: 'stable',
             title: t('badge_stable'),
             icon: Smile,
             color: 'emerald',
-            // آخر 3 أيام مزاج جيد متواصل
-            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good')
+            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good'),
+            desc: "مزاج ممتاز"
         }
     ];
 
@@ -6466,93 +7487,95 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
       <LayoutContainer>
           <PageHeader 
             title={t('nav_stats')}
-            subtitle="لوحة المعلومات الحيوية وتحليل الأداء."
+            subtitle={language === 'ar' ? "تحليل عميق لأدائك الحيوي ومسار التعافي." : "Deep analysis of your vitals and recovery path."}
           />
 
           {/* Badges Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {badges.map((badge) => (
-                  <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30` : 'bg-slate-900/40 border-white/5 opacity-50 grayscale'}`}>
-                      {badge.achieved && <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 group-hover:to-${badge.color}-500/20`}></div>}
+                  <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30 shadow-lg shadow-${badge.color}-900/20` : 'bg-slate-900/40 border-white/5 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`}>
+                      {/* الخلفية المضيئة للوسام */}
+                      <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
                       
-                      <div className="relative z-10 flex flex-col items-center text-center gap-3">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-500 to-${badge.color}-400` : 'bg-slate-800'}`}>
-                              <badge.icon size={24} />
+                      <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110 group-hover:rotate-6 ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-600 to-${badge.color}-400` : 'bg-slate-800'}`}>
+                              <badge.icon size={28} strokeWidth={1.5} />
                           </div>
                           <div>
-                              <span className={`text-xs font-bold block ${badge.achieved ? 'text-white' : 'text-slate-500'}`}>{badge.title}</span>
-                              {!badge.achieved && <span className="text-[9px] text-slate-600">لم يتم القفل بعد</span>}
+                              <span className={`text-sm font-bold block mb-1 ${badge.achieved ? 'text-white' : 'text-slate-400'}`}>{badge.title}</span>
+                              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider bg-slate-950/50 px-2 py-1 rounded-lg">
+                                  {badge.achieved ? badge.desc : "مغلق"}
+                              </span>
                           </div>
                       </div>
                       
                       {badge.achieved && (
-                          <div className="absolute top-2 right-2 text-yellow-500 animate-pulse">
-                              <Award size={14} />
+                          <div className="absolute top-3 right-3 text-yellow-400 animate-pulse">
+                              <Award size={16} />
                           </div>
                       )}
                   </div>
               ))}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* 1. Adherence Chart (Planned vs Actual) */}
-              <Card className="min-h-[400px] flex flex-col md:col-span-2 bg-slate-900/50">
-                  <div className="flex justify-between items-center mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* 1. Smart Correlation Chart (Dose vs Sleep) */}
+              <Card className="min-h-[400px] flex flex-col lg:col-span-2 border-white/10 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
+                  
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10">
                       <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
                               <Activity className="w-5 h-5"/>
                           </div>
-                           الالتزام بالخطة العلاجية
+                           تأثير الجرعة على النوم
                       </h3>
-                      <div className="flex gap-4 text-xs font-bold">
-                          <span className="flex items-center gap-2 text-indigo-400"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> المخطط</span>
-                          <span className="flex items-center gap-2 text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> الفعلي</span>
+                      <div className="flex gap-4 text-xs font-bold mt-4 md:mt-0 bg-slate-950/50 p-2 rounded-xl border border-white/5">
+                          <span className="flex items-center gap-2 text-indigo-300"><span className="w-3 h-3 rounded bg-indigo-500"></span> الجرعة ({unitLabel})</span>
+                          <span className="flex items-center gap-2 text-emerald-300"><span className="w-3 h-3 rounded-full bg-emerald-400"></span> ساعات النوم</span>
                       </div>
                   </div>
                   
-                  <div className="flex-1 h-[300px]">
-                      {adherenceData.length > 0 ? (
+                  <div className="flex-1 h-[300px] w-full">
+                      {correlationData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={adherenceData.slice(-30)}> {/* Last 30 entries */}
+                              <ComposedChart data={correlationData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                                   <defs>
-                                    <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    <linearGradient id="colorDoseBar" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
                                     </linearGradient>
                                   </defs>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                  <XAxis dataKey="date" stroke="#475569" fontSize={10} tickMargin={10} />
-                                  <YAxis stroke="#475569" fontSize={10} />
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                                  <YAxis yAxisId="left" stroke="#6366f1" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'الجرعة', angle: -90, position: 'insideLeft', fill: '#6366f1', fontSize: 10 }} />
+                                  <YAxis yAxisId="right" orientation="right" stroke="#34d399" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} label={{ value: 'ساعات', angle: 90, position: 'insideRight', fill: '#34d399', fontSize: 10 }} />
                                   <Tooltip 
-                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                      itemStyle={{color: '#fff'}}
-                                      formatter={(val: number) => [`${val} ${unitLabel}`, '']}
-                                      labelFormatter={(label) => `التاريخ: ${label}`}
+                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
+                                      itemStyle={{color: '#fff', fontSize: '12px'}}
+                                      labelStyle={{color: '#94a3b8', marginBottom: '8px', fontSize: '10px'}}
                                   />
-                                  <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" strokeWidth={2} />
-                                  <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" strokeWidth={2} connectNulls />
-                              </AreaChart>
+                                  <Bar yAxisId="left" dataKey="dose" barSize={20} fill="url(#colorDoseBar)" radius={[4, 4, 0, 0]} animationDuration={1500} />
+                                  <Line yAxisId="right" type="monotone" dataKey="sleep" stroke="#34d399" strokeWidth={3} dot={{r: 4, fill: '#0f172a', strokeWidth: 2}} activeDot={{r: 6}} animationDuration={2000} />
+                              </ComposedChart>
                           </ResponsiveContainer>
                       ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                              <Activity size={48} className="opacity-20 mb-4"/>
-                              <p>لا توجد بيانات كافية للرسم البياني بعد.</p>
+                          <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
+                              <TrendingUp size={48} className="opacity-20 mb-4"/>
+                              <p>سجل بياناتك لمدة 3 أيام لتبدأ التحليلات الذكية بالعمل.</p>
                           </div>
                       )}
                   </div>
               </Card>
 
-              {/* 2. Mood Distribution */}
-              <Card className="min-h-[350px] flex flex-col">
+              {/* 2. Mood Distribution (Donut Chart Style) */}
+              <Card className="min-h-[350px] flex flex-col border-white/10">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
                           <Smile className="w-5 h-5"/>
                       </div>
-                      الحالة المزاجية
+                      الحالة المزاجية العامة
                   </h3>
                   <div className="flex-1 relative">
                        {moodData.length > 0 ? (
@@ -6564,60 +7587,58 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                       cy="50%"
                                       innerRadius={60}
                                       outerRadius={100}
-                                      paddingAngle={8}
+                                      paddingAngle={5}
                                       dataKey="value"
                                       stroke="none"
-                                      cornerRadius={8}
+                                      cornerRadius={6}
                                   >
                                       {moodData.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={entry.color} />
+                                          <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                       ))}
                                   </Pie>
                                   <Tooltip 
                                       contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                       itemStyle={{fontWeight: 'bold', color: '#fff'}}
                                   />
+                                  <Legend 
+                                    verticalAlign="bottom" 
+                                    height={36} 
+                                    iconType="circle"
+                                    formatter={(value) => <span className="text-slate-400 text-xs font-bold mx-2">{value}</span>}
+                                  />
                               </PieChart>
                           </ResponsiveContainer>
                        ) : (
                            <div className="absolute inset-0 flex items-center justify-center text-slate-600 font-medium">
-                               سجل مزاجك اليومي لتظهر البيانات
+                               لا توجد بيانات كافية
                            </div>
                        )}
                   </div>
-                  <div className="flex justify-center gap-4 mt-2 flex-wrap">
-                      {moodData.map((d, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5">
-                              <div className="w-2 h-2 rounded-full" style={{backgroundColor: d.color}}></div>
-                              {d.name} ({d.value})
-                          </div>
-                      ))}
-                  </div>
               </Card>
 
-              {/* 3. Sleep Quality Chart */}
-              <Card className="min-h-[350px] flex flex-col">
+              {/* 3. Sleep Quality Histogram */}
+              <Card className="min-h-[350px] flex flex-col border-white/10">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
                           <Moon className="w-5 h-5"/>
                       </div>
-                       جودة النوم (آخر 7 أيام)
+                       استقرار النوم (آخر 7 أيام)
                   </h3>
-                  <div className="flex-1">
+                  <div className="flex-1 mt-4">
                       {logs.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={logs.slice(-7)}> 
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                  <YAxis stroke="#475569" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                                  <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
                                   <Tooltip 
                                       cursor={{fill: '#1e293b', opacity: 0.5}}
                                       contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                       itemStyle={{color: '#fff'}}
                                       formatter={(val) => [`${val} ساعة`, 'النوم']}
                                   />
-                                  <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'الهدف (7h)', fill: '#10b981', fontSize: 10 }} />
-                                  <Bar dataKey="sleepHours" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={20}>
+                                  <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'الهدف (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
+                                  <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
                                     {logs.slice(-7).map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
                                     ))}
@@ -6646,9 +7667,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
-import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, Stethoscope } from 'lucide-react';
+import { LifeBuoy, Plus, MessageSquare, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, Stethoscope, ChevronRight } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -6662,7 +7683,7 @@ interface SupportViewProps {
 }
 
 export const SupportView = ({ user }: SupportViewProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     
     // -- State --
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -6787,45 +7808,45 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 title={t('nav_support')} 
                 subtitle={t('support_desc') || "Contact the support team directly."}
                 action={
-                    <Button onClick={() => setShowCreateModal(true)} variant="primary">
+                    <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20">
                         <Plus size={18} /> {t('new_ticket') || "New Ticket"}
                     </Button>
                 }
             />
 
-            {/* Context Banner */}
-            <div className="mb-6 bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
-                        {user.role === 'doctor' ? <Stethoscope size={20}/> : 
-                         user.medForm === 'liquid' ? <FlaskConical size={20} /> : 
-                         user.medForm === 'tablet' ? <Pill size={20} /> : <User size={20}/>}
+            {/* Context Banner - Glass Style */}
+            <div className="mb-8 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border border-white/10 p-5 rounded-3xl flex items-center justify-between backdrop-blur-xl shadow-xl animate-in slide-in-from-top-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-900/20">
+                        {user.role === 'doctor' ? <Stethoscope size={24}/> : 
+                         user.medForm === 'liquid' ? <FlaskConical size={24} /> : 
+                         user.medForm === 'tablet' ? <Pill size={24} /> : <User size={24}/>}
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">{t('current_account') || "Current Account"}</p>
-                        <p className="text-white font-bold text-sm flex items-center gap-2">
+                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">{t('current_account') || "Current Account"}</p>
+                        <p className="text-white font-bold text-lg flex items-center gap-2">
                             {user.name} 
-                            <Badge color="blue" className="!py-0 !px-1.5 !text-[9px]">{user.role.toUpperCase()}</Badge>
+                            <Badge color="blue" className="!py-0.5 !px-2 !text-[10px] shadow-none">{user.role.toUpperCase()}</Badge>
                         </p>
                     </div>
                 </div>
                 {user.role === 'normal_user' && user.planType === 'algorithm' && (
-                    <Badge color="indigo">Smart Algorithm</Badge>
+                    <Badge color="indigo" className="hidden md:flex">Smart Algorithm</Badge>
                 )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
                 {/* LIST COLUMN */}
-                <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900 border-white/5 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/30">
-                        <h3 className="font-bold text-white">{t('my_tickets') || "My Tickets"}</h3>
+                <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900/80 border-white/10 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
+                    <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/50 backdrop-blur-md">
+                        <h3 className="font-bold text-white text-lg">{t('my_tickets') || "My Tickets"}</h3>
                         <Badge color="indigo">{tickets.length}</Badge>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto space-y-1 p-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2">
                         {tickets.length === 0 && (
-                            <div className="text-center py-10 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-xl m-2">
-                                <LifeBuoy className="mx-auto mb-2 opacity-50" size={24}/>
+                            <div className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-2xl m-2 flex flex-col items-center">
+                                <LifeBuoy className="mb-3 opacity-30" size={32}/>
                                 {t('no_tickets') || "No previous tickets."}
                             </div>
                         )}
@@ -6833,23 +7854,23 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             <div 
                                 key={ticket.id}
                                 onClick={() => setActiveTicket(ticket)}
-                                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                                className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 group ${
                                     activeTicket?.id === ticket.id 
-                                    ? 'bg-indigo-600/10 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
-                                    : 'bg-slate-950/50 border-transparent hover:bg-slate-800 hover:border-white/5'
+                                    ? 'bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-900/20' 
+                                    : 'bg-slate-950/30 border-transparent hover:bg-slate-800 hover:border-white/5'
                                 }`}
                             >
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className={`font-bold text-sm truncate max-w-[70%] ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-300'}`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <h4 className={`font-bold text-sm truncate max-w-[70%] ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
                                         {ticket.subject}
                                     </h4>
-                                    <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-1.5">
+                                    <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-2 !py-0.5">
                                         {getStatusLabel(ticket.status)}
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between items-end text-[10px] text-slate-500">
-                                    <span>{new Date(ticket.lastUpdate).toLocaleDateString()}</span>
-                                    <MessageSquare size={12} />
+                                    <span className="font-mono">{new Date(ticket.lastUpdate).toLocaleDateString()}</span>
+                                    <ChevronRight size={14} className={`transition-transform duration-300 ${activeTicket?.id === ticket.id ? 'text-indigo-400 translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
                                 </div>
                             </div>
                         ))}
@@ -6857,44 +7878,49 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 </Card>
 
                 {/* CHAT COLUMN */}
-                <Card className={`md:col-span-8 flex flex-col overflow-hidden bg-slate-900 border-white/5 relative !p-0 ${!activeTicket ? 'hidden md:flex' : 'flex'}`}>
+                <Card className={`md:col-span-8 flex flex-col overflow-hidden bg-slate-900/60 border-white/10 relative !p-0 ${!activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     {!activeTicket ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-                            <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4 opacity-50">
-                                <LifeBuoy size={40} />
+                            <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 opacity-50 shadow-inner border border-white/5">
+                                <LifeBuoy size={48} />
                             </div>
-                            <p>{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
+                            <p className="text-lg font-medium">{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
                         </div>
                     ) : (
                         <>
                             {/* Ticket Header */}
-                            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
+                            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-20">
                                 <div>
-                                    <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs">
-                                        <X size={14}/> {t('close')}
+                                    <button type="button" onClick={() => setActiveTicket(null)} className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs hover:text-white transition-colors">
+                                        <ChevronRight size={14} className={language === 'ar' ? 'rotate-180' : 'rotate-0'}/> {t('close')}
                                     </button>
-                                    <h3 className="font-bold text-white flex items-center gap-2">
-                                        <Lock size={14} className="text-emerald-500"/> {activeTicket.subject}
+                                    <h3 className="font-bold text-white flex items-center gap-3 text-lg">
+                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Lock size={16} className="text-emerald-500"/></div>
+                                        {activeTicket.subject}
                                     </h3>
-                                    <p className="text-[10px] text-slate-500 font-mono mt-1">Ref: {activeTicket.id}</p>
+                                    <p className="text-[10px] text-slate-500 font-mono mt-1 ml-9">Ref: {activeTicket.id}</p>
                                 </div>
-                                {activeTicket.status === 'resolved' && <Badge color="green"><CheckCircle size={12} /> {t('status_resolved') || "Resolved"}</Badge>}
+                                {activeTicket.status === 'resolved' && (
+                                    <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold flex items-center gap-2">
+                                        <CheckCircle size={14} /> {t('status_resolved') || "Resolved"}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Messages Area */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-900/50">
+                            <div className="flex-1 overflow-y-auto p-6 pt-28 space-y-6 custom-scrollbar bg-slate-900/30">
                                 {activeTicket.messages?.map((msg, idx) => {
                                     const isMe = !msg.isAdmin; 
                                     return (
-                                        <div key={idx} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}>
-                                            <div className={`max-w-[80%] p-3.5 rounded-2xl text-sm leading-relaxed ${
+                                        <div key={idx} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'} animate-in slide-in-from-bottom-2`}>
+                                            <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${
                                                 isMe 
                                                 ? 'bg-slate-800 text-slate-200 rounded-tl-none border border-white/5' 
-                                                : 'bg-indigo-600 text-white rounded-tr-none shadow-lg'
+                                                : 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/20'
                                             }`}>
                                                 {msg.text}
                                             </div>
-                                            <span className="text-[10px] text-slate-600 mt-1 px-1 flex items-center gap-1">
+                                            <span className="text-[10px] text-slate-500 mt-2 px-1 flex items-center gap-1 font-bold uppercase tracking-wider">
                                                 {isMe ? (t('me') || "Me") : (t('support_team') || "Support")} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </div>
@@ -6904,23 +7930,27 @@ export const SupportView = ({ user }: SupportViewProps) => {
                             </div>
 
                             {/* Reply Input */}
-                            <div className="p-4 border-t border-white/5 bg-slate-950/30">
+                            <div className="p-4 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl z-20">
                                 {activeTicket.status === 'resolved' ? (
-                                    <div className="text-center text-xs text-emerald-500 font-bold bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+                                    <div className="text-center text-sm text-emerald-400 font-bold bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-lg">
                                         {t('ticket_closed_msg') || "This ticket is closed."}
                                     </div>
                                 ) : (
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-3">
                                         <input 
-                                            className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-600"
+                                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 focus:bg-slate-900 outline-none transition-all placeholder-slate-600 shadow-inner"
                                             placeholder={t('write_reply') || "Write your reply..."}
                                             value={newMessage}
                                             onChange={e => setNewMessage(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && sendReply()}
                                         />
-                                        <Button onClick={sendReply} variant="primary" disabled={!newMessage.trim()} className="!rounded-xl !px-4">
-                                            <Send size={18} />
-                                        </Button>
+                                        <button 
+                                            onClick={sendReply} 
+                                            disabled={!newMessage.trim()}
+                                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95"
+                                        >
+                                            <Send size={20} />
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -6932,35 +7962,41 @@ export const SupportView = ({ user }: SupportViewProps) => {
             {/* Create Ticket Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
-                    <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl">
-                        <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all"><X size={20}/></button>
+                    <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl overflow-hidden">
+                        {/* Header Background */}
+                        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
                         
-                        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <LifeBuoy className="text-indigo-500"/> {t('new_ticket_title') || "New Support Request"}
-                        </h3>
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all z-20"><X size={20}/></button>
                         
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_subject') || "Subject"}</label>
-                                <input 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none transition-all" 
-                                    value={newSubject} 
-                                    onChange={e => setNewSubject(e.target.value)} 
-                                    placeholder="..." 
-                                />
+                        <div className="relative z-10 p-2">
+                            <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
+                                <div className="p-3 bg-indigo-500/20 rounded-xl"><LifeBuoy className="text-indigo-400" size={24}/></div>
+                                {t('new_ticket_title') || "New Request"}
+                            </h3>
+                            
+                            <div className="space-y-5">
+                                <div className="group">
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_subject') || "Subject"}</label>
+                                    <input 
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700" 
+                                        value={newSubject} 
+                                        onChange={e => setNewSubject(e.target.value)} 
+                                        placeholder="Briefly describe the issue..." 
+                                    />
+                                </div>
+                                <div className="group">
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_details') || "Details"}</label>
+                                    <textarea 
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none h-40 resize-none transition-all placeholder-slate-700" 
+                                        value={newMessage} 
+                                        onChange={e => setNewMessage(e.target.value)} 
+                                        placeholder="Provide more details here..." 
+                                    />
+                                </div>
+                                <Button onClick={createTicket} variant="primary" className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" disabled={!newSubject || !newMessage}>
+                                    {t('send_request') || "Submit Request"}
+                                </Button>
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t('ticket_details') || "Details"}</label>
-                                <textarea 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none h-32 resize-none transition-all" 
-                                    value={newMessage} 
-                                    onChange={e => setNewMessage(e.target.value)} 
-                                    placeholder="..." 
-                                />
-                            </div>
-                            <Button onClick={createTicket} variant="primary" className="w-full py-3" disabled={!newSubject || !newMessage}>
-                                {t('send_request') || "Submit"}
-                            </Button>
                         </div>
                     </Card>
                 </div>
@@ -7117,6 +8153,7 @@ function AppContent() {
             } : undefined
         };
         setUserProfile(newProfile);
+        setCurrentView(AppView.DASHBOARD);
     }
   };
 
@@ -7213,9 +8250,10 @@ function AppContent() {
 
   if (authLoading || dataLoading) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-indigo-400 gap-4" dir={dir}>
-            <Loader2 size={48} className="animate-spin" />
-            <span className="font-bold tracking-widest animate-pulse">LOADING SYSTEM...</span>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-indigo-400 gap-4" dir={dir}>
+            <div className="absolute inset-0 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none animate-pulse"></div>
+            <Loader2 size={48} className="animate-spin relative z-10" />
+            <span className="font-bold tracking-widest animate-pulse relative z-10">LOADING SYSTEM...</span>
         </div>
       );
   }
@@ -7253,21 +8291,28 @@ function AppContent() {
 
   // 3. MAIN APP LAYOUT
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200" dir={dir}>
+    <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30" dir={dir}>
+      
+      {/* --- Ambient Background Effects (The New Magic) --- */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000"></div>
+      </div>
+
       {toastMessage && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-2 border border-white/10">
               <Check size={18} /> {toastMessage}
           </div>
       )}
 
       {/* REJECTION SCREEN - DOCTOR */}
       {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
               <h1 className="text-4xl font-black text-white mb-4">نأسف، تم رفض طلبك</h1>
-              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8">
+              <div className="bg-rose-950/30 border border-rose-500/30 p-6 rounded-2xl max-w-lg w-full mb-8 backdrop-blur-sm">
                   <h3 className="text-rose-400 font-bold mb-2 flex items-center justify-center gap-2">
                       <AlertTriangle size={18}/> سبب الرفض من الإدارة
                   </h3>
@@ -7284,7 +8329,7 @@ function AppContent() {
 
       {/* REJECTION SCREEN - PATIENT */}
       {userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'rejected' && (
-          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in">
+          <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 animate-in zoom-in relative z-10">
               <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 ring-4 ring-rose-500/20">
                   <XCircle size={48} className="text-rose-500 animate-pulse" />
               </div>
@@ -7312,7 +8357,7 @@ function AppContent() {
               <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
               <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
               
-              <div className="md:mr-80 p-4 md:p-12 pb-32 md:pb-12 transition-all duration-500">
+              <div className="md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
                 
                 {/* PENDING SCREENS */}
                 {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
@@ -7353,7 +8398,6 @@ function AppContent() {
                 ) : (
                     /* ACTIVE VIEWS - Main Routing */
                     <>
-                        {/* 1. Normal Users & Active Patients */}
                         {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                             <>
                                 {currentView === AppView.DASHBOARD && (
@@ -7372,7 +8416,6 @@ function AppContent() {
                             </>
                         )}
 
-                        {/* 2. Doctors */}
                         {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
                             <>
                                 {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
@@ -7380,7 +8423,6 @@ function AppContent() {
                             </>
                         )}
 
-                        {/* 3. Shared Views (Accessible by Admin and others) */}
                         {currentView === AppView.COMMUNITY && (
                             <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
                         )}
@@ -7393,12 +8435,10 @@ function AppContent() {
                             <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
                         )}
                         
-                        {/* 4. Admin Only */}
                         {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
                             <AdminView />
                         )}
                         
-                        {/* 5. Settings */}
                         {currentView === AppView.SETTINGS && userProfile && (
                             <SettingsView 
                                 userProfile={userProfile} 
@@ -7544,131 +8584,134 @@ service cloud.firestore {
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --primary-glow: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+  }
+
   body {
-    @apply bg-[#020617] text-slate-200 antialiased;
+    @apply bg-[#020617] text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200;
     /* تحسين عرض الخطوط العربية */
     font-family: 'Tajawal', 'Inter', sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden; /* منع التمرير الأفقي غير المرغوب فيه */
+  }
+
+  /* تحسين شكل شريط التمرير الافتراضي للمتصفح */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f172a; 
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155; 
+    border-radius: 4px;
+    border: 2px solid #0f172a; /* يعطي شكلاً أنحف */
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569; 
+  }
+}
+
+@layer components {
+  /* فئة الزجاج الموحدة - خفيفة على المعالج */
+  .glass {
+    @apply bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+  
+  .glass-heavy {
+    @apply bg-slate-950/80 backdrop-blur-xl border border-white/5;
+  }
+
+  /* تأثير التفاعل */
+  .glass-hover {
+    @apply transition-all duration-300 hover:bg-slate-800/60 hover:border-indigo-500/30 hover:shadow-indigo-500/10 hover:shadow-xl;
   }
 }
 
 @layer utilities {
   /* إخفاء شريط التمرير مع الحفاظ على الوظيفة (للموبايل) */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
   }
 
   /* شريط تمرير مخصص ونحيف للقوائم الجانبية والدردشة */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-slate-900/30 rounded-full;
+    @apply bg-transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full hover:bg-slate-600 transition-colors border-2 border-transparent bg-clip-content;
+    @apply bg-slate-700/30 rounded-full hover:bg-slate-600/50 transition-colors;
+  }
+
+  /* نصوص متدرجة احترافية */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400;
   }
 }
 
-/* === مكتبة الرسوم المتحركة (Custom Animations) === */
-/* هذه التعريفات تحاكي مكتبة tailwindcss-animate لضمان عمل التأثيرات */
+/* === مكتبة الرسوم المتحركة (Optimized Animations) === */
 
-@keyframes enter {
+/* ظهور ناعم للعناصر */
+@keyframes fadeInScale {
   from {
-    opacity: var(--tw-enter-opacity, 1);
-    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1) rotate(var(--tw-enter-rotate, 0));
-  }
-}
-
-@keyframes exit {
-  to {
-    opacity: var(--tw-exit-opacity, 1);
-    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1) rotate(var(--tw-exit-rotate, 0));
-  }
-}
-
-@keyframes ping-slow {
-  75%, 100% {
-    transform: scale(2);
     opacity: 0;
+    transform: scale(0.98) translateY(5px);
   }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* حركة عائمة للخلفية (خفيفة جداً) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* نبض خفيف للتنبيهات */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { opacity: .8; box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.3); }
 }
 
 .animate-in {
-  animation-name: enter;
-  animation-duration: 300ms; /* Default duration */
-  --tw-enter-opacity: initial;
-  --tw-enter-scale: initial;
-  --tw-enter-rotate: initial;
-  --tw-enter-translate-x: initial;
-  --tw-enter-translate-y: initial;
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity; /* تحسين الأداء بإخبار المتصفح */
 }
 
-.fade-in {
-  --tw-enter-opacity: 0;
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
-.zoom-in {
-  --tw-enter-scale: 0.95;
+.animate-pulse-glow {
+  animation: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* اتجاهات الحركة */
-.slide-in-from-top-2 {
-  --tw-enter-translate-y: -0.5rem;
-}
-.slide-in-from-top-4 {
-  --tw-enter-translate-y: -1rem;
-}
+/* فئات مساعدة للحركة */
+.slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
+.slide-in-from-right-4 { --tw-enter-translate-x: 1rem; }
+.zoom-in { --tw-enter-scale: 0.95; }
 
-.slide-in-from-bottom-2 {
-  --tw-enter-translate-y: 0.5rem;
-}
-.slide-in-from-bottom-4 {
-  --tw-enter-translate-y: 1rem;
-}
-.slide-in-from-bottom-8 {
-  --tw-enter-translate-y: 2rem;
-}
-.slide-in-from-bottom-20 {
-  --tw-enter-translate-y: 5rem;
-}
-
-.slide-in-from-left-4 {
-  --tw-enter-translate-x: -1rem;
-}
-
-.slide-in-from-right-2 {
-  --tw-enter-translate-x: 0.5rem;
-}
-.slide-in-from-right-4 {
-  --tw-enter-translate-x: 1rem;
-}
-.slide-in-from-right-8 {
-  --tw-enter-translate-x: 2rem;
-}
-
-/* مدد زمنية مخصصة */
-.duration-300 { animation-duration: 300ms; }
-.duration-500 { animation-duration: 500ms; }
-.duration-700 { animation-duration: 700ms; }
-.duration-1000 { animation-duration: 1000ms; }
-
-/* تأخير الحركة */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-
-/* تنسيقات الطباعة */
+/* تحسين الطباعة */
 @media print {
   body {
     background-color: white;
     color: black;
+  }
+  .no-print {
+    display: none;
   }
 }
 ```
@@ -7943,6 +8986,13 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
+  
+  // --- بيانات فيزيائية جديدة (التعديل هنا) ---
+  age?: number;
+  weight?: number; // kg
+  height?: number; // cm
+  // ---------------------------
+
   role: UserRole; 
   
   doctorData?: DoctorProfileData;   
@@ -8112,5 +9162,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 56
-- Total Characters: 386164
-- Estimated Tokens: ~96.541 (GPT-4 Context)
+- Total Characters: 461145
+- Estimated Tokens: ~115.287 (GPT-4 Context)

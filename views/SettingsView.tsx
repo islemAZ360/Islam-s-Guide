@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw, Trash2
+    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Info
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -24,8 +24,13 @@ interface SettingsViewProps {
 
 export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }: SettingsViewProps) => {
     const { t, language } = useLanguage();
-    const { inventory, setInventory } = useData(); 
+    const { inventory, setInventory, plan, logs } = useData(); 
     const [loading, setLoading] = useState(false);
+    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    
+    // Delete Confirmation State
+    const [deleteInput, setDeleteInput] = useState('');
+    const deleteKeyword = language === 'ar' ? 'حذف' : 'DELETE';
 
     // -- Doctor Form State --
     const [formData, setFormData] = useState({
@@ -57,7 +62,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         }
     }, [userProfile]);
 
-    // مزامنة المخزون (الحل الذكي لمنع التصفير)
+    // Sync Inventory
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
@@ -67,6 +72,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             });
         }
     }, [inventory]);
+
+    const showStatus = (type: 'success' | 'error', text: string) => {
+        setStatusMsg({ type, text });
+        setTimeout(() => setStatusMsg(null), 4000);
+    };
 
     const handleSaveProfile = async () => {
         if (!userProfile.uid) return;
@@ -79,10 +89,10 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 "doctorData.phoneNumber": formData.phoneNumber,
                 "doctorData.clinicLocation": formData.clinicLocation
             });
-            alert("Profile updated successfully!");
+            showStatus('success', language === 'ar' ? 'تم تحديث الملف الشخصي بنجاح.' : 'Profile updated successfully.');
         } catch (e) {
             console.error("Error updating profile:", e);
-            alert("Failed to update profile.");
+            showStatus('error', language === 'ar' ? 'فشل التحديث. يرجى المحاولة لاحقاً.' : 'Failed to update profile.');
         }
         setLoading(false);
     };
@@ -91,23 +101,54 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
         setInventory(updatedInv);
-        setLocalInventory(updatedInv); // تأكيد التحديث محلياً
-        alert(language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
+        setLocalInventory(updatedInv); 
+        showStatus('success', language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
-    // --- واجهة الطبيب (بتصميم جديد) ---
-    if (userProfile.role === 'doctor') {
-        const level = userProfile.doctorData?.doctorLevel || 1;
-        const recovered = userProfile.doctorData?.recoveredCount || 0;
-        const active = userProfile.doctorData?.activePatients || 0;
+    const handleExportData = () => {
+        const dataToExport = {
+            profile: userProfile,
+            inventory: inventory,
+            plan: plan,
+            logs: logs,
+            exportedAt: new Date().toISOString()
+        };
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `islams_guide_backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        
+        showStatus('success', language === 'ar' ? 'تم تحميل بياناتك بنجاح.' : 'Data exported successfully.');
+    };
 
-        return (
-            <LayoutContainer>
-                <PageHeader title={t('profile_title')} subtitle={t('nav_settings')} />
+    return (
+        <LayoutContainer>
+            <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
 
+            {/* Status Message Banner */}
+            {statusMsg && (
+                <div 
+                    className={`p-4 rounded-2xl border flex items-center gap-3 animate-in slide-in-from-top-2 mb-6 ${
+                        statusMsg.type === 'success' 
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' 
+                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                    }`}
+                    role="status"
+                >
+                    {statusMsg.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                    <span className="font-bold">{statusMsg.text}</span>
+                </div>
+            )}
+
+            {/* --- DOCTOR VIEW --- */}
+            {userProfile.role === 'doctor' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="space-y-6">
-                        {/* بطاقة الهوية للطبيب */}
+                        {/* ID Card */}
                         <Card className="text-center relative overflow-hidden group border-white/10 !bg-slate-900/80">
                             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/30 to-transparent"></div>
                             
@@ -126,21 +167,10 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </p>
                                 
                                 <div className="flex justify-center gap-2 mb-8">
-                                    <Badge color="amber">LVL {level}</Badge>
+                                    <Badge color="amber">LVL {userProfile.doctorData?.doctorLevel || 1}</Badge>
                                     <Badge color={userProfile.doctorData?.accountStatus === 'approved' ? 'green' : 'red'}>
                                         {userProfile.doctorData?.accountStatus.toUpperCase()}
                                     </Badge>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6 bg-slate-950/30 -mx-6 md:-mx-8 -mb-6 md:-mb-8 p-6">
-                                    <div>
-                                        <span className="block text-2xl font-black text-white">{active}</span>
-                                        <span className="text-[10px] text-slate-500 uppercase font-bold">Active Patients</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-2xl font-black text-emerald-400">{recovered}</span>
-                                        <span className="text-[10px] text-slate-500 uppercase font-bold">Recovered</span>
-                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -153,10 +183,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 {t('edit_profile')}
                             </h3>
                             
-                            <div className="space-y-6">
+                            <form onSubmit={(e) => { e.preventDefault(); handleSaveProfile(); }} className="space-y-6">
                                 <div className="group">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_fullname')}</label>
+                                    <label htmlFor="docName" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_fullname')}</label>
                                     <input 
+                                        id="docName"
                                         className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                         value={formData.name}
                                         onChange={e => setFormData({...formData, name: e.target.value})}
@@ -164,10 +195,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
 
                                 <div className="group">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('photo_url_label')}</label>
+                                    <label htmlFor="photoUrl" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('photo_url_label')}</label>
                                     <div className="relative">
                                         <Camera className="absolute top-4 right-4 text-slate-600" size={18} />
                                         <input 
+                                            id="photoUrl"
                                             className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                             placeholder="https://..."
                                             value={formData.photoUrl}
@@ -178,10 +210,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_phone')}</label>
+                                        <label htmlFor="phone" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_phone')}</label>
                                         <div className="relative">
                                             <Phone className="absolute top-4 right-4 text-slate-600" size={18} />
                                             <input 
+                                                id="phone"
                                                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                                 value={formData.phoneNumber}
                                                 onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
@@ -189,10 +222,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_location')}</label>
+                                        <label htmlFor="location" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_location')}</label>
                                         <div className="relative">
                                             <MapPin className="absolute top-4 right-4 text-slate-600" size={18} />
                                             <input 
+                                                id="location"
                                                 className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
                                                 value={formData.clinicLocation}
                                                 onChange={e => setFormData({...formData, clinicLocation: e.target.value})}
@@ -202,8 +236,9 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_bio')}</label>
+                                    <label htmlFor="bio" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_bio')}</label>
                                     <textarea 
+                                        id="bio"
                                         className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none h-32 resize-none transition-all"
                                         value={formData.bio}
                                         onChange={e => setFormData({...formData, bio: e.target.value})}
@@ -211,166 +246,189 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5 flex justify-end">
-                                    <Button onClick={handleSaveProfile} variant="primary" disabled={loading} className="w-full md:w-auto">
+                                    <Button type="submit" variant="primary" disabled={loading} className="w-full md:w-auto">
                                         <Save size={18} className="mr-2" /> {loading ? 'Saving...' : t('save_changes')}
                                     </Button>
                                 </div>
-                            </div>
+                            </form>
                         </Card>
                     </div>
                 </div>
-            </LayoutContainer>
-        );
-    }
-
-    // --- واجهة المستخدم العادي / المريض (بتصميم جديد) ---
-    return (
-        <LayoutContainer>
-            <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
-            
-            {/* إعدادات السرعة - بطاقات تفاعلية */}
-            <Card className="mb-8 border-white/10">
-                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <Activity className="text-indigo-400" /> {t('pace_control')}
-                </h2>
-                <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl bg-slate-950/30 p-4 rounded-xl border border-white/5">
-                    {t('pace_desc')}
-                </p>
-                
-                {userProfile?.role === 'patient' || userProfile?.planType === 'manual' ? (
-                        <div className="p-8 bg-slate-950/50 rounded-[2rem] border border-dashed border-slate-700 text-slate-500 text-center flex flex-col items-center gap-4">
-                            <ShieldCheck size={40} className="text-slate-600" />
-                            <p className="max-w-md">هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي للسرعة غير متاح.</p>
-                        </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* زر بطيء */}
-                        <button 
-                            onClick={() => updateSpeedSettings(0.8)} 
-                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
-                        >
-                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier < 0.9 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
-                                <Clock size={28} />
-                            </div>
-                            <div className="text-center">
-                                <span className="block font-bold text-lg">{t('pace_slow')}</span>
-                                <span className="text-[10px] opacity-70">تمديد المدة للراحة</span>
-                            </div>
-                        </button>
-                        
-                        {/* زر متوازن */}
-                        <button 
-                            onClick={() => updateSpeedSettings(1.0)} 
-                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-emerald-600 border-emerald-500 text-white shadow-xl shadow-emerald-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
-                        >
-                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier >= 0.9 && userProfile.speedModifier <= 1.1 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
-                                <ShieldCheck size={28} />
-                            </div>
-                            <div className="text-center">
-                                <span className="block font-bold text-lg">{t('pace_balanced')}</span>
-                                <span className="text-[10px] opacity-70">الوضع القياسي</span>
-                            </div>
-                        </button>
-                        
-                        {/* زر سريع */}
-                        <button 
-                            onClick={() => updateSpeedSettings(1.2)} 
-                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-rose-600 border-rose-500 text-white shadow-xl shadow-rose-500/20' : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'}`}
-                        >
-                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier && userProfile.speedModifier > 1.1 ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
-                                <Zap size={28} />
-                            </div>
-                            <div className="text-center">
-                                <span className="block font-bold text-lg">{t('pace_fast')}</span>
-                                <span className="text-[10px] opacity-70">تقليص المدة (مكثف)</span>
-                            </div>
-                        </button>
-                    </div>
-                )}
-            </Card>
-
-            {/* إعدادات المخزون (للمستخدم العادي) - تصميم جديد */}
-            {userProfile?.role === 'normal_user' && (
-                <Card className="mb-8 border-white/10">
-                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <Package className="text-blue-400" /> {t('inventory_title')}
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
-                            <div className="flex items-center gap-3">
-                                <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                <input 
-                                    type="number" 
-                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                    value={localInventory.boxes || ''} 
-                                    onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
-                            <div className="flex items-center gap-3">
-                                <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
-                                <input 
-                                    type="number" 
-                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                    value={localInventory.pillsPerBox || ''}
-                                    onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                            <label className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
-                            <div className="flex items-center gap-3">
-                                <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                <input 
-                                    type="number" 
-                                    className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                    value={localInventory.loosePills || ''}
-                                    onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
-                        <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
-                            <span className="text-slate-500">{t('total_balance')}: </span>
-                            <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
-                                {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
-                            </span>
-                        </div>
-                        <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
-                            <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
-                        </Button>
-                    </div>
-                </Card>
             )}
 
-            {/* منطقة الخطر - حذف الحساب */}
-            <Card className="border-rose-500/20 bg-rose-900/10 hover:bg-rose-900/20 transition-colors">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                    <div>
-                        <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                            <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
-                        </h2>
-                        <p className="text-rose-200/60 text-sm max-w-md">
-                            {language === 'ar' 
-                                ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً من النظام. لا يمكن التراجع عن هذه الخطوة.' 
-                                : 'This action will permanently delete your account and all data. This cannot be undone.'}
-                        </p>
-                    </div>
-                    <Button variant="danger" onClick={resetAllData} className="w-full md:w-auto whitespace-nowrap !py-3 !px-6 shadow-lg shadow-rose-900/20">
-                        <Trash2 size={18} className="mr-2"/> {language === 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account'}
+            {/* --- PATIENT / NORMAL USER VIEW --- */}
+            {userProfile.role !== 'doctor' && (
+                <>
+                    {/* Pace Control */}
+                    <Card className="mb-8 border-white/10">
+                        <section aria-labelledby="pace-settings">
+                            <h2 id="pace-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Activity className="text-indigo-400" /> {t('pace_control')}
+                            </h2>
+                            <p className="text-slate-400 mb-8 text-sm leading-relaxed max-w-2xl bg-slate-950/30 p-4 rounded-xl border border-white/5">
+                                {t('pace_desc')}
+                            </p>
+                            
+                            {userProfile.role === 'patient' || userProfile.planType === 'manual' ? (
+                                <div className="p-8 bg-slate-950/50 rounded-[2rem] border border-dashed border-slate-700 text-slate-500 text-center flex flex-col items-center gap-4">
+                                    <ShieldCheck size={40} className="text-slate-600" />
+                                    <p className="max-w-md">هذه الخطة مدارة بواسطة {userProfile.role === 'patient' ? 'طبيبك المعالج' : 'النظام اليدوي'}. التعديل التلقائي للسرعة غير متاح.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {[
+                                        { speed: 0.8, label: t('pace_slow'), icon: Clock, desc: 'تمديد المدة للراحة', color: 'indigo' },
+                                        { speed: 1.0, label: t('pace_balanced'), icon: ShieldCheck, desc: 'الوضع القياسي', color: 'emerald' },
+                                        { speed: 1.2, label: t('pace_fast'), icon: Zap, desc: 'تقليص المدة (مكثف)', color: 'rose' },
+                                    ].map((opt) => (
+                                        <button 
+                                            key={opt.speed}
+                                            onClick={() => updateSpeedSettings(opt.speed)} 
+                                            className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 focus:outline-none focus:ring-4 focus:ring-${opt.color}-500/30 ${
+                                                userProfile.speedModifier && Math.abs(userProfile.speedModifier - opt.speed) < 0.1
+                                                ? `bg-${opt.color}-600 border-${opt.color}-500 text-white shadow-xl shadow-${opt.color}-500/20` 
+                                                : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'
+                                            }`}
+                                            aria-pressed={userProfile.speedModifier === opt.speed}
+                                        >
+                                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier === opt.speed ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                                                <opt.icon size={28} />
+                                            </div>
+                                            <div className="text-center">
+                                                <span className="block font-bold text-lg">{opt.label}</span>
+                                                <span className="text-[10px] opacity-70">{opt.desc}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </Card>
+
+                    {/* Inventory Management */}
+                    <Card className="mb-8 border-white/10">
+                        <section aria-labelledby="inventory-settings">
+                            <h2 id="inventory-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Package className="text-blue-400" /> {t('inventory_title')}
+                            </h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                    <label htmlFor="invBoxes" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
+                                    <div className="flex items-center gap-3">
+                                        <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                        <input 
+                                            id="invBoxes"
+                                            type="number" 
+                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                            value={localInventory.boxes || ''} 
+                                            onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
+                                            placeholder="0"
+                                            min="0"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                    <label htmlFor="invPills" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
+                                        <input 
+                                            id="invPills"
+                                            type="number" 
+                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                            value={localInventory.pillsPerBox || ''}
+                                            onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
+                                            placeholder="0"
+                                            min="0"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                    <label htmlFor="invLoose" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
+                                    <div className="flex items-center gap-3">
+                                        <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                        <input 
+                                            id="invLoose"
+                                            type="number" 
+                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
+                                            value={localInventory.loosePills || ''}
+                                            onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
+                                            placeholder="0"
+                                            min="0"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
+                                <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
+                                    <span className="text-slate-500">{t('total_balance')}: </span>
+                                    <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
+                                        {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
+                                    </span>
+                                </div>
+                                <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
+                                    <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
+                                </Button>
+                            </div>
+                        </section>
+                    </Card>
+                </>
+            )}
+
+            {/* Privacy & Data Section */}
+            <Card className="mb-8 border-white/10 bg-indigo-900/10">
+                <section aria-labelledby="privacy-settings">
+                    <h2 id="privacy-settings" className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <Download className="text-indigo-400" /> {language === 'ar' ? 'بياناتي' : 'My Data'}
+                    </h2>
+                    <p className="text-indigo-200/60 text-sm mb-6 max-w-xl">
+                        {language === 'ar' 
+                            ? 'يمكنك تحميل نسخة من بياناتك الطبية وسجلاتك كملف JSON للاحتفاظ بها أو مشاركتها مع طبيبك.' 
+                            : 'You can download a copy of your medical data and logs as a JSON file for your records.'}
+                    </p>
+                    <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
+                        <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير بياناتي' : 'Export My Data'}
                     </Button>
-                </div>
+                </section>
+            </Card>
+
+            {/* Danger Zone */}
+            <Card className="border-rose-500/20 bg-rose-900/10 hover:bg-rose-900/20 transition-colors">
+                <section aria-labelledby="danger-zone">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div>
+                            <h2 id="danger-zone" className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                                <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
+                            </h2>
+                            <p className="text-rose-200/60 text-sm max-w-md mb-4">
+                                {language === 'ar' 
+                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. يرجى كتابة كلمة "حذف" في المربع أدناه للتأكيد.' 
+                                    : 'This action permanently deletes your account. Please type "DELETE" below to confirm.'}
+                            </p>
+                            <div className="relative group max-w-xs">
+                                <input 
+                                    type="text" 
+                                    className="w-full bg-rose-950/50 border border-rose-500/30 rounded-xl px-4 py-3 text-white placeholder-rose-700/50 outline-none focus:border-rose-500 transition-all font-mono"
+                                    placeholder={deleteKeyword}
+                                    value={deleteInput}
+                                    onChange={(e) => setDeleteInput(e.target.value)}
+                                    aria-label="Confirm deletion"
+                                />
+                            </div>
+                        </div>
+                        <Button 
+                            variant="danger" 
+                            onClick={resetAllData} 
+                            disabled={deleteInput !== deleteKeyword}
+                            className="w-full md:w-auto whitespace-nowrap !py-3 !px-6 shadow-lg shadow-rose-900/20"
+                        >
+                            <Trash2 size={18} className="mr-2"/> {language === 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account'}
+                        </Button>
+                    </div>
+                </section>
             </Card>
         </LayoutContainer>
     );

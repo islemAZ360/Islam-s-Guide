@@ -1,34 +1,52 @@
 import { Inventory, PlanDay, DailyLog, ManualPhase, MedForm } from '../types';
 
 // ============================================================================
-// 1. UTILS (أدوات مساعدة)
+// 1. CONFIGANTS & UTILS (ثوابت وأدوات)
 // ============================================================================
 
-// إضافة أيام للتاريخ
+// أقصى نسبة تخفيض مسموحة في الخطوة الواحدة (للسلامة)
+const MAX_DROP_PERCENTAGE = 0.5; // 50%
+
+// إضافة أيام للتاريخ بأمان
 const addDays = (dateStr: string, days: number): string => {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return new Date().toISOString().split('T')[0]; // Fallback to today
     date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().split('T')[0];
 };
 
+// تقريب الأرقام لتجنب مشاكل الفاصلة العائمة (مثلاً 0.1 + 0.2)
+const safeRound = (num: number): number => {
+    return Math.round(num * 100) / 100;
+};
+
 // حساب المخزون الكلي
 export const calculateTotalInventory = (inv: Inventory): number => {
-    return (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
+    if (!inv) return 0;
+    const total = (inv.boxes * (inv.pillsPerBox || 1)) + inv.loosePills;
+    return Math.max(0, total); // منع القيم السالبة
 };
 
 // ============================================================================
-// 2. ENGINE CORE (المحرك المنطقي الجديد)
+// 2. ENGINE CORE (المحرك المنطقي الآمن)
 // ============================================================================
 
 /**
- * المولد اليدوي (للأطباء) - يبقى كما هو
+ * المولد اليدوي (للأطباء)
  */
 export const generateManualPlan = (phases: ManualPhase[], startDateStr: string): PlanDay[] => {
+    if (!phases || !Array.isArray(phases) || phases.length === 0) return [];
+    
     const plan: PlanDay[] = [];
     let currentDate = startDateStr.split('T')[0];
+    
     phases.forEach(phase => {
-        for (let i = 0; i < phase.days; i++) {
-            plan.push({ date: currentDate, plannedDose: phase.dose, isPast: false });
+        // التحقق من صحة المرحلة
+        const safeDose = Math.max(0, safeRound(phase.dose));
+        const safeDays = Math.max(1, Math.floor(phase.days)); // يوم واحد على الأقل
+
+        for (let i = 0; i < safeDays; i++) {
+            plan.push({ date: currentDate, plannedDose: safeDose, isPast: false });
             currentDate = addDays(currentDate, 1);
         }
     });
@@ -37,87 +55,93 @@ export const generateManualPlan = (phases: ManualPhase[], startDateStr: string):
 
 /**
  * المولد الذكي (الخوارزمية العملية)
- * تم تعديلها لتدعم نظام "الأنصاف" و "تباعد الأيام"
+ * يتضمن الآن حدوداً للسلامة وتحققاً من المدخلات
  */
 export const generatePlan = (
     totalPills: number, 
     startDose: number, 
     startDateStr: string,
-    speedModifier: number = 1.0, // 1.0 = عادي، 0.5 = بطيء، 1.5 = سريع
+    speedModifier: number = 1.0, 
     recentLogs: DailyLog[] = [],
     medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
-    // إذا كان رصيد الحبوب 0 أو الجرعة 0، لا نولد خطة
+    // 1. Safety Checks (فحوصات السلامة الأولية)
     if (totalPills <= 0 || startDose <= 0) return [];
+    if (isNaN(totalPills) || isNaN(startDose)) return [];
 
     const plan: PlanDay[] = [];
     let currentDate = startDateStr.split('T')[0];
-    let remainingInventory = totalPills;
+    let remainingInventory = safeRound(totalPills);
     
     // تحديد أقل وحدة كسر (للأقراص 0.5 للنص، وللسائل 0.1)
-    // بناءً على طلبك: التركيز على نظام الأنصاف (0.5)
     const MIN_STEP = medForm === 'liquid' ? 0.1 : 0.5;
     
     // الجرعة الحالية التي سنبدأ التخفيض منها
-    let currentDose = startDose;
+    let currentDose = safeRound(startDose);
 
-    // --- المرحلة الأولى: التخفيض المباشر حتى الوصول لـ 0.5 ---
-    // طالما الجرعة أكبر من 0.5، نقوم بالإنقاص تدريجياً
-    while (currentDose > 0.5 && remainingInventory >= currentDose) {
+    // --- المرحلة الأولى: التخفيض المباشر (Hyperbolic-like) ---
+    // نتوقف عند 0.5 أو عند نفاد المخزون
+    // حد الأمان: لا تستمر الحلقة لأكثر من 365 يوماً لتجنب التجميد (Infinite Loop Guard)
+    let safetyCounter = 0;
+    const MAX_LOOPS = 1000; 
+
+    while (currentDose > 0.5 && remainingInventory >= currentDose && safetyCounter < MAX_LOOPS) {
+        safetyCounter++;
+
+        // تحديد مدة الثبات على الجرعة
+        // السرعة العادية: 7-14 أيام. كلما قلت الجرعة، زادت المدة (Hyperbolic logic simplified)
+        let baseDays = currentDose > (startDose / 2) ? 7 : 10;
         
-        // تحديد مدة الثبات على الجرعة (تتأثر بالسرعة المختارة)
-        // السرعة العادية: 7-10 أيام لكل تخفيض
-        let daysOnDose = Math.round(7 * (1 / speedModifier));
-        if (daysOnDose < 3) daysOnDose = 3; // لا تقل عن 3 أيام
+        // تعديل السرعة بناءً على تفضيل المستخدم
+        let daysOnDose = Math.round(baseDays * (1 / speedModifier));
+        if (daysOnDose < 3) daysOnDose = 3; // حد أدنى للسلامة: 3 أيام
 
         // إضافة الأيام للخطة
         for (let i = 0; i < daysOnDose; i++) {
-            if (remainingInventory < currentDose) break; // نفاد المخزون
+            if (remainingInventory < currentDose) break; 
 
             plan.push({
                 date: currentDate,
                 plannedDose: currentDose,
                 isPast: false
             });
-            remainingInventory -= currentDose;
+            remainingInventory = safeRound(remainingInventory - currentDose);
             currentDate = addDays(currentDate, 1);
         }
 
-        // حساب الجرعة التالية (إنقاص نصف حبة)
-        // مثال: 2 -> 1.5 -> 1 -> 0.5
+        // حساب الجرعة التالية
+        // القاعدة: لا تخفض أكثر من 50% دفعة واحدة إلا إذا كانت الجرعة صغيرة جداً
         let nextDose = currentDose - 0.5;
         
-        // تصحيح الأرقام العشرية
-        nextDose = Math.round(nextDose * 10) / 10;
+        // Safety Clamp: إذا كان التخفيض حاداً جداً، نجعله أبطأ (للجرعات العالية)
+        if (currentDose > 5 && nextDose < currentDose * (1 - MAX_DROP_PERCENTAGE)) {
+            nextDose = currentDose * 0.75; // تخفيض 25% فقط
+            // تقريب لأقرب 0.5
+            nextDose = Math.round(nextDose * 2) / 2;
+        }
+
+        nextDose = safeRound(nextDose);
         
-        if (nextDose < 0.5) nextDose = 0.5; // لا ننزل تحت النص في هذه المرحلة
+        if (nextDose < 0.5) nextDose = 0.5;
         currentDose = nextDose;
     }
 
-    // --- المرحلة الثانية: نظام تباعد الأيام (Skip-Day Logic) ---
-    // عندما نصل لجرعة 0.5 (نص حبة)، نبدأ بزيادة أيام الراحة تدريجياً
-    // هذا هو النظام الذي طلبته بالضبط
-    
+    // --- المرحلة الثانية: نظام تباعد الأيام (Micro-Tapering / Skipping) ---
     if (currentDose === 0.5 && remainingInventory >= 0.5) {
         
-        // تعريف أنماط تباعد الأيام
         const patterns = [
-            { label: "Day ON, Day OFF", doseSeq: [0.5, 0], cycles: 4 },           // أسبوع تقريباً
-            { label: "Day ON, 2 Days OFF", doseSeq: [0.5, 0, 0], cycles: 3 },     // 9 أيام
-            { label: "Day ON, 3 Days OFF", doseSeq: [0.5, 0, 0, 0], cycles: 2 },  // 8 أيام
-            { label: "Day ON, 4 Days OFF", doseSeq: [0.5, 0, 0, 0, 0], cycles: 2 } // 10 أيام
+            { doseSeq: [0.5, 0], cycles: 4 },           // Day ON, Day OFF
+            { doseSeq: [0.5, 0, 0], cycles: 3 },        // Day ON, 2 Days OFF
+            { doseSeq: [0.5, 0, 0, 0], cycles: 2 },     // Day ON, 3 Days OFF
+            { doseSeq: [0.5, 0, 0, 0, 0], cycles: 2 }   // Day ON, 4 Days OFF
         ];
 
-        // تطبيق الأنماط بالترتيب
         for (const pattern of patterns) {
-            // نعدل عدد التكرارات (Cycles) بناءً على سرعة المستخدم
-            // إذا اختار "سريع" نقلل التكرار، إذا "بطيء" نزيد التكرار
             const adjustedCycles = Math.max(1, Math.round(pattern.cycles * (1 / speedModifier)));
 
             for (let c = 0; c < adjustedCycles; c++) {
                 for (const dose of pattern.doseSeq) {
-                    // التحقق من المخزون فقط في أيام الجرعة
                     if (dose > 0 && remainingInventory < dose) break; 
 
                     plan.push({
@@ -126,7 +150,7 @@ export const generatePlan = (
                         isPast: false
                     });
 
-                    if (dose > 0) remainingInventory -= dose;
+                    if (dose > 0) remainingInventory = safeRound(remainingInventory - dose);
                     currentDate = addDays(currentDate, 1);
                 }
                 if (remainingInventory < 0.5) break;
@@ -138,7 +162,7 @@ export const generatePlan = (
     return plan;
 };
 
-// --- إعادة الحساب الديناميكي (عند تسجيل جرعة يومية) ---
+// --- إعادة الحساب الديناميكي ---
 export const adjustPlan = (
     originalPlan: PlanDay[],
     logs: DailyLog[],
@@ -147,41 +171,33 @@ export const adjustPlan = (
     medForm: MedForm = 'tablet'
 ): PlanDay[] => {
     
-    // ترتيب السجلات زمنياً
+    // ترتيب السجلات
     const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (sortedLogs.length === 0) {
-        // إذا لم توجد سجلات، نولد خطة جديدة من البداية
         return originalPlan.length > 0 
             ? generatePlan(totalInitialInventory, originalPlan[0].plannedDose, originalPlan[0].date, speedModifier, [], medForm)
             : [];
     }
 
-    // آخر يوم تم تسجيله
     const lastLog = sortedLogs[sortedLogs.length - 1];
-    
-    // حساب ما تم استهلاكه
     const totalUsed = sortedLogs.reduce((acc, log) => acc + log.doseTaken, 0);
-    
-    // المتبقي الفعلي
-    const remainingInventory = Math.max(0, totalInitialInventory - totalUsed);
+    const remainingInventory = Math.max(0, safeRound(totalInitialInventory - totalUsed));
 
-    // الأيام الماضية (نحتفظ بها كما هي في التاريخ)
+    // الاحتفاظ بالتاريخ
     const historyDays = originalPlan.filter(day => day.date <= lastLog.date).map(day => {
         const log = sortedLogs.find(l => l.date === day.date);
         return { ...day, isPast: true, log: log || undefined };
     });
 
-    // تحديد نقطة الانطلاق الجديدة
-    // إذا كان آخر يوم 0 (يوم راحة)، نبحث عن آخر جرعة حقيقية أخذها لنعرف مستواه
+    // نقطة الانطلاق الجديدة
     let startPoint = lastLog.doseTaken;
     if (startPoint === 0) {
         const lastActive = [...sortedLogs].reverse().find(l => l.doseTaken > 0);
-        // إذا وجدنا آخر جرعة فعالة، نعتمدها، وإلا نعود لبداية الخطة
         startPoint = lastActive ? lastActive.doseTaken : (originalPlan[0]?.plannedDose || 0.5);
     }
 
-    // توليد المستقبل بناءً على المعطيات الجديدة
+    // توليد المستقبل
     const futureDays = generatePlan(
         remainingInventory,
         startPoint,
