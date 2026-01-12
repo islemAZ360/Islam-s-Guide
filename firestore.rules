@@ -2,33 +2,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // =========================================================
+    // 🛡️ HELPER FUNCTIONS (دوال مساعدة للتحقق والحماية)
+    // =========================================================
     
+    // التحقق من تسجيل الدخول
     function isSignedIn() {
       return request.auth != null;
     }
     
+    // التحقق من ملكية المستند
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
     
+    // جلب بيانات المستخدم الحالي من القاعدة
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Admin Check
+    // التحقق من صلاحية "أدمن"
     function isAdmin() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
-        request.auth.token.email == 'admin@islamguide.com' ||
-        request.auth.token.email == 'islamaz@bomba.com'
+        // Hardcoded fallback for bootstrap admins (remove in production if user collection is seeded)
+        request.auth.token.email.matches('.*@islamguide.com') 
       );
     }
     
+    // التحقق من صلاحية "طبيب معتمد"
     function isApprovedDoctor() {
-      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let user = getUserData();
       return isSignedIn() && user.role == 'doctor' && user.doctorData.accountStatus == 'approved';
     }
+
+    // التحقق من البيانات القادمة (Incoming Data Helpers)
+    function incomingData() {
+      return request.resource.data;
+    }
+    
+    // التحقق من عدم تغيير حقل معين (Immutability)
+    function notUpdating(field) {
+      return !(field in incomingData()) || resource.data[field] == incomingData()[field];
+    }
+
+    // التحقق من صحة النصوص (الطول)
+    function isValidString(text, min, max) {
+      return text is string && text.size() >= min && text.size() <= max;
+    }
+
+    // =========================================================
+    // 📂 COLLECTION RULES (قواعد المجموعات)
+    // =========================================================
 
     // --- 1. Users Collection ---
     match /users/{userId} {
@@ -38,66 +63,107 @@ service cloud.firestore {
       // Read Permissions
       allow read: if isSignedIn() && (
         isOwner(userId) || 
+        // Doctors can read specific profiles (pending/approved doctors logic needed?)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        (isApprovedDoctor() && (resource.data.role == 'normal_user' || resource.data.role == 'patient')) ||
-        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid)
+        // Approved doctors can read their assigned patients
+        (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        // Allow reading doctors list for selection (usually handled by query filters, but good to be explicit)
+        (resource.data.role == 'doctor')
       );
 
-      // Create: Anyone
-      allow create: if isSignedIn() && isOwner(userId);
+      // Create: Users can create their own profile
+      allow create: if isSignedIn() && isOwner(userId) && (
+        // Validate initial role
+        (!('role' in incomingData()) || incomingData().role in ['patient', 'normal_user', 'doctor'])
+      );
 
-      // Update
+      // Update: Strict validation
       allow update: if isSignedIn() && (
         (isOwner(userId) && 
-         request.resource.data.role != 'admin' &&
-         (resource.data.isBanned == false || request.resource.data.isBanned == resource.data.isBanned)
+         // 🚫 SECURITY: User cannot change their own role or banned status
+         notUpdating('role') && 
+         notUpdating('isBanned') &&
+         // Validation
+         (incomingData().age == null || (incomingData().age > 10 && incomingData().age < 120))
         ) ||
+        // Doctor updating patient data (Plan assignment)
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
+        // Doctor accepting/rejecting patient request
         (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
       
-      // التعديل الجديد هنا: السماح للمستخدم بحذف حسابه
+      // Delete: Users can delete their own account (GDPR compliance)
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      allow read, write, delete: if isAdmin();
+      allow read, delete: if isAdmin();
 
       allow read: if isSignedIn() && (
+        // Public rooms
         resource.data.isDoctorRoom == false ||
+        // Doctor sees their own rooms
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
+        // Patient sees their assigned doctor's room
         (resource.data.isDoctorRoom == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      allow create: if isApprovedDoctor();
-      allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      // Only approved doctors can create rooms
+      allow create: if isApprovedDoctor() && 
+                    isValidString(incomingData().name, 3, 50);
       
+      // Creator can update
+      allow update: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      
+      // Messages Sub-collection
       match /messages/{msgId} {
-        allow read, write: if isSignedIn();
+        allow read: if isSignedIn();
+        // Create message: Must be authenticated and valid text
+        allow create: if isSignedIn() && 
+                      isValidString(incomingData().text, 1, 1000) &&
+                      incomingData().senderId == request.auth.uid;
       }
     }
 
     // --- 3. Articles (CMS) ---
     match /articles/{articleId} {
       allow read, write, delete: if isAdmin();
+      
+      // Public read for published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
-      allow create: if isApprovedDoctor();
+      
+      // Doctors can create drafts/articles
+      allow create: if isApprovedDoctor() && 
+                    isValidString(incomingData().title, 5, 200) &&
+                    isValidString(incomingData().content, 20, 10000);
+                    
+      // Doctors can edit/delete their own articles
       allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
     }
 
     // --- 4. Support Tickets ---
     match /tickets/{ticketId} {
       allow read, write, delete: if isAdmin();
+      
+      // User can read/update their own tickets
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn();
+      
+      allow create: if isSignedIn() && 
+                    incomingData().userId == request.auth.uid &&
+                    isValidString(incomingData().subject, 3, 200);
+                    
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn(); 
+      // System writes logs; users shouldn't write directly usually, 
+      // but if client-side logging is used, verify structure.
+      allow create: if isSignedIn() && 
+                    incomingData().keys().hasAll(['action', 'timestamp']) &&
+                    request.resource.data.timestamp is number;
     }
   }
 }

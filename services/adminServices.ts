@@ -1,94 +1,201 @@
 import { 
-    collection, addDoc, updateDoc, doc, getDocs, query, orderBy 
+    collection, doc, writeBatch, getDocs, query, orderBy, Timestamp 
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { AuditLog, Ticket, Article, UserProfile } from '../types';
+import { Article, Ticket, UserProfile } from '../types';
 
-// --- Audit Logger (نظام المراقبة) ---
-// يسجل كل حركة يقوم بها الأدمن لضمان عدم التلاعب
-export const logAdminAction = async (adminUser: UserProfile, action: string, details: string, targetId?: string) => {
-    if (adminUser.role !== 'admin' || !adminUser.uid) return;
-    
+// نتيجة العملية الموحدة
+interface ServiceResult {
+    success: boolean;
+    error?: string;
+}
+
+/**
+ * Helper to create an audit log reference and data
+ */
+const createAuditLog = (batch: any, adminUid: string, adminName: string, action: string, details: string, targetId?: string) => {
+    const logRef = doc(collection(db, 'audit_logs'));
+    batch.set(logRef, {
+        adminId: adminUid,
+        adminName: adminName,
+        action: action,
+        details: details,
+        targetId: targetId || null,
+        timestamp: Date.now()
+    });
+};
+
+// --- Atomic Admin Actions (Batch Write) ---
+
+/**
+ * Approve a doctor and log the action atomically.
+ */
+export const approveDoctorService = async (
+    admin: UserProfile, 
+    doctorUid: string, 
+    doctorName: string
+): Promise<ServiceResult> => {
+    if (!admin.uid) return { success: false, error: "Admin ID missing" };
+
     try {
-        await addDoc(collection(db, 'audit_logs'), {
-            adminId: adminUser.uid,
-            adminName: adminUser.name,
-            action,
-            details,
-            targetId: targetId || null,
-            timestamp: Date.now()
-        } as AuditLog);
-    } catch (e) {
-        console.error("Failed to log audit:", e);
+        const batch = writeBatch(db);
+        
+        // 1. Update Doctor Status
+        const doctorRef = doc(db, 'users', doctorUid);
+        batch.update(doctorRef, {
+            "doctorData.accountStatus": "approved",
+            "doctorData.rejectionReason": null
+        });
+
+        // 2. Create Audit Log
+        createAuditLog(batch, admin.uid, admin.name, 'APPROVE_DOCTOR', `Approved doctor account for ${doctorName}`, doctorUid);
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: any) {
+        console.error("Approve Doctor Error:", e);
+        return { success: false, error: e.message };
     }
 };
 
-// --- User Management (إدارة المستخدمين) ---
+/**
+ * Reject a doctor and log the action atomically.
+ */
+export const rejectDoctorService = async (
+    admin: UserProfile, 
+    doctorUid: string, 
+    doctorName: string, 
+    reason: string
+): Promise<ServiceResult> => {
+    if (!admin.uid) return { success: false, error: "Admin ID missing" };
 
-// وضع علامة "خطر" على المستخدم لمراقبته
-export const flagUser = async (admin: UserProfile, targetUid: string, isFlagged: boolean) => {
-    await updateDoc(doc(db, 'users', targetUid), { isFlagged });
-    await logAdminAction(admin, 'FLAG_USER', `Set flagged status to ${isFlagged}`, targetUid);
+    try {
+        const batch = writeBatch(db);
+        
+        const doctorRef = doc(db, 'users', doctorUid);
+        batch.update(doctorRef, {
+            "doctorData.accountStatus": "rejected",
+            "doctorData.rejectionReason": reason
+        });
+
+        createAuditLog(batch, admin.uid, admin.name, 'REJECT_DOCTOR', `Rejected doctor ${doctorName}. Reason: ${reason}`, doctorUid);
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 };
 
-// حفظ ملاحظات سرية عن المستخدم (لا يراها المستخدم)
-export const saveDoctorNotes = async (targetUid: string, notes: string) => {
-    // نستخدم حقل doctorNotes لهذا الغرض، سواء كتبها طبيب أو أدمن
-    await updateDoc(doc(db, 'users', targetUid), { doctorNotes: notes });
+/**
+ * Ban/Unban a user and log atomically.
+ */
+export const toggleBanService = async (
+    admin: UserProfile, 
+    targetUid: string, 
+    targetName: string, 
+    newBanStatus: boolean
+): Promise<ServiceResult> => {
+    if (!admin.uid) return { success: false, error: "Admin ID missing" };
+
+    try {
+        const batch = writeBatch(db);
+        
+        const userRef = doc(db, 'users', targetUid);
+        batch.update(userRef, { isBanned: newBanStatus });
+
+        createAuditLog(
+            batch, 
+            admin.uid, 
+            admin.name, 
+            newBanStatus ? 'BAN_USER' : 'UNBAN_USER', 
+            `${newBanStatus ? 'Banned' : 'Unbanned'} user ${targetName}`, 
+            targetUid
+        );
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 };
 
-// --- CMS (نظام إدارة المحتوى) ---
+/**
+ * Delete a user and log atomically.
+ */
+export const deleteUserService = async (
+    admin: UserProfile, 
+    targetUid: string
+): Promise<ServiceResult> => {
+    if (!admin.uid) return { success: false, error: "Admin ID missing" };
 
-export const publishArticle = async (admin: UserProfile, article: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
-    if (!admin.uid) return;
-    
-    await addDoc(collection(db, 'articles'), {
-        ...article,
-        createdAt: Date.now(),
-        authorName: admin.name,
-        authorId: admin.uid,
-        authorRole: 'admin',
-        isPublished: true
-    });
-    await logAdminAction(admin, 'CREATE_ARTICLE', `Published article: ${article.title}`);
+    try {
+        const batch = writeBatch(db);
+        
+        const userRef = doc(db, 'users', targetUid);
+        batch.delete(userRef);
+
+        createAuditLog(batch, admin.uid, admin.name, 'DELETE_USER', `Permanently deleted user ID ${targetUid}`, targetUid);
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 };
+
+/**
+ * Publish article and log atomically.
+ */
+export const publishArticleService = async (
+    admin: UserProfile, 
+    article: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>
+): Promise<ServiceResult> => {
+    if (!admin.uid) return { success: false, error: "Admin ID missing" };
+
+    try {
+        const batch = writeBatch(db);
+        
+        // Need to create ref first to get ID
+        const articleRef = doc(collection(db, 'articles'));
+        batch.set(articleRef, {
+            ...article,
+            createdAt: Date.now(),
+            authorName: admin.name,
+            authorId: admin.uid,
+            authorRole: 'admin',
+            isPublished: true
+        });
+
+        createAuditLog(batch, admin.uid, admin.name, 'PUBLISH_ARTICLE', `Published article: ${article.title}`, articleRef.id);
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+};
+
+// --- Read Operations (Direct Queries) ---
 
 export const fetchArticles = async () => {
-    const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+    try {
+        const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
 };
-
-// --- Support Tickets (نظام الدعم الفني) ---
 
 export const fetchAllTickets = async () => {
-    const q = query(collection(db, 'tickets'), orderBy('lastUpdate', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Ticket));
-};
-
-export const updateTicketStatus = async (admin: UserProfile, ticketId: string, status: string) => {
-    await updateDoc(doc(db, 'tickets', ticketId), { 
-        status,
-        lastUpdate: Date.now()
-    });
-    await logAdminAction(admin, 'UPDATE_TICKET', `Changed ticket status to ${status}`, ticketId);
-};
-
-export const replyToTicket = async (admin: UserProfile, ticketId: string, text: string, currentMessages: any[]) => {
-    if (!admin.uid) return;
-
-    const newMessage = {
-        senderId: admin.uid,
-        senderName: admin.name,
-        text,
-        timestamp: Date.now(),
-        isAdmin: true // This flags the message as coming from Support/Admin
-    };
-    
-    await updateDoc(doc(db, 'tickets', ticketId), {
-        messages: [...currentMessages, newMessage],
-        lastUpdate: Date.now(),
-        status: 'pending' // انتظار رد المستخدم
-    });
+    try {
+        const q = query(collection(db, 'tickets'), orderBy('lastUpdate', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Ticket));
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
 };

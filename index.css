@@ -4,39 +4,74 @@
 
 @layer base {
   :root {
-    --primary-glow: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+    /* --- Design System Variables (نظام الألوان والقياسات) --- */
+    
+    /* Primary Brand Colors (Indigo/Violet) */
+    --primary-50: #eef2ff;
+    --primary-100: #e0e7ff;
+    --primary-500: #6366f1;
+    --primary-600: #4f46e5;
+    --primary-glow: rgba(99, 102, 241, 0.5);
+
+    /* Backgrounds (Slate/Dark) */
+    --bg-deep: #020617;
+    --bg-surface: #0f172a;
+    --bg-glass: rgba(15, 23, 42, 0.7);
+
+    /* Status Colors */
+    --status-success: #10b981;
+    --status-warning: #f59e0b;
+    --status-danger: #f43f5e;
+
+    /* Focus Ring (Accessibility) */
+    --focus-ring: #818cf8;
+  }
+
+  html {
+    /* Smooth scrolling only if motion is allowed */
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-[#020617] text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200;
-    /* تحسين عرض الخطوط العربية */
-    font-family: 'Tajawal', 'Inter', sans-serif;
+    
+    /* Typography Setup */
+    font-family: 'Tajawal', 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden; /* منع التمرير الأفقي غير المرغوب فيه */
+    
+    /* Prevent horizontal overflow issues */
+    overflow-x: hidden; 
+    width: 100%;
   }
 
-  /* تحسين شكل شريط التمرير الافتراضي للمتصفح */
+  /* Custom Scrollbar Styling (Webkit) */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: #0f172a; 
+    background: var(--bg-surface); 
   }
   ::-webkit-scrollbar-thumb {
     background: #334155; 
     border-radius: 4px;
-    border: 2px solid #0f172a; /* يعطي شكلاً أنحف */
+    border: 2px solid var(--bg-surface);
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #475569; 
   }
+
+  /* Global Focus Styles for Keyboard Navigation */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
-  /* فئة الزجاج الموحدة - خفيفة على المعالج */
+  /* Glassmorphism Utility */
   .glass {
     @apply bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-lg;
   }
@@ -45,14 +80,13 @@
     @apply bg-slate-950/80 backdrop-blur-xl border border-white/5;
   }
 
-  /* تأثير التفاعل */
+  /* Interactive Glass Hover Effect */
   .glass-hover {
     @apply transition-all duration-300 hover:bg-slate-800/60 hover:border-indigo-500/30 hover:shadow-indigo-500/10 hover:shadow-xl;
   }
 }
 
 @layer utilities {
-  /* إخفاء شريط التمرير مع الحفاظ على الوظيفة (للموبايل) */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -61,7 +95,6 @@
     display: none;
   }
 
-  /* شريط تمرير مخصص ونحيف للقوائم الجانبية والدردشة */
   .custom-scrollbar::-webkit-scrollbar {
     width: 5px;
     height: 5px;
@@ -73,15 +106,13 @@
     @apply bg-slate-700/30 rounded-full hover:bg-slate-600/50 transition-colors;
   }
 
-  /* نصوص متدرجة احترافية */
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400;
   }
 }
 
-/* === مكتبة الرسوم المتحركة (Optimized Animations) === */
+/* === Animation Library === */
 
-/* ظهور ناعم للعناصر */
 @keyframes fadeInScale {
   from {
     opacity: 0;
@@ -93,43 +124,96 @@
   }
 }
 
-/* حركة عائمة للخلفية (خفيفة جداً) */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
 }
 
-/* نبض خفيف للتنبيهات */
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-  50% { opacity: .8; box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.3); }
+  50% { opacity: .8; box-shadow: 0 0 20px 0 var(--primary-glow); }
 }
 
+/* Utility Classes for Animation */
 .animate-in {
   animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity; /* تحسين الأداء بإخبار المتصفح */
+  will-change: transform, opacity;
 }
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-pulse-glow {
   animation: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* فئات مساعدة للحركة */
 .slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
 .slide-in-from-right-4 { --tw-enter-translate-x: 1rem; }
 .zoom-in { --tw-enter-scale: 0.95; }
 
-/* تحسين الطباعة */
+/* === Global Reduced Motion (Accessibility) === */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-pulse, 
+  .animate-bounce, 
+  .animate-spin, 
+  .animate-float, 
+  .animate-pulse-glow {
+    animation: none !important;
+  }
+}
+
+/* === Global Print Styles === */
 @media print {
   body {
-    background-color: white;
-    color: black;
+    background-color: white !important;
+    color: black !important;
+    background-image: none !important;
   }
-  .no-print {
-    display: none;
+
+  /* Hide interactive/nav elements in print */
+  nav, 
+  aside, 
+  .fixed, 
+  .absolute, 
+  button, 
+  .no-print,
+  [role="dialog"] button {
+    display: none !important;
+  }
+
+  /* Ensure main content is visible */
+  main, 
+  .print\:block,
+  [role="dialog"] {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Reset layout constraints */
+  .max-w-4xl, .max-w-7xl, .lg\:col-span-8 {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Ensure text contrast */
+  p, h1, h2, h3, span, div {
+    color: black !important;
+    text-shadow: none !important;
   }
 }

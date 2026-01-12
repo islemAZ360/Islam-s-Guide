@@ -2,14 +2,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   User, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, // دالة إنشاء الحساب
+  createUserWithEmailAndPassword, 
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  updateProfile // لتحديث اسم المستخدم فوراً
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore'; // للكتابة في قاعدة البيانات
+import { doc, setDoc } from 'firebase/firestore'; 
 import { auth, googleProvider, db } from '../services/firebase';
+import { useLanguage } from './LanguageContext';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -17,9 +19,9 @@ interface AuthContextType {
   error: string | null;
   isDemoMode: boolean;
   loginWithEmail: (e: string, p: string) => Promise<void>;
-  // الدالة الجديدة لإنشاء الحساب
   signupWithEmail: (e: string, p: string, name: string, data: { age: number, weight: number, height: number }) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   enableDemoMode: () => void;
   clearError: () => void;
@@ -28,12 +30,36 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { language } = useLanguage(); // Access language for error localization
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // مراقبة حالة المستخدم (Firebase Listener)
+  // Helper to translate Firebase errors
+  const getLocalizedError = (errorCode: string) => {
+    const isAr = language === 'ar';
+    switch (errorCode) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return isAr ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : "Invalid email or password.";
+      case 'auth/email-already-in-use':
+        return isAr ? "البريد الإلكتروني مستخدم بالفعل." : "Email is already in use.";
+      case 'auth/weak-password':
+        return isAr ? "كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)." : "Password is too weak (min 6 chars).";
+      case 'auth/invalid-email':
+        return isAr ? "صيغة البريد الإلكتروني غير صحيحة." : "Invalid email format.";
+      case 'auth/too-many-requests':
+        return isAr ? "محاولات كثيرة جداً. يرجى المحاولة لاحقاً." : "Too many attempts. Try again later.";
+      case 'auth/network-request-failed':
+        return isAr ? "خطأ في الاتصال. تحقق من الإنترنت." : "Network error. Check your connection.";
+      default:
+        return isAr ? "حدث خطأ غير متوقع. حاول مرة أخرى." : "An unexpected error occurred.";
+    }
+  };
+
+  // Monitor Auth State
   useEffect(() => {
     if (!auth) {
         setLoading(false);
@@ -50,88 +76,106 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [isDemoMode]);
 
-  // تسجيل الدخول
+  // Login
   const loginWithEmail = async (email: string, password: string) => {
-    if (!auth) {
-        setError("Authentication service is not initialized.");
-        return;
-    }
-
+    if (!auth) return;
     setLoading(true);
     setError(null);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
-      let errorMessage = 'Login Error';
-      if (err.code === 'auth/user-not-found') errorMessage = 'User not found.';
-      else if (err.code === 'auth/wrong-password') errorMessage = 'Incorrect password.';
-      else if (err.code === 'auth/invalid-email') errorMessage = 'Invalid email format.';
-      else errorMessage = err.message;
-      setError(errorMessage);
+      console.error("Login Error:", err.code);
+      setError(getLocalizedError(err.code));
     } finally {
       setLoading(false);
     }
   };
 
-  // --- دالة إنشاء الحساب الجديدة ---
+  // Signup with Profile Creation
   const signupWithEmail = async (email: string, password: string, name: string, data: { age: number, weight: number, height: number }) => {
     if (!auth) return;
-    
     setLoading(true);
     setError(null);
 
     try {
-        // 1. إنشاء الحساب في Firebase Auth
+        // 1. Create Auth User
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. تحديث الاسم في ملف Auth الشخصي
+        // 2. Update Display Name
         await updateProfile(user, { displayName: name });
 
-        // 3. إنشاء ملف المستخدم في قاعدة البيانات (Firestore) مع البيانات الفيزيائية
-        await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            email: email,
-            name: name,
-            role: 'normal_user', // افتراضياً مستخدم عادي
-            age: data.age,
-            weight: data.weight,
-            height: data.height,
-            setupComplete: false, // لا يزال يحتاج لإعداد الدواء
-            createdAt: new Date().toISOString(),
-            // تهيئة القيم الفارغة لتجنب الأخطاء لاحقاً
-            plan: [],
-            logs: [],
-            inventory: { boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 }
-        });
+        // 3. Create Firestore Profile
+        // Note: If this fails, we have an orphaned auth user. 
+        // In a production app, we might want to delete the user or use a Cloud Function.
+        try {
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                email: email,
+                name: name,
+                role: 'normal_user',
+                age: data.age,
+                weight: data.weight,
+                height: data.height,
+                setupComplete: false,
+                createdAt: new Date().toISOString(),
+                plan: [],
+                logs: [],
+                inventory: { boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 }
+            });
+        } catch (firestoreErr) {
+            console.error("Firestore Profile Error:", firestoreErr);
+            // Attempt cleanup (optional, careful with this in production)
+            // await user.delete(); 
+            throw new Error(language === 'ar' ? 'فشل إنشاء الملف الشخصي. تحقق من الاتصال.' : 'Failed to create user profile. Check connection.');
+        }
 
     } catch (err: any) {
-        let errorMessage = 'Signup Error';
-        if (err.code === 'auth/email-already-in-use') errorMessage = 'Email already registered.';
-        else if (err.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters.';
-        else errorMessage = err.message;
-        setError(errorMessage);
+        console.error("Signup Error:", err.code || err.message);
+        setError(err.code ? getLocalizedError(err.code) : err.message);
     } finally {
         setLoading(false);
     }
   };
 
+  // Google Login
   const loginWithGoogle = async () => {
     if (!auth) return;
     setLoading(true);
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-      // ملاحظة: مع جوجل قد نحتاج خطوة إضافية لطلب العمر والوزن إذا كان مستخدماً جديداً، 
-      // لكن سنكتفي بالدخول المباشر حالياً للتبسيط.
+      // Profile check/creation should happen in a separate step or via Cloud Functions triggers
     } catch (err: any) {
-      setError('Google Login Error: ' + err.message);
+      console.error("Google Login Error:", err.code);
+      setError(getLocalizedError(err.code));
     } finally {
       setLoading(false);
     }
   };
 
+  // Password Reset
+  const resetPassword = async (email: string) => {
+      if (!auth) return;
+      if (!email) {
+          setError(language === 'ar' ? "يرجى إدخال البريد الإلكتروني." : "Please enter your email.");
+          return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+          await sendPasswordResetEmail(auth, email);
+          alert(language === 'ar' ? "تم إرسال رابط إعادة التعيين إلى بريدك." : "Password reset link sent to your email.");
+      } catch (err: any) {
+          console.error("Reset Password Error:", err.code);
+          setError(getLocalizedError(err.code));
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  // Logout
   const logout = async () => {
     try {
       if (!isDemoMode && auth) {
@@ -139,19 +183,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setIsDemoMode(false);
       setCurrentUser(null);
+      // Clear sensitive data from local storage
       localStorage.removeItem('taper_profile');
       localStorage.removeItem('taper_plan');
+      // Force reload to clear memory states
       window.location.reload();
     } catch (err: any) {
       console.error("Logout Error:", err);
     }
   };
 
+  // Demo Mode
   const enableDemoMode = () => {
     setIsDemoMode(true);
+    // Create a realistic-looking fake user object
     setCurrentUser({ 
       uid: 'demo-user', 
-      email: 'demo@example.com', 
+      email: 'demo@islamguide.com', 
       displayName: 'Demo User',
       emailVerified: true,
       isAnonymous: true,
@@ -160,7 +208,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       refreshToken: '',
       tenantId: null,
       delete: async () => {},
-      getIdToken: async () => '',
+      getIdToken: async () => 'demo-token',
       getIdTokenResult: async () => ({} as any),
       reload: async () => {},
       toJSON: () => ({}),
@@ -179,8 +227,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       error, 
       isDemoMode,
       loginWithEmail, 
-      signupWithEmail, // تصدير الدالة الجديدة
+      signupWithEmail, 
       loginWithGoogle, 
+      resetPassword,
       logout,
       enableDemoMode,
       clearError

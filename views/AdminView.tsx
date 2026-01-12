@@ -1,27 +1,39 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-    collection, updateDoc, doc, addDoc, query, orderBy, deleteDoc, onSnapshot 
+    collection, query, orderBy, deleteDoc, onSnapshot, doc 
 } from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
+import { db } from '../services/firebase';
 import { UserProfile, Article } from '../types';
 import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle } from 'lucide-react';
 
-// المكونات الأساسية
+// Services
+import { 
+    approveDoctorService, 
+    rejectDoctorService, 
+    toggleBanService, 
+    deleteUserService, 
+    publishArticleService 
+} from '../services/adminServices';
+
+// Contexts
+import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext';
+
+// Components
 import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
-// المكونات الفرعية
+// Sub-views
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminDoctors } from './admin/AdminDoctors';
 import { AdminUsers } from './admin/AdminUsers';
 import { AdminCMS } from './admin/AdminCMS';
 
-import { useLanguage } from '../contexts/LanguageContext';
-
 export const AdminView = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
+    const { userProfile } = useData(); // Get current admin profile for logging
 
     // -- Global State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
@@ -37,13 +49,14 @@ export const AdminView = () => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
 
-    // Refs for Focus Management (الآن يتم ربطها بـ div قياسي)
+    // Refs
     const modalRef = useRef<HTMLDivElement>(null);
     const rejectInputRef = useRef<HTMLTextAreaElement>(null);
 
-    // -- 1. REAL-TIME DATA FETCHING --
+    // -- 1. REAL-TIME DATA FETCHING (Keep direct listeners for live UI) --
     useEffect(() => {
         setLoading(true);
+        // Listen to Users
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -52,10 +65,11 @@ export const AdminView = () => {
             setLoading(false);
         }, (error) => {
             console.error("Error fetching users:", error);
-            showStatus('error', "Failed to fetch users data");
+            showStatus('error', "Failed to sync users data");
             setLoading(false);
         });
 
+        // Listen to Articles
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
@@ -67,7 +81,7 @@ export const AdminView = () => {
         };
     }, []);
 
-    // Focus management for modals
+    // Focus management
     useEffect(() => {
         if (selectedDoctor || showRejectModal) {
             setTimeout(() => {
@@ -83,20 +97,20 @@ export const AdminView = () => {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    // -- ACTIONS --
+    // -- ACTIONS (Using Atomic Services) --
     
     const approveDoctor = async (docUid: string) => {
-        if (!window.confirm("Confirm doctor approval?")) return;
-        try {
-            await updateDoc(doc(db, "users", docUid), {
-                "doctorData.accountStatus": "approved",
-                "doctorData.rejectionReason": null 
-            });
-            showStatus('success', "Doctor approved successfully.");
+        if (!userProfile) return;
+        if (!window.confirm(language === 'ar' ? "هل تؤكد اعتماد هذا الطبيب؟" : "Confirm doctor approval?")) return;
+        
+        const doctorName = users.find(u => u.uid === docUid)?.name || "Unknown";
+        const result = await approveDoctorService(userProfile, docUid, doctorName);
+
+        if (result.success) {
+            showStatus('success', language === 'ar' ? "تم اعتماد الطبيب بنجاح." : "Doctor approved successfully.");
             if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
-        } catch (e) { 
-            console.error(e);
-            showStatus('error', "Failed to approve doctor.");
+        } else {
+            showStatus('error', result.error || "Failed to approve doctor.");
         }
     };
 
@@ -107,79 +121,78 @@ export const AdminView = () => {
     };
 
     const confirmReject = async () => {
-        if (!selectedDoctor?.uid || !rejectionReason.trim()) {
-            showStatus('error', "Rejection reason is required.");
+        if (!userProfile || !selectedDoctor?.uid) return;
+        if (!rejectionReason.trim()) {
+            showStatus('error', language === 'ar' ? "يرجى ذكر سبب الرفض." : "Rejection reason is required.");
             return;
         }
 
-        try {
-            await updateDoc(doc(db, "users", selectedDoctor.uid), {
-                "doctorData.accountStatus": "rejected",
-                "doctorData.rejectionReason": rejectionReason
-            });
-            showStatus('success', "Doctor request rejected.");
+        const result = await rejectDoctorService(userProfile, selectedDoctor.uid, selectedDoctor.name, rejectionReason);
+
+        if (result.success) {
+            showStatus('success', language === 'ar' ? "تم رفض الطلب." : "Doctor request rejected.");
             setShowRejectModal(false);
             setSelectedDoctor(null);
             setRejectionReason("");
-        } catch (e) { 
-            console.error(e);
-            showStatus('error', "Failed to reject request.");
+        } else {
+            showStatus('error', result.error || "Failed to reject request.");
         }
     };
 
-    const toggleBan = async (user: UserProfile) => {
-        if (!user.uid) return;
-        const newVal = !user.isBanned;
-        if(window.confirm(newVal ? "Ban this user?" : "Unban this user?")) {
-            try {
-                await updateDoc(doc(db, "users", user.uid), { isBanned: newVal });
-                showStatus('success', `User ${newVal ? 'banned' : 'unbanned'}.`);
-            } catch (e) {
-                showStatus('error', "Action failed.");
+    const toggleBan = async (targetUser: UserProfile) => {
+        if (!userProfile || !targetUser.uid) return;
+        const newVal = !targetUser.isBanned;
+        
+        if(window.confirm(newVal ? 
+            (language === 'ar' ? "حظر هذا المستخدم؟" : "Ban this user?") : 
+            (language === 'ar' ? "فك الحظر عن المستخدم؟" : "Unban this user?")
+        )) {
+            const result = await toggleBanService(userProfile, targetUser.uid, targetUser.name, newVal);
+            
+            if (result.success) {
+                showStatus('success', language === 'ar' ? `تم ${newVal ? 'حظر' : 'فك حظر'} المستخدم.` : `User ${newVal ? 'banned' : 'unbanned'}.`);
+            } else {
+                showStatus('error', result.error || "Action failed.");
             }
         }
     };
 
     const deleteUser = async (targetUid: string) => {
-        if (!window.confirm("Warning: This will permanently delete the user and all their data. Continue?")) return;
-        try {
-            await deleteDoc(doc(db, "users", targetUid));
-            showStatus('success', "User deleted.");
+        if (!userProfile) return;
+        if (!window.confirm(language === 'ar' ? "تحذير: هذا الإجراء سيحذف المستخدم نهائياً. هل أنت متأكد؟" : "Warning: This will permanently delete the user. Continue?")) return;
+        
+        const result = await deleteUserService(userProfile, targetUid);
+
+        if (result.success) {
+            showStatus('success', language === 'ar' ? "تم حذف المستخدم." : "User deleted.");
             if (selectedDoctor?.uid === targetUid) setSelectedDoctor(null);
-        } catch (e) {
-            console.error("Error deleting user:", e);
-            showStatus('error', "Failed to delete user.");
+        } else {
+            showStatus('error', result.error || "Failed to delete user.");
         }
     };
 
     const publishArticle = async (articleData: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
-        const currentUser = auth?.currentUser;
+        if (!userProfile) return;
         if (!articleData.title || !articleData.content) {
-            showStatus('error', "Title and content are required.");
+            showStatus('error', language === 'ar' ? "العنوان والمحتوى مطلوبان." : "Title and content are required.");
             return;
         }
         
-        try {
-            await addDoc(collection(db, "articles"), {
-                ...articleData,
-                isPublished: true,
-                createdAt: Date.now(),
-                authorName: currentUser?.displayName || "System Admin",
-                authorRole: "admin",
-                authorId: currentUser?.uid || "ADMIN_CONSOLE"
-            });
-            showStatus('success', "Article published.");
-        } catch (e) { 
-            console.error(e); 
-            showStatus('error', "Failed to publish article.");
+        const result = await publishArticleService(userProfile, articleData);
+
+        if (result.success) {
+            showStatus('success', language === 'ar' ? "تم نشر المقال." : "Article published.");
+        } else {
+            showStatus('error', result.error || "Failed to publish article.");
         }
     };
 
+    // Direct delete for articles (less critical, can be moved to service later if needed)
     const deleteArticle = async (id: string) => {
-        if(window.confirm("Delete this article?")) {
+        if(window.confirm(language === 'ar' ? "حذف هذا المقال؟" : "Delete this article?")) {
             try {
                 await deleteDoc(doc(db, "articles", id));
-                showStatus('success', "Article deleted.");
+                showStatus('success', language === 'ar' ? "تم الحذف." : "Article deleted.");
             } catch (e) {
                 showStatus('error', "Failed to delete article.");
             }
@@ -292,7 +305,6 @@ export const AdminView = () => {
                     aria-modal="true"
                     aria-labelledby="modal-doc-name"
                 >
-                    {/* WRAPPER DIV for REF (Fixes TypeScript Error) */}
                     <div 
                         ref={modalRef} 
                         tabIndex={-1}
@@ -377,28 +389,29 @@ export const AdminView = () => {
                     aria-modal="true"
                     aria-labelledby="reject-title"
                 >
-                    {/* WRAPPER DIV for FOCUS TRAP */}
                     <div className="w-full max-w-md outline-none">
                         <Card className="!bg-slate-900 border-rose-500/30 shadow-2xl rounded-[2rem] overflow-hidden">
                             <div className="p-6">
                                 <h3 id="reject-title" className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <ShieldAlert className="text-rose-500" aria-hidden="true" /> سبب الرفض
+                                    <ShieldAlert className="text-rose-500" aria-hidden="true" /> {language === 'ar' ? 'سبب الرفض' : 'Rejection Reason'}
                                 </h3>
-                                <p className="text-slate-400 text-sm mb-4">يرجى توضيح سبب رفض طلب الطبيب ليتمكن من تصحيحه.</p>
+                                <p className="text-slate-400 text-sm mb-4">
+                                    {language === 'ar' ? 'يرجى توضيح سبب رفض طلب الطبيب.' : 'Please provide a reason for rejection.'}
+                                </p>
                                 
-                                <label htmlFor="reason-text" className="sr-only">Rejection Reason</label>
+                                <label htmlFor="reason-text" className="sr-only">Reason</label>
                                 <textarea 
                                     id="reason-text"
                                     ref={rejectInputRef}
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none h-32 resize-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-rose-500"
-                                    placeholder="مثال: رقم الترخيص غير واضح، البيانات ناقصة..."
+                                    placeholder={language === 'ar' ? "مثال: نقص في البيانات..." : "E.g. Missing info..."}
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
                                 />
                                 
                                 <div className="flex gap-3 mt-6">
-                                    <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">إلغاء</Button>
-                                    <Button onClick={confirmReject} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">تأكيد الرفض</Button>
+                                    <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">{t('cancel_btn')}</Button>
+                                    <Button onClick={confirmReject} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">{t('reject_btn')}</Button>
                                 </div>
                             </div>
                         </Card>

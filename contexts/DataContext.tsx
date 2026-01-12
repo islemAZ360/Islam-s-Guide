@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore'; // تمت إضافة deleteDoc
+import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore'; 
 import { db } from '../services/firebase';
 import { UserProfile, Inventory, PlanDay, DailyLog } from '../types';
 import { useAuth } from './AuthContext';
@@ -23,6 +23,36 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Dummy Data for Demo Mode
+const DEMO_PROFILE: UserProfile = {
+    uid: 'demo-user',
+    email: 'demo@islamguide.com',
+    name: 'Demo User',
+    role: 'normal_user',
+    setupComplete: true,
+    planType: 'algorithm',
+    medType: 'normal',
+    medForm: 'tablet',
+    medUnit: 'mg',
+    durationMonths: 1,
+    speedModifier: 1.0,
+    progress: 45
+};
+
+const DEMO_INVENTORY: Inventory = { boxes: 2, pillsPerBox: 30, loosePills: 15, totalPills: 75 };
+const DEMO_PLAN: PlanDay[] = Array.from({ length: 30 }).map((_, i) => ({
+    date: new Date(Date.now() + (i - 5) * 86400000).toISOString().split('T')[0],
+    plannedDose: Math.max(0, 10 - i * 0.5),
+    isPast: i < 5
+}));
+const DEMO_LOGS: DailyLog[] = Array.from({ length: 5 }).map((_, i) => ({
+    date: new Date(Date.now() + (i - 5) * 86400000).toISOString().split('T')[0],
+    doseTaken: 10 - i * 0.5,
+    mood: i % 2 === 0 ? 'good' : 'normal',
+    sleepHours: 7 + (i % 2),
+    symptoms: []
+}));
+
 export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, isDemoMode, logout } = useAuth();
   const { t } = useLanguage();
@@ -40,85 +70,105 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 1. Fetch Data Listener
   useEffect(() => {
-    if (!currentUser) {
-      if (!isDemoMode) {
-        // Reset state on logout
+    // A. Handle Logout State
+    if (!currentUser && !isDemoMode) {
         setUserProfile(null);
         setPlan([]);
         setLogs([]);
         setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
         setDataLoading(false);
-      } else {
-        // Demo Mode
-        setDataLoading(false);
-      }
-      return;
+        return;
     }
 
-    // Check if we have pending data from a crash/close
-    const savedLogs = localStorage.getItem('pending_sync_logs');
-    if (savedLogs) {
-        try {
-            const parsedLogs = JSON.parse(savedLogs);
-            if (parsedLogs.length > 0) setLogs(parsedLogs);
-            localStorage.removeItem('pending_sync_logs'); // Clear after load
-        } catch (e) { console.error("Error loading pending logs", e); }
+    // B. Handle Demo Mode (Local Data Only)
+    if (isDemoMode) {
+        setDataLoading(true);
+        // Simulate network delay for realism
+        setTimeout(() => {
+            setUserProfile(DEMO_PROFILE);
+            setInventory(DEMO_INVENTORY);
+            setPlan(DEMO_PLAN);
+            setLogs(DEMO_LOGS);
+            setSpeedModifier(1.0);
+            setDataLoading(false);
+        }, 800);
+        return;
     }
 
-    setDataLoading(true);
-    const docRef = doc(db, "users", currentUser.uid);
-
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
-        
-        if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
-
-        setUserProfile(fetchedProfile);
-
-        // Only update local state from cloud if we are not currently "dirty"
-        if (!isDirty.current) {
-            if (data.plan) setPlan(data.plan);
-            if (data.logs) setLogs(data.logs);
-            if (data.inventory) setInventory(data.inventory);
-            if (data.speedModifier) setSpeedModifier(data.speedModifier);
+    // C. Handle Authenticated User (Firestore Sync)
+    if (currentUser) {
+        // Load pending syncs from local storage in case of previous crash
+        const savedLogs = localStorage.getItem('pending_sync_logs');
+        if (savedLogs) {
+            try {
+                const parsedLogs = JSON.parse(savedLogs);
+                if (parsedLogs.length > 0) setLogs(parsedLogs);
+                localStorage.removeItem('pending_sync_logs'); 
+            } catch (e) { console.error("Error loading pending logs", e); }
         }
 
-        if (data.isBanned) {
-           alert(t('banned_msg'));
-           logout();
-        }
-      } else {
-        // New User Skeleton
-        setUserProfile({
-            uid: currentUser.uid,
-            email: currentUser.email || '',
-            name: currentUser.displayName || 'New User',
-            role: 'normal_user',
-            setupComplete: false,
-            durationMonths: 0
+        setDataLoading(true);
+        const docRef = doc(db, "users", currentUser.uid);
+
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
+                
+                // Merge nested profile data if structured that way
+                if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
+
+                setUserProfile(fetchedProfile);
+
+                // Only update local state from cloud if we are not currently "dirty" (editing)
+                if (!isDirty.current) {
+                    if (data.plan) setPlan(data.plan);
+                    if (data.logs) setLogs(data.logs);
+                    if (data.inventory) setInventory(data.inventory);
+                    if (data.speedModifier) setSpeedModifier(data.speedModifier);
+                }
+
+                if (data.isBanned) {
+                   alert(t('banned_msg'));
+                   logout();
+                }
+            } else {
+                // New User Skeleton (Doc doesn't exist yet)
+                setUserProfile({
+                    uid: currentUser.uid,
+                    email: currentUser.email || '',
+                    name: currentUser.displayName || 'New User',
+                    role: 'normal_user',
+                    setupComplete: false,
+                    durationMonths: 0
+                });
+            }
+            setDataLoading(false);
+        }, (error) => {
+            console.error("Error fetching user data:", error);
+            // Don't block UI on error, just stop loading
+            setDataLoading(false);
         });
-      }
-      setDataLoading(false);
-    }, (error) => {
-      console.error("Error fetching user data:", error);
-      setDataLoading(false);
-    });
 
-    return () => unsubscribe();
+        return () => unsubscribe();
+    }
   }, [currentUser, isDemoMode]);
 
-  // 2. Sync Logic
+  // 2. Sync Logic (Debounced Write)
   useEffect(() => {
+    // Mark as dirty when data changes locally
     if (userProfile?.setupComplete) {
         isDirty.current = true;
     }
 
+    // Local Storage Backup (Always active)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
+    // Cloud Sync (Only for real users)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
+        
+        // Skip sync for doctors who don't have doctor data set up yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -128,8 +178,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                 const progressPercentage = totalDays > 0 ? (daysCompleted / totalDays) * 100 : 0;
 
                 const updateData: any = {
-                    email: currentUser.email,   
-                    uid: currentUser.uid,       
                     lastActive: new Date().toISOString(),
                     ...(userProfile.name ? { name: userProfile.name } : {})
                 };
@@ -151,15 +199,14 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                 isDirty.current = false;
 
             } catch(e) {
-                console.error("Cloud sync failed", e);
+                console.error("Cloud sync failed (offline or permission)", e);
             }
-        }, 5000); 
+        }, 3000); // 3 seconds debounce
 
+        // Safety net for closing tab
         const handleBeforeUnload = () => {
             if (isDirty.current) {
                 localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
-                localStorage.setItem('pending_sync_plan', JSON.stringify(plan));
-                localStorage.setItem('pending_sync_inv', JSON.stringify(inventory));
             }
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -173,12 +220,11 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resyncData = () => {
       setDataLoading(true);
-      setTimeout(() => setDataLoading(false), 1000);
+      setTimeout(() => setDataLoading(false), 800);
   };
 
-  // --- التعديل الجذري هنا ---
   const resetAllData = async () => {
-      if (!window.confirm("تحذير هام: هذا الإجراء سيقوم بحذف جميع بياناتك، خطتك العلاجية، وسجلاتك نهائياً من قاعدة البيانات. هل أنت متأكد؟")) {
+      if (!window.confirm(t('delete_confirm_msg'))) {
           return;
       }
 
@@ -186,23 +232,23 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
           setDataLoading(true);
           
           if (currentUser && !isDemoMode) {
-              // حذف المستند بالكامل من فايربيس
+              // Delete from Firestore
               await deleteDoc(doc(db, "users", currentUser.uid));
           }
           
-          // تنظيف المتصفح
+          // Clear Local Storage
           localStorage.clear();
           setUserProfile(null);
           setPlan([]);
           setLogs([]);
           setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
           
-          // تسجيل الخروج
+          // Logout
           await logout();
           
       } catch (e) {
           console.error("Error resetting data:", e);
-          alert("حدث خطأ أثناء محاولة حذف البيانات. يرجى التحقق من الاتصال بالإنترنت.");
+          alert("Error deleting data. Check connection.");
           setDataLoading(false);
       }
   };

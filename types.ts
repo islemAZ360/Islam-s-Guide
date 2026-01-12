@@ -1,12 +1,17 @@
-// --- Basic Medication Types ---
+// ============================================================================
+// 1. MEDICATION & CLINICAL TYPES
+// ============================================================================
+
 export type MedType = 'narcotic' | 'psychiatric' | 'normal' | null;
 export type MedForm = 'tablet' | 'liquid'; 
 export type MedUnit = 'mg' | 'g' | 'ml' | 'l';
 
-// --- ROLES & PERMISSIONS ---
+// ============================================================================
+// 2. USER ROLES & PROFILES
+// ============================================================================
+
 export type UserRole = 'admin' | 'doctor' | 'normal_user' | 'patient';
 
-// --- DOCTOR SPECIFIC TYPES ---
 export type DoctorAccountStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DoctorProfileData {
@@ -30,11 +35,9 @@ export interface DoctorProfileData {
   doctorLevel: number; 
 }
 
-// --- PATIENT SPECIFIC TYPES ---
 export interface PatientProfileData {
   assignedDoctorId: string;
   assignedDoctorName: string;
-  // NEW: Request Status logic
   requestStatus: 'pending' | 'approved' | 'rejected'; 
   
   isPlanAssigned: boolean; 
@@ -42,17 +45,15 @@ export interface PatientProfileData {
   recoveryDate?: string;   
 }
 
-// --- MAIN USER PROFILE ---
 export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
   
-  // --- بيانات فيزيائية جديدة (التعديل هنا) ---
+  // Physical Stats (New for Safety Algo)
   age?: number;
   weight?: number; // kg
   height?: number; // cm
-  // ---------------------------
 
   role: UserRole; 
   
@@ -81,7 +82,10 @@ export interface UserProfile {
   inventory?: Inventory;
 }
 
-// --- INVENTORY & PLANNING ---
+// ============================================================================
+// 3. INVENTORY & PLANNING
+// ============================================================================
+
 export interface Inventory {
   boxes: number;
   pillsPerBox: number;
@@ -111,7 +115,10 @@ export interface PlanDay {
   log?: DailyLog;
 }
 
-// --- CONTENT & CMS ---
+// ============================================================================
+// 4. CONTENT & CMS
+// ============================================================================
+
 export type ArticleCategory = 'medical' | 'motivation' | 'tip' | 'news' | 'announcement';
 
 export interface Article {
@@ -126,7 +133,10 @@ export interface Article {
   authorRole: 'admin' | 'doctor'; 
 }
 
-// --- CHAT & COMMUNITY ---
+// ============================================================================
+// 5. COMMUNITY & CHAT
+// ============================================================================
+
 export interface ChatRoom {
   id: string;
   name: string;
@@ -149,7 +159,10 @@ export interface ChatMessage {
   isAdmin?: boolean;
 }
 
-// --- SUPPORT TICKETS ---
+// ============================================================================
+// 6. SUPPORT SYSTEM
+// ============================================================================
+
 export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed';
 
 export interface Ticket {
@@ -168,10 +181,13 @@ export interface TicketMessage {
   senderName: string;
   text: string;
   timestamp: number;
-  isAdmin: boolean;
+  isAdmin: boolean; // Flag to distinguish support staff
 }
 
-// --- AUDIT LOGS ---
+// ============================================================================
+// 7. SECURITY & AUDIT
+// ============================================================================
+
 export interface AuditLog {
   id?: string;
   adminId: string;
@@ -182,7 +198,10 @@ export interface AuditLog {
   timestamp: number;
 }
 
-// --- APP NAVIGATION VIEWS ---
+// ============================================================================
+// 8. NAVIGATION
+// ============================================================================
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   SETTINGS = 'SETTINGS',
