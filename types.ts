@@ -48,7 +48,7 @@ export interface UserProfile {
   email: string;
   name: string;
   
-  // --- بيانات فيزيائية جديدة ---
+  // --- بيانات فيزيائية جديدة (التعديل هنا) ---
   age?: number;
   weight?: number; // kg
   height?: number; // cm

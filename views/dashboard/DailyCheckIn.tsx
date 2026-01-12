@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit3, Frown, Meh, Smile, Moon, Check } from 'lucide-react';
+import { Edit3, Frown, Meh, Smile, Moon, Check, BedDouble } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { UserProfile, PlanDay } from '../../types';
@@ -23,7 +23,7 @@ export const DailyCheckIn = ({
     setSelectedMood,
     submitDailyLog
 }: DailyCheckInProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [isCustomDose, setIsCustomDose] = useState(false);
     const [customDoseValue, setCustomDoseValue] = useState<string>('');
     const [sleepHours, setSleepHours] = useState(7);
@@ -53,13 +53,11 @@ export const DailyCheckIn = ({
     const target = todayPlan?.plannedDose || 0;
     const baseStep = isLiquid ? 0.1 : 0.5;
     
-    // توليد خيارات الجرعة حول الهدف
     const doseOptions = Array.from({ length: 5 }, (_, i) => {
         const val = target - (2 * baseStep) + (i * baseStep);
         return Math.max(0, parseFloat(val.toFixed(2)));
     }).filter((v, i, a) => a.indexOf(v) === i && v >= 0);
 
-    // التأكد من وجود الجرعة المستهدفة
     if (!doseOptions.includes(target)) doseOptions.push(target);
     doseOptions.sort((a,b) => a - b);
 
@@ -86,16 +84,13 @@ export const DailyCheckIn = ({
                             `}
                         >
                             <span className="relative z-10">{val}</span>
-                            {/* علامة الهدف */}
                             {val === todayPlan?.plannedDose && (
                                 <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
                             )}
-                            {/* لمعان عند التحديد */}
                             {selectedDose === val && <div className="absolute inset-0 bg-white/20 blur-md"></div>}
                         </button>
                     ))}
 
-                    {/* زر الإدخال اليدوي */}
                     <button
                          onClick={() => setIsCustomDose(!isCustomDose)}
                          className={`
@@ -159,11 +154,12 @@ export const DailyCheckIn = ({
 
                 {selectedMood && (
                     <div className="bg-slate-950/40 backdrop-blur-md p-6 rounded-3xl border border-white/10 space-y-6 animate-in slide-in-from-bottom-4 shadow-inner">
-                        {/* Sleep Slider */}
+                        {/* Sleep Slider (تم تعديل العنوان ليكون منطقياً) */}
                         <div>
                             <div className="flex justify-between items-end mb-4">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
-                                    <Moon size={14} className="text-indigo-400" /> {t('sleep_label')}
+                                    <BedDouble size={16} className="text-indigo-400" />
+                                    {language === 'ar' ? 'كم ساعة نمت ليلة البارحة؟' : 'Sleep hours last night?'}
                                 </label>
                                 <span className="text-2xl font-mono font-black text-white">{sleepHours}<span className="text-sm text-slate-600 font-bold ml-1">h</span></span>
                             </div>
@@ -208,7 +204,7 @@ export const DailyCheckIn = ({
                 )}
             </div>
 
-            {/* Step 3: Confirm Button */}
+            {/* Step 3: Confirm */}
             <div className={`transition-all duration-700 ${selectedDose !== null && selectedMood ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                  <Button
                     variant="success"

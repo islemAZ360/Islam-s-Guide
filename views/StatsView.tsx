@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react';
 import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine, ComposedChart, Line, Legend
 } from 'recharts';
-import { Smile, Activity, Zap, Moon, Shield, Award } from 'lucide-react';
+import { Smile, Activity, Zap, Moon, Shield, Award, TrendingUp } from 'lucide-react';
 
-// 👇 تحديث المسارات للمكونات الجديدة
+// المكونات
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
-import { Badge } from '../components/ui/Badge';
 
 import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -20,63 +19,59 @@ interface StatsViewProps {
 }
 
 export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const unitLabel = userProfile?.medUnit || 'mg';
 
-    // 1. حساب بيانات الحالة المزاجية (Pie Chart)
+    // 1. بيانات الحالة المزاجية (Pie Chart)
     const moodData = useMemo(() => [
-        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, // Emerald
-        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, // Amber
-        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    // Rose
+        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, 
+        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, 
+        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    
     ].filter(d => d.value > 0), [logs, t]);
 
-    // 2. حساب بيانات الالتزام (مخطط vs فعلي)
-    const adherenceData = useMemo(() => {
-        // ندمج السجلات مع التواريخ لرسم الخط
-        return logs.map(log => {
-            const planned = plan.find(p => p.date === log.date)?.plannedDose || 0;
-            return {
-                date: log.date.slice(5), // MM-DD
-                fullDate: log.date,
-                planned: planned,
-                actual: log.doseTaken,
-                diff: log.doseTaken - planned // الفرق (للتلوين إذا لزم الأمر)
-            };
-        });
-    }, [plan, logs]);
+    // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
+    const correlationData = useMemo(() => {
+        return logs.slice(-14).map(log => ({ // آخر 14 يوم فقط للوضوح
+            date: log.date.slice(5),
+            dose: log.doseTaken,
+            sleep: log.sleepHours || 0,
+            moodScore: log.mood === 'good' ? 10 : log.mood === 'normal' ? 5 : 2
+        }));
+    }, [logs]);
 
-    // 3. منطق الأوسمة (Gamification Logic)
+    // 3. منطق الأوسمة (Gamification)
     const badges = [
         {
             id: 'warrior',
             title: t('badge_7days'),
             icon: Shield,
             color: 'indigo',
-            achieved: logs.length >= 7
+            achieved: logs.length >= 7,
+            desc: "7 أيام متواصلة"
         },
         {
             id: 'halfway',
             title: t('badge_halfway'),
             icon: Zap,
             color: 'amber',
-            // تم تحقيق الوسام إذا كانت الجرعة الحالية أقل من نصف جرعة البداية
-            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2)
+            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2),
+            desc: "نصف الكمية"
         },
         {
             id: 'sleep',
             title: t('badge_sleep'),
             icon: Moon,
             color: 'blue',
-            // معدل النوم آخر 3 أيام جيد (>= 7 ساعات)
-            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7
+            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
+            desc: "نوم مستقر"
         },
         {
             id: 'stable',
             title: t('badge_stable'),
             icon: Smile,
             color: 'emerald',
-            // آخر 3 أيام مزاج جيد متواصل
-            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good')
+            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good'),
+            desc: "مزاج ممتاز"
         }
     ];
 
@@ -84,93 +79,95 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
       <LayoutContainer>
           <PageHeader 
             title={t('nav_stats')}
-            subtitle="لوحة المعلومات الحيوية وتحليل الأداء."
+            subtitle={language === 'ar' ? "تحليل عميق لأدائك الحيوي ومسار التعافي." : "Deep analysis of your vitals and recovery path."}
           />
 
           {/* Badges Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {badges.map((badge) => (
-                  <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30` : 'bg-slate-900/40 border-white/5 opacity-50 grayscale'}`}>
-                      {badge.achieved && <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 group-hover:to-${badge.color}-500/20`}></div>}
+                  <div key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30 shadow-lg shadow-${badge.color}-900/20` : 'bg-slate-900/40 border-white/5 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`}>
+                      {/* الخلفية المضيئة للوسام */}
+                      <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
                       
-                      <div className="relative z-10 flex flex-col items-center text-center gap-3">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-500 to-${badge.color}-400` : 'bg-slate-800'}`}>
-                              <badge.icon size={24} />
+                      <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110 group-hover:rotate-6 ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-600 to-${badge.color}-400` : 'bg-slate-800'}`}>
+                              <badge.icon size={28} strokeWidth={1.5} />
                           </div>
                           <div>
-                              <span className={`text-xs font-bold block ${badge.achieved ? 'text-white' : 'text-slate-500'}`}>{badge.title}</span>
-                              {!badge.achieved && <span className="text-[9px] text-slate-600">لم يتم القفل بعد</span>}
+                              <span className={`text-sm font-bold block mb-1 ${badge.achieved ? 'text-white' : 'text-slate-400'}`}>{badge.title}</span>
+                              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider bg-slate-950/50 px-2 py-1 rounded-lg">
+                                  {badge.achieved ? badge.desc : "مغلق"}
+                              </span>
                           </div>
                       </div>
                       
                       {badge.achieved && (
-                          <div className="absolute top-2 right-2 text-yellow-500 animate-pulse">
-                              <Award size={14} />
+                          <div className="absolute top-3 right-3 text-yellow-400 animate-pulse">
+                              <Award size={16} />
                           </div>
                       )}
                   </div>
               ))}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* 1. Adherence Chart (Planned vs Actual) */}
-              <Card className="min-h-[400px] flex flex-col md:col-span-2 bg-slate-900/50">
-                  <div className="flex justify-between items-center mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* 1. Smart Correlation Chart (Dose vs Sleep) */}
+              <Card className="min-h-[400px] flex flex-col lg:col-span-2 border-white/10 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
+                  
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10">
                       <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
                               <Activity className="w-5 h-5"/>
                           </div>
-                           الالتزام بالخطة العلاجية
+                           تأثير الجرعة على النوم
                       </h3>
-                      <div className="flex gap-4 text-xs font-bold">
-                          <span className="flex items-center gap-2 text-indigo-400"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> المخطط</span>
-                          <span className="flex items-center gap-2 text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> الفعلي</span>
+                      <div className="flex gap-4 text-xs font-bold mt-4 md:mt-0 bg-slate-950/50 p-2 rounded-xl border border-white/5">
+                          <span className="flex items-center gap-2 text-indigo-300"><span className="w-3 h-3 rounded bg-indigo-500"></span> الجرعة ({unitLabel})</span>
+                          <span className="flex items-center gap-2 text-emerald-300"><span className="w-3 h-3 rounded-full bg-emerald-400"></span> ساعات النوم</span>
                       </div>
                   </div>
                   
-                  <div className="flex-1 h-[300px]">
-                      {adherenceData.length > 0 ? (
+                  <div className="flex-1 h-[300px] w-full">
+                      {correlationData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={adherenceData.slice(-30)}> {/* Last 30 entries */}
+                              <ComposedChart data={correlationData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                                   <defs>
-                                    <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    <linearGradient id="colorDoseBar" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
                                     </linearGradient>
                                   </defs>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                  <XAxis dataKey="date" stroke="#475569" fontSize={10} tickMargin={10} />
-                                  <YAxis stroke="#475569" fontSize={10} />
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                                  <YAxis yAxisId="left" stroke="#6366f1" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'الجرعة', angle: -90, position: 'insideLeft', fill: '#6366f1', fontSize: 10 }} />
+                                  <YAxis yAxisId="right" orientation="right" stroke="#34d399" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} label={{ value: 'ساعات', angle: 90, position: 'insideRight', fill: '#34d399', fontSize: 10 }} />
                                   <Tooltip 
-                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                      itemStyle={{color: '#fff'}}
-                                      formatter={(val: number) => [`${val} ${unitLabel}`, '']}
-                                      labelFormatter={(label) => `التاريخ: ${label}`}
+                                      contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
+                                      itemStyle={{color: '#fff', fontSize: '12px'}}
+                                      labelStyle={{color: '#94a3b8', marginBottom: '8px', fontSize: '10px'}}
                                   />
-                                  <Area type="monotone" dataKey="planned" stroke="#6366f1" fillOpacity={1} fill="url(#colorPlanned)" name="المخطط" strokeWidth={2} />
-                                  <Area type="monotone" dataKey="actual" stroke="#10b981" fillOpacity={1} fill="url(#colorActual)" name="الفعلي" strokeWidth={2} connectNulls />
-                              </AreaChart>
+                                  <Bar yAxisId="left" dataKey="dose" barSize={20} fill="url(#colorDoseBar)" radius={[4, 4, 0, 0]} animationDuration={1500} />
+                                  <Line yAxisId="right" type="monotone" dataKey="sleep" stroke="#34d399" strokeWidth={3} dot={{r: 4, fill: '#0f172a', strokeWidth: 2}} activeDot={{r: 6}} animationDuration={2000} />
+                              </ComposedChart>
                           </ResponsiveContainer>
                       ) : (
-                          <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                              <Activity size={48} className="opacity-20 mb-4"/>
-                              <p>لا توجد بيانات كافية للرسم البياني بعد.</p>
+                          <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
+                              <TrendingUp size={48} className="opacity-20 mb-4"/>
+                              <p>سجل بياناتك لمدة 3 أيام لتبدأ التحليلات الذكية بالعمل.</p>
                           </div>
                       )}
                   </div>
               </Card>
 
-              {/* 2. Mood Distribution */}
-              <Card className="min-h-[350px] flex flex-col">
+              {/* 2. Mood Distribution (Donut Chart Style) */}
+              <Card className="min-h-[350px] flex flex-col border-white/10">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
                           <Smile className="w-5 h-5"/>
                       </div>
-                      الحالة المزاجية
+                      الحالة المزاجية العامة
                   </h3>
                   <div className="flex-1 relative">
                        {moodData.length > 0 ? (
@@ -182,60 +179,58 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                       cy="50%"
                                       innerRadius={60}
                                       outerRadius={100}
-                                      paddingAngle={8}
+                                      paddingAngle={5}
                                       dataKey="value"
                                       stroke="none"
-                                      cornerRadius={8}
+                                      cornerRadius={6}
                                   >
                                       {moodData.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={entry.color} />
+                                          <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                       ))}
                                   </Pie>
                                   <Tooltip 
                                       contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                       itemStyle={{fontWeight: 'bold', color: '#fff'}}
                                   />
+                                  <Legend 
+                                    verticalAlign="bottom" 
+                                    height={36} 
+                                    iconType="circle"
+                                    formatter={(value) => <span className="text-slate-400 text-xs font-bold mx-2">{value}</span>}
+                                  />
                               </PieChart>
                           </ResponsiveContainer>
                        ) : (
                            <div className="absolute inset-0 flex items-center justify-center text-slate-600 font-medium">
-                               سجل مزاجك اليومي لتظهر البيانات
+                               لا توجد بيانات كافية
                            </div>
                        )}
                   </div>
-                  <div className="flex justify-center gap-4 mt-2 flex-wrap">
-                      {moodData.map((d, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5">
-                              <div className="w-2 h-2 rounded-full" style={{backgroundColor: d.color}}></div>
-                              {d.name} ({d.value})
-                          </div>
-                      ))}
-                  </div>
               </Card>
 
-              {/* 3. Sleep Quality Chart */}
-              <Card className="min-h-[350px] flex flex-col">
+              {/* 3. Sleep Quality Histogram */}
+              <Card className="min-h-[350px] flex flex-col border-white/10">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
                           <Moon className="w-5 h-5"/>
                       </div>
-                       جودة النوم (آخر 7 أيام)
+                       استقرار النوم (آخر 7 أيام)
                   </h3>
-                  <div className="flex-1">
+                  <div className="flex-1 mt-4">
                       {logs.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={logs.slice(-7)}> 
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#475569" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                  <YAxis stroke="#475569" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                                  <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
                                   <Tooltip 
                                       cursor={{fill: '#1e293b', opacity: 0.5}}
                                       contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
                                       itemStyle={{color: '#fff'}}
                                       formatter={(val) => [`${val} ساعة`, 'النوم']}
                                   />
-                                  <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'الهدف (7h)', fill: '#10b981', fontSize: 10 }} />
-                                  <Bar dataKey="sleepHours" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={20}>
+                                  <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'الهدف (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
+                                  <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
                                     {logs.slice(-7).map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
                                     ))}
