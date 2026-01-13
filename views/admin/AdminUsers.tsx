@@ -56,7 +56,9 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
         
         setIsSending(true);
         try {
-            const adminUser = auth.currentUser;
+            // FIX: Safe access to auth using optional chaining
+            const adminUser = auth?.currentUser;
+            
             await addDoc(collection(db, "tickets"), {
                 userId: selectedUser.uid,
                 userEmail: selectedUser.email,
