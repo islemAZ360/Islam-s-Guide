@@ -133,15 +133,25 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // New User Skeleton (Doc doesn't exist yet)
-                setUserProfile({
+                // D. Profile Initialization (The Fix)
+                // Ensure boolean value using null coalescing operator
+                const isAdminEmail = currentUser.email?.toLowerCase().endsWith('@islamguide.com') ?? false;
+                
+                const newProfile: UserProfile = {
                     uid: currentUser.uid,
                     email: currentUser.email || '',
-                    name: currentUser.displayName || 'New User',
-                    role: 'normal_user',
-                    setupComplete: false,
+                    name: currentUser.displayName || (isAdminEmail ? 'Administrator' : 'New User'),
+                    role: isAdminEmail ? 'admin' : 'normal_user',
+                    setupComplete: isAdminEmail, // Admins skip onboarding
                     durationMonths: 0
-                });
+                };
+
+                setUserProfile(newProfile);
+
+                // Persist the new profile immediately so next load finds it
+                setDoc(docRef, newProfile).catch(e => 
+                    console.error("Failed to auto-create profile:", e)
+                );
             }
             setDataLoading(false);
         }, (error) => {

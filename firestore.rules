@@ -124,6 +124,12 @@ service cloud.firestore {
         allow create: if isSignedIn() && 
                       isValidString(incomingData().text, 1, 1000) &&
                       incomingData().senderId == request.auth.uid;
+        
+        // FIX: Allow delete if Admin OR if User is the Room Creator (required for cleaning up room)
+        allow delete: if isAdmin() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.createdBy == request.auth.uid
+        );
       }
     }
 
@@ -160,9 +166,8 @@ service cloud.firestore {
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      // System writes logs; users shouldn't write directly usually, 
-      // but if client-side logging is used, verify structure.
-      allow create: if isSignedIn() && 
+      // FIX: Restrict audit log creation to Admins only
+      allow create: if isAdmin() && 
                     incomingData().keys().hasAll(['action', 'timestamp']) &&
                     request.resource.data.timestamp is number;
     }
