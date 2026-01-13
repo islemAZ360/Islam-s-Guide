@@ -53,7 +53,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
             const filteredRooms = allRooms.filter(room => {
+                // ADMIN SEES ALL ROOMS
                 if (currentUser.role === 'admin') return true;
+                
                 if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
                 if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
                 if (currentUser.role === 'normal_user') return !room.isDoctorRoom;
@@ -86,7 +88,6 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             snapshot.forEach((doc) => m.push({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(m);
             
-            // Auto-scroll only if user is already near bottom
             if (chatContainerRef.current) {
                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
                 const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
@@ -116,15 +117,20 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // --- Actions ---
     const createRoom = async () => {
-        if (!newRoomName.trim() || !currentUser.uid) return;
+        if (!newRoomName.trim()) {
+            alert(language === 'ar' ? "يرجى كتابة اسم الغرفة" : "Please enter room name");
+            return;
+        }
+        if (!currentUser.uid) return;
+        
         setIsProcessing(true);
         const isDoctor = currentUser.role === 'doctor';
         try {
             await addDoc(collection(db, "rooms"), {
                 name: newRoomName.trim().slice(0, 30),
                 createdBy: currentUser.uid,
-                creatorName: currentUser.name || "Unknown",
-                language: 'mixed',
+                creatorName: currentUser.name || (language === 'ar' ? "مجهول" : "Unknown"),
+                language: language,
                 createdAt: Date.now(),
                 isDoctorRoom: isDoctor,
                 doctorId: isDoctor ? currentUser.uid : null
@@ -133,6 +139,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             setShowCreateModal(false);
         } catch (e) {
             console.error("Failed to create room", e);
+            alert(language === 'ar' ? "فشل إنشاء الغرفة. تحقق من الصلاحيات." : "Failed to create room.");
         } finally {
             setIsProcessing(false);
         }
@@ -172,24 +179,61 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     };
 
+    // Delete individual message (Admin only)
+    const handleDeleteMessage = async (msgId: string) => {
+        if (!activeRoom || !currentUser.uid) return;
+        if (!confirm(language === 'ar' ? "حذف هذه الرسالة؟" : "Delete this message?")) return;
+        
+        try {
+            await deleteDoc(doc(db, "rooms", activeRoom.id, "messages", msgId));
+        } catch (e) {
+            console.error("Error deleting message:", e);
+        }
+    };
+
+    // Admin: Delete User from Leaderboard
+    const handleAdminDeleteUser = async (targetUid: string, targetName: string) => {
+        if (currentUser.role !== 'admin') return;
+        
+        const confirmMsg = language === 'ar' 
+            ? `تحذير: هل أنت متأكد من حذف المستخدم "${targetName}" نهائياً من قاعدة البيانات؟ سيختفي من لوحة المتصدرين فوراً.` 
+            : `Warning: Are you sure you want to permanently delete user "${targetName}"? They will be removed from the leaderboard immediately.`;
+
+        if (window.confirm(confirmMsg)) {
+            try {
+                await deleteDoc(doc(db, "users", targetUid));
+                // Leaderboard will update automatically via onSnapshot
+            } catch (e) {
+                console.error("Error deleting user:", e);
+                alert(language === 'ar' ? "حدث خطأ أثناء الحذف." : "Error deleting user.");
+            }
+        }
+    };
+
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
         const cleanMessage = newMessage.trim().slice(0, 300);
         
-        await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
-            text: cleanMessage,
-            senderId: currentUser.uid,
-            senderName: currentUser.name || "Anonymous",
-            timestamp: Date.now(),
-            role: currentUser.role,
-            isDoctor: currentUser.role === 'doctor',
-            isAdmin: currentUser.role === 'admin'
-        });
-        setNewMessage("");
-        scrollToBottom();
+        try {
+            await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
+                text: cleanMessage,
+                senderId: currentUser.uid,
+                senderName: currentUser.name || (language === 'ar' ? "مجهول" : "Anonymous"),
+                timestamp: Date.now(),
+                role: currentUser.role,
+                isDoctor: currentUser.role === 'doctor',
+                isAdmin: currentUser.role === 'admin'
+            });
+            setNewMessage("");
+            scrollToBottom();
+        } catch(e) {
+            console.error("Send failed", e);
+            alert(language === 'ar' ? "فشل الإرسال" : "Failed to send");
+        }
     };
 
+    // Normal users can create rooms too now (per new rules)
     const canCreateRoom = currentUser.role !== 'patient';
 
     return (
@@ -250,7 +294,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
-                            <li key={idx} className={`flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
+                            <li key={idx} className={`relative flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
                                 <div className="flex items-center gap-5">
                                     <div className="shrink-0">{rankBadge}</div>
                                     <div>
@@ -274,8 +318,26 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
+                                    </div>
+                                    
+                                    {/* 🛡️ ADMIN DELETE BUTTON - VISIBLE & FUNCTIONAL */}
+                                    {currentUser.role === 'admin' && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent any parent clicks
+                                                if (user.uid) handleAdminDeleteUser(user.uid, user.name);
+                                            }}
+                                            className="z-50 p-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-900/40 border border-rose-500 transition-transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-rose-500 ml-2"
+                                            title={language === 'ar' ? 'حذف هذا المستخدم' : 'Delete this user'}
+                                            aria-label={language === 'ar' ? 'حذف المستخدم' : 'Delete User'}
+                                        >
+                                            <Trash2 size={18} strokeWidth={2.5} />
+                                        </button>
+                                    )}
                                 </div>
                             </li>
                         );
@@ -289,7 +351,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     <div className="flex justify-between items-center mb-6 shrink-0 px-1">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <Globe size={20} className="text-indigo-400"/> 
-                            {currentUser.role === 'patient' ? "Your Clinic" : t('comm_rooms')}
+                            {currentUser.role === 'patient' ? (language === 'ar' ? 'عيادتي' : 'My Clinic') : t('comm_rooms')}
                         </h2>
                         {canCreateRoom && (
                             <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/20" aria-label={t('create_room')}>
@@ -302,7 +364,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         {rooms.length === 0 && (
                             <div className="col-span-full text-center py-20 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500 flex flex-col items-center">
                                 <MessageCircle size={48} className="mb-4 opacity-20"/>
-                                <p>No rooms available.</p>
+                                <p>{language === 'ar' ? 'لا توجد غرف متاحة.' : 'No rooms available.'}</p>
                             </div>
                         )}
                         {rooms.map(room => (
@@ -329,8 +391,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                                aria-label="Delete Room"
-                                                title="Delete Room"
+                                                aria-label={language === 'ar' ? 'حذف الغرفة' : 'Delete Room'}
+                                                title={language === 'ar' ? 'حذف الغرفة' : 'Delete Room'}
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -342,7 +404,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {room.isDoctorRoom && <Lock size={14} className="text-indigo-400"/>}
                                         </h3>
                                         <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">
-                                            {room.isDoctorRoom ? "Private Clinic" : `Host: ${room.creatorName || 'Unknown'}`}
+                                            {room.isDoctorRoom ? (language === 'ar' ? "عيادة خاصة" : "Private Clinic") : `${language === 'ar' ? "المضيف:" : "Host:"} ${room.creatorName || (language === 'ar' ? "مجهول" : 'Unknown')}`}
                                         </p>
                                     </div>
                                 </div>
@@ -431,7 +493,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-white text-base">{activeRoom.name}</h3>
-                                <span className="text-[10px] text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live</span>
+                                <span className="text-[10px] text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> {language === 'ar' ? 'مباشر' : 'Live'}</span>
                             </div>
                         </div>
                         <Button variant="secondary" className="!py-2 !px-4 !text-xs !rounded-xl hidden md:flex" onClick={() => setActiveRoom(null)}>
@@ -459,7 +521,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             else if (msg.isAdmin || msg.role === 'admin') bubbleStyle = 'bg-gradient-to-br from-rose-900/90 to-rose-800/90 border-rose-500/30 text-rose-100 shadow-lg';
 
                             return (
-                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}>
+                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2 group`}>
                                     <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border border-white/10 shadow-md ${showAvatar ? (isMe ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400') : 'opacity-0'}`} aria-hidden="true">
                                         {msg.senderName.charAt(0).toUpperCase()}
                                     </div>
@@ -468,13 +530,24 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         {showAvatar && !isMe && (
                                             <span className="text-[10px] text-slate-500 mb-1 ml-1 flex items-center gap-1 font-bold">
                                                 {msg.senderName}
-                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0 shadow-none">DR</Badge>}
-                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0 shadow-none">ADMIN</Badge>}
+                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0 shadow-none">{language === 'ar' ? 'طبيب' : 'DR'}</Badge>}
+                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0 shadow-none">{language === 'ar' ? 'مشرف' : 'ADMIN'}</Badge>}
                                             </span>
                                         )}
                                         
-                                        <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-sm ${bubbleStyle} ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
+                                        <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-sm relative ${bubbleStyle} ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
                                             {msg.text}
+                                            
+                                            {/* ADMIN DELETE BUTTON */}
+                                            {currentUser.role === 'admin' && (
+                                                <button 
+                                                    onClick={() => msg.id && handleDeleteMessage(msg.id)}
+                                                    className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 scale-75 hover:scale-90"
+                                                    title={language === 'ar' ? 'حذف الرسالة' : 'Delete Message'}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                         <span className="text-[9px] text-slate-600 mt-1 px-1 opacity-70 font-mono">
                                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

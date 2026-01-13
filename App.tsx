@@ -109,6 +109,9 @@ function AppContent() {
 
   // 🛡️ ADMIN BYPASS CHECK
   const isAdminEmail = currentUser?.email?.toLowerCase() === 'admin@islamguide.com';
+  
+  // Layout Logic: Hide Sidebar for Admin View
+  const isFullWidthLayout = currentView === AppView.ADMIN;
 
   // -- Routing Logic --
   useEffect(() => {
@@ -315,7 +318,7 @@ function AppContent() {
     );
   }
 
-  // 2. ONBOARDING & RESUBMISSION
+  // 2. ONBOARDING & RESUBMISSION (Skipped for Admins)
   if (!isAdminEmail && (
       (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || 
       isResubmitting
@@ -402,17 +405,22 @@ function AppContent() {
       {/* NORMAL APP FLOW */}
       {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
           <div className="flex-1 flex flex-col md:flex-row h-full">
-              {/* Mobile Back Nav */}
-              {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
+              {/* Mobile Back Nav - Only show if sidebar is visible */}
+              {!isFullWidthLayout && (viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
                   <button onClick={goBack} className="fixed top-24 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
                       {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                   </button>
               )}
 
-              <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
-              <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
+              {/* Sidebar & Mobile Nav - HIDDEN IN ADMIN MODE */}
+              {!isFullWidthLayout && (
+                <>
+                  <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
+                  <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
+                </>
+              )}
               
-              <div className="flex-1 md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
+              <div className={`flex-1 ${!isFullWidthLayout ? 'md:mr-80' : ''} p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10`}>
                  {/* Suspense Wrapper for Lazy Views */}
                  <Suspense fallback={<PageLoader />}>
                     

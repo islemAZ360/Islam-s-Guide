@@ -119,6 +119,7 @@ export const ru = {
     save_changes: "Сохранить изменения",
     rank_label: "Глобальный рейтинг",
     edit_profile: "Редактировать профиль",
+    new_user: "Новый пользователь",
 
     // Onboarding & Roles
     onboard_title: "Добро пожаловать в Islam's Guide",
@@ -203,7 +204,7 @@ export const ru = {
     pending_approvals: "Ожидающие одобрения",
     review_btn: "Обзор",
     approve_btn: "Одобрить",
-    reject_btn: "Отклонить",
+    reject_btn: "Отклонить", // Kept this one
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
@@ -219,13 +220,16 @@ export const ru = {
     search_available_placeholder: "Поиск по имени или email...",
     add_btn: "Добавить",
     
-    // Articles
+    // Articles & CMS
     knowledge_center: "Центр знаний",
     knowledge_desc: "Медицинские статьи и советы для вашего восстановления.",
     new_article_btn: "Новая статья",
     article_title_label: "Заголовок статьи",
+    article_title_placeholder: "Напр.: Как справиться с бессонницей...",
     article_cat_label: "Категория",
     article_content_label: "Содержание",
+    article_content_placeholder: "Напишите содержание статьи здесь...",
+    no_articles: "Статьи пока не опубликованы.",
     publish_now: "Опубликовать",
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
@@ -257,7 +261,7 @@ export const ru = {
 
     // Scientific Modal
     sci_title: "Ваш план научно обоснован",
-    sci_subtitle: "Этот алгоритм основан на глобальных медицинских протоколах. Проверьте его с врачом.",
+    sci_subtitle: "Этот алгоритм основан на последних мировых медицинских протоколах. Обсудите с врачом.",
     sci_principle_1_title: "Гиперболическое снижение",
     sci_principle_1_desc: "Система снижает процент сокращения дозы по мере ее уменьшения, предотвращая шок рецепторов.",
     sci_principle_2_title: "Нейроадаптация",
@@ -268,8 +272,8 @@ export const ru = {
     sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
     sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "Эта система — вспомогательный инструмент расчета, она НЕ заменяет консультацию вашего врача.",
-    sci_btn_understood: "Я понимаю, перейти к черновику",
+    sci_trust_msg: "Эта система разработана как помощник, но она НЕ заменяет консультацию вашего врача.",
+    sci_btn_understood: "Понятно, перейти к черновику",
 
     // Community & Inventory New Keys
     community_clinic: "Клиника врача",

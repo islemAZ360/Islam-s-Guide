@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
+    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -28,10 +28,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
-    // Delete Confirmation State
-    const [deleteInput, setDeleteInput] = useState('');
-    const deleteKeyword = language === 'ar' ? 'حذف' : 'DELETE';
-
     // File Import Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,8 +65,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
-                // Only sync if we haven't touched it yet (all zeros) or if it's a fresh load
-                // This prevents the "jumping" issue while typing
                 const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
                 if (isPrevEmpty) return inventory;
                 return prev;
@@ -112,7 +106,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 
     const handleExportData = () => {
         const dataToExport = {
-            profile: { ...userProfile, uid: undefined }, // Exclude UID for privacy in raw file
+            profile: { ...userProfile, uid: undefined },
             inventory: inventory,
             plan: plan,
             logs: logs,
@@ -144,12 +138,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             try {
                 const json = JSON.parse(e.target?.result as string);
                 
-                // Validate Basic Structure
                 if (!json.inventory || !Array.isArray(json.plan) || !Array.isArray(json.logs)) {
                     throw new Error("Invalid file format");
                 }
 
-                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية (السجلات، الخطة، المخزون). هل أنت متأكد؟' : 'Warning: Importing will overwrite current logs, plan, and inventory. Continue?')) {
+                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية. هل أنت متأكد؟' : 'Warning: Importing will overwrite current data. Continue?')) {
                     return;
                 }
 
@@ -160,22 +153,29 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                     plan: json.plan,
                     logs: json.logs,
                     speedModifier: json.profile?.speedModifier || 1.0,
-                    // We don't overwrite name/email/role here to prevent account lockout/corruption
                 };
 
                 await updateDoc(doc(db, "users", userProfile.uid!), dataToRestore);
-                
-                // Manually trigger context update if needed, but onSnapshot in DataContext should catch it
                 showStatus('success', language === 'ar' ? 'تم استعادة البيانات بنجاح.' : 'Data restored successfully.');
             } catch (err) {
                 console.error("Import Error:", err);
                 showStatus('error', language === 'ar' ? 'ملف غير صالح أو تالف.' : 'Invalid or corrupt backup file.');
             } finally {
                 setLoading(false);
-                if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+                if (fileInputRef.current) fileInputRef.current.value = '';
             }
         };
         reader.readAsText(file);
+    };
+
+    const handleDeleteAccount = () => {
+        const confirmMsg = language === 'ar' 
+            ? "تحذير: هل أنت متأكد تماماً من رغبتك في حذف حسابك نهائياً؟ سيتم فقدان جميع البيانات ولا يمكن استرجاعها."
+            : "Warning: Are you sure you want to permanently delete your account? All data will be lost and cannot be recovered.";
+            
+        if (window.confirm(confirmMsg)) {
+            resetAllData();
+        }
     };
 
     return (
@@ -466,34 +466,23 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             {/* Danger Zone */}
             <Card className="border-rose-500/20 bg-rose-900/10 hover:bg-rose-900/20 transition-colors">
                 <section aria-labelledby="danger-zone">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         <div>
                             <h2 id="danger-zone" className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                                 <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
                             </h2>
-                            <p className="text-rose-200/60 text-sm max-w-md mb-4">
+                            <p className="text-rose-200/60 text-sm max-w-md">
                                 {language === 'ar' 
-                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. يرجى كتابة كلمة "حذف" في المربع أدناه للتأكيد.' 
-                                    : 'This action permanently deletes your account. Please type "DELETE" below to confirm.'}
+                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                                    : 'This action permanently deletes your account and all data. This cannot be undone.'}
                             </p>
-                            <div className="relative group max-w-xs">
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-rose-950/50 border border-rose-500/30 rounded-xl px-4 py-3 text-white placeholder-rose-700/50 outline-none focus:border-rose-500 transition-all font-mono"
-                                    placeholder={deleteKeyword}
-                                    value={deleteInput}
-                                    onChange={(e) => setDeleteInput(e.target.value)}
-                                    aria-label="Confirm deletion"
-                                />
-                            </div>
                         </div>
                         <Button 
                             variant="danger" 
-                            onClick={resetAllData} 
-                            disabled={deleteInput !== deleteKeyword}
-                            className="w-full md:w-auto whitespace-nowrap !py-3 !px-6 shadow-lg shadow-rose-900/20"
+                            onClick={handleDeleteAccount} 
+                            className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold"
                         >
-                            <Trash2 size={18} className="mr-2"/> {language === 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account'}
+                            <Trash2 size={20} className="mr-2"/> {t('delete_user')}
                         </Button>
                     </div>
                 </section>

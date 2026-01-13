@@ -55,7 +55,7 @@ const DEMO_LOGS: DailyLog[] = Array.from({ length: 5 }).map((_, i) => ({
 
 export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, isDemoMode, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // -- Data State --
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -83,7 +83,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     // B. Handle Demo Mode (Local Data Only)
     if (isDemoMode) {
         setDataLoading(true);
-        // Simulate network delay for realism
         setTimeout(() => {
             setUserProfile(DEMO_PROFILE);
             setInventory(DEMO_INVENTORY);
@@ -97,7 +96,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
     // C. Handle Authenticated User (Firestore Sync)
     if (currentUser) {
-        // Load pending syncs from local storage in case of previous crash
         const savedLogs = localStorage.getItem('pending_sync_logs');
         if (savedLogs) {
             try {
@@ -114,13 +112,10 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
-                
-                // Merge nested profile data if structured that way
                 if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
                 setUserProfile(fetchedProfile);
 
-                // Only update local state from cloud if we are not currently "dirty" (editing)
                 if (!isDirty.current) {
                     if (data.plan) setPlan(data.plan);
                     if (data.logs) setLogs(data.logs);
@@ -133,7 +128,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // New User Skeleton (Doc doesn't exist yet)
                 setUserProfile({
                     uid: currentUser.uid,
                     email: currentUser.email || '',
@@ -146,7 +140,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             setDataLoading(false);
         }, (error) => {
             console.error("Error fetching user data:", error);
-            // Don't block UI on error, just stop loading
             setDataLoading(false);
         });
 
@@ -156,19 +149,14 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 2. Sync Logic (Debounced Write)
   useEffect(() => {
-    // Mark as dirty when data changes locally
     if (userProfile?.setupComplete) {
         isDirty.current = true;
     }
 
-    // Local Storage Backup (Always active)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
-    // Cloud Sync (Only for real users)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
-        
-        // Skip sync for doctors who don't have doctor data set up yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -195,15 +183,13 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
-                
                 isDirty.current = false;
 
             } catch(e) {
-                console.error("Cloud sync failed (offline or permission)", e);
+                console.error("Cloud sync failed", e);
             }
-        }, 3000); // 3 seconds debounce
+        }, 3000);
 
-        // Safety net for closing tab
         const handleBeforeUnload = () => {
             if (isDirty.current) {
                 localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
@@ -224,30 +210,43 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const resetAllData = async () => {
-      // Intent check is now handled by the UI (SettingsView) strict input
-      // We assume if this function is called, the user has already proven intent.
-      
       try {
           setDataLoading(true);
           
           if (currentUser && !isDemoMode) {
-              // Delete from Firestore
+              // 1. Delete from Firestore (Data Removal)
+              // This is critical: Removing this doc removes them from Leaderboard/Search instantly.
               await deleteDoc(doc(db, "users", currentUser.uid));
+              
+              // 2. Delete Authentication Account (Login Removal)
+              // This removes them from the Firebase Auth list.
+              try {
+                  await currentUser.delete();
+              } catch (authError: any) {
+                  console.error("Auth deletion error:", authError);
+                  // If 'requires-recent-login' error occurs, we must force re-login.
+                  // We still log them out so they can't access the app with deleted data.
+                  if (authError.code === 'auth/requires-recent-login') {
+                      alert(language === 'ar' 
+                          ? "تم حذف بياناتك بنجاح. لحذف الحساب نهائياً من القائمة، يرجى تسجيل الدخول مرة أخرى ثم المحاولة فوراً (إجراء أمني من جوجل)." 
+                          : "Data deleted. To permanently remove account from Auth list, please login again and retry immediately (Security Requirement).");
+                  }
+              }
           }
           
-          // Clear Local Storage
+          // Clear Local Storage & Context
           localStorage.clear();
           setUserProfile(null);
           setPlan([]);
           setLogs([]);
           setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
           
-          // Logout
+          // Force Logout
           await logout();
           
       } catch (e) {
           console.error("Error resetting data:", e);
-          alert("Error deleting data. Check connection."); // Keep alert for actual error
+          alert("Error deleting data. Check connection.");
           setDataLoading(false);
       }
   };

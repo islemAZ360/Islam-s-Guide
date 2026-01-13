@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 13/1/2026, 18:18:35
+Generated: 13/1/2026, 22:10:38
 
 ## 🌳 Project Structure
 ```text
@@ -2226,6 +2226,7 @@ export const ar = {
     save_changes: "حفظ التغييرات",
     rank_label: "التصنيف العالمي",
     edit_profile: "تعديل الملف",
+    new_user: "مستخدم جديد",
 
     // Onboarding & Roles
     onboard_title: "أهلاً بك في Islam's Guide",
@@ -2326,13 +2327,16 @@ export const ar = {
     search_available_placeholder: "بحث عن مستخدم بالاسم أو البريد...",
     add_btn: "ضم",
     
-    // Articles
+    // Articles & CMS
     knowledge_center: "مركز المعرفة",
     knowledge_desc: "مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي.",
     new_article_btn: "نشر مقال جديد",
     article_title_label: "عنوان المقال",
+    article_title_placeholder: "مثال: كيفية التعامل مع الأرق...",
     article_cat_label: "التصنيف",
     article_content_label: "المحتوى",
+    article_content_placeholder: "اكتب محتوى المقال هنا بشكل مفصل...",
+    no_articles: "لا توجد مقالات منشورة حتى الآن.",
     publish_now: "نشر الآن",
     cat_medical: "طبي وعلمي",
     cat_motivation: "دعم نفسي",
@@ -2493,6 +2497,7 @@ export const en = {
     save_changes: "Save Changes",
     rank_label: "Global Rank",
     edit_profile: "Edit Profile",
+    new_user: "New User",
 
     onboard_title: "Welcome to Islam's Guide",
     onboard_desc: "This platform is a support tool, not a medical service. Select your role.",
@@ -2566,7 +2571,7 @@ export const en = {
     pending_approvals: "Pending Approvals",
     review_btn: "Review",
     approve_btn: "Approve",
-    reject_btn: "Reject",
+    reject_btn: "Reject", // Single definition here
     approved_docs_list: "Approved Doctors List",
     ban_user: "Ban",
     unban_user: "Unban",
@@ -2579,12 +2584,17 @@ export const en = {
     back_list_btn: "Back to List",
     search_available_placeholder: "Search user by name or email...",
     add_btn: "Add",
+    
+    // Articles & CMS
     knowledge_center: "Knowledge Center",
     knowledge_desc: "Medical articles and daily tips to help your recovery journey.",
     new_article_btn: "New Article",
     article_title_label: "Article Title",
+    article_title_placeholder: "E.g. How to deal with insomnia...",
     article_cat_label: "Category",
     article_content_label: "Content",
+    article_content_placeholder: "Write your article content here...",
+    no_articles: "No articles published yet.",
     publish_now: "Publish Now",
     cat_medical: "Medical",
     cat_motivation: "Motivation",
@@ -2762,6 +2772,7 @@ export const ru = {
     save_changes: "Сохранить изменения",
     rank_label: "Глобальный рейтинг",
     edit_profile: "Редактировать профиль",
+    new_user: "Новый пользователь",
 
     // Onboarding & Roles
     onboard_title: "Добро пожаловать в Islam's Guide",
@@ -2846,7 +2857,7 @@ export const ru = {
     pending_approvals: "Ожидающие одобрения",
     review_btn: "Обзор",
     approve_btn: "Одобрить",
-    reject_btn: "Отклонить",
+    reject_btn: "Отклонить", // Kept this one
     approved_docs_list: "Список одобренных врачей",
     ban_user: "Заблокировать",
     unban_user: "Разблокировать",
@@ -2862,13 +2873,16 @@ export const ru = {
     search_available_placeholder: "Поиск по имени или email...",
     add_btn: "Добавить",
     
-    // Articles
+    // Articles & CMS
     knowledge_center: "Центр знаний",
     knowledge_desc: "Медицинские статьи и советы для вашего восстановления.",
     new_article_btn: "Новая статья",
     article_title_label: "Заголовок статьи",
+    article_title_placeholder: "Напр.: Как справиться с бессонницей...",
     article_cat_label: "Категория",
     article_content_label: "Содержание",
+    article_content_placeholder: "Напишите содержание статьи здесь...",
+    no_articles: "Статьи пока не опубликованы.",
     publish_now: "Опубликовать",
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
@@ -2900,7 +2914,7 @@ export const ru = {
 
     // Scientific Modal
     sci_title: "Ваш план научно обоснован",
-    sci_subtitle: "Этот алгоритм основан на глобальных медицинских протоколах. Проверьте его с врачом.",
+    sci_subtitle: "Этот алгоритм основан на последних мировых медицинских протоколах. Обсудите с врачом.",
     sci_principle_1_title: "Гиперболическое снижение",
     sci_principle_1_desc: "Система снижает процент сокращения дозы по мере ее уменьшения, предотвращая шок рецепторов.",
     sci_principle_2_title: "Нейроадаптация",
@@ -2911,8 +2925,8 @@ export const ru = {
     sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
     sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "Эта система — вспомогательный инструмент расчета, она НЕ заменяет консультацию вашего врача.",
-    sci_btn_understood: "Я понимаю, перейти к черновику",
+    sci_trust_msg: "Эта система разработана как помощник, но она НЕ заменяет консультацию вашего врача.",
+    sci_btn_understood: "Понятно, перейти к черновику",
 
     // Community & Inventory New Keys
     community_clinic: "Клиника врача",
@@ -3534,7 +3548,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                                  id="art-title"
                                                  ref={titleInputRef}
                                                  className="w-full bg-slate-950/50 p-4 pr-12 rounded-xl text-white border border-white/10 outline-none focus:border-indigo-500 transition-all placeholder-slate-700 font-bold text-lg focus:ring-1 focus:ring-indigo-500" 
-                                                 placeholder="Article Title..."
+                                                 placeholder={t('article_title_placeholder')}
                                                  value={newArticle.title} 
                                                  onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
                                                  maxLength={100}
@@ -3567,7 +3581,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                          <textarea 
                                              id="art-content"
                                              className="w-full bg-slate-950/50 p-4 rounded-xl text-white border border-white/10 h-40 outline-none focus:border-indigo-500 transition-all resize-none placeholder-slate-700 custom-scrollbar focus:ring-1 focus:ring-indigo-500" 
-                                             placeholder="Write something amazing..."
+                                             placeholder={t('article_content_placeholder')}
                                              value={newArticle.content} 
                                              onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
                                              maxLength={5000}
@@ -3592,7 +3606,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             {articles.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600">
                     <Image size={48} className="mx-auto mb-4 opacity-20" aria-hidden="true"/>
-                    <p>No articles published yet.</p>
+                    <p>{t('no_articles')}</p>
                 </div>
             ) : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
@@ -4984,9 +4998,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { 
     collection, query, orderBy, deleteDoc, onSnapshot, doc 
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 import { UserProfile, Article } from '../types';
-import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle, MessageSquare, LifeBuoy } from 'lucide-react';
 
 // Services
 import { 
@@ -5006,19 +5020,22 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 
-// Sub-views
+// Sub-views & Modules
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminDoctors } from './admin/AdminDoctors';
 import { AdminUsers } from './admin/AdminUsers';
 import { AdminCMS } from './admin/AdminCMS';
+import { CommunityView } from './CommunityView'; // Reusing existing view
+import { SupportView } from './SupportView';     // Reusing existing view
 
 export const AdminView = () => {
     const { t, language } = useLanguage();
-    const { userProfile } = useData(); // Get current admin profile for logging
+    const { userProfile } = useData();
 
     // -- Global State --
-    const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms' | 'community' | 'support'>('overview');
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
@@ -5035,10 +5052,10 @@ export const AdminView = () => {
     const modalRef = useRef<HTMLDivElement>(null);
     const rejectInputRef = useRef<HTMLTextAreaElement>(null);
 
-    // -- 1. REAL-TIME DATA FETCHING (Keep direct listeners for live UI) --
+    // -- 1. REAL-TIME DATA FETCHING --
     useEffect(() => {
         setLoading(true);
-        // Listen to Users
+        // Users
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -5051,7 +5068,7 @@ export const AdminView = () => {
             setLoading(false);
         });
 
-        // Listen to Articles
+        // Articles
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
@@ -5079,8 +5096,7 @@ export const AdminView = () => {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    // -- ACTIONS (Using Atomic Services) --
-    
+    // -- ACTIONS --
     const approveDoctor = async (docUid: string) => {
         if (!userProfile) return;
         if (!window.confirm(language === 'ar' ? "هل تؤكد اعتماد هذا الطبيب؟" : "Confirm doctor approval?")) return;
@@ -5169,7 +5185,6 @@ export const AdminView = () => {
         }
     };
 
-    // Direct delete for articles (less critical, can be moved to service later if needed)
     const deleteArticle = async (id: string) => {
         if(window.confirm(language === 'ar' ? "حذف هذا المقال؟" : "Delete this article?")) {
             try {
@@ -5183,12 +5198,34 @@ export const AdminView = () => {
 
     const pendingDoctorsCount = users.filter(u => u.role === 'doctor' && u.doctorData?.accountStatus === 'pending').length;
 
+    // Tabs Configuration
+    const tabs = [
+        { id: 'overview', icon: Activity, label: t('tab_overview') },
+        { id: 'doctors', icon: Stethoscope, label: t('tab_doctors'), badge: pendingDoctorsCount > 0 ? pendingDoctorsCount : null },
+        { id: 'users', icon: Users, label: t('tab_users') },
+        { id: 'cms', icon: FileText, label: t('tab_cms') },
+        { id: 'community', icon: MessageSquare, label: language === 'ar' ? 'الرقابة' : 'Chat Mod' },
+        { id: 'support', icon: LifeBuoy, label: t('nav_support') },
+    ];
+
     return (
-        <LayoutContainer>
-            <div className="relative">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-                <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
-            </div>
+        <LayoutContainer className="max-w-full px-4 md:px-8">
+            {/* Header / Top Bar */}
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-slate-900 border-b border-white/10 pb-6 pt-2">
+                <div>
+                    <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+                        <ShieldAlert className="text-rose-500" size={32} />
+                        {language === 'ar' ? 'غرفة التحكم المركزية' : 'Admin Command Center'}
+                    </h1>
+                    <p className="text-slate-500 font-mono text-xs mt-1 tracking-widest uppercase">
+                        System Status: <span className="text-emerald-500">ONLINE</span> • {users.length} Users
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <LanguageSwitcher />
+                </div>
+            </header>
 
             {/* Status Toast */}
             {statusMsg && (
@@ -5205,18 +5242,13 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* Navigation Tabs */}
+            {/* Navigation Tabs - Performance Optimized */}
             <div 
-                className="flex p-1.5 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-2xl relative z-10"
+                className="flex p-1 bg-slate-900 rounded-lg border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-lg relative z-10"
                 role="tablist"
                 aria-label="Admin Sections"
             >
-                {[
-                    { id: 'overview', icon: Activity, label: t('tab_overview') },
-                    { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
-                    { id: 'users', icon: Users, label: t('tab_users') },
-                    { id: 'cms', icon: FileText, label: t('tab_cms') },
-                ].map((tab) => (
+                {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         role="tab"
@@ -5224,16 +5256,16 @@ export const AdminView = () => {
                         aria-controls={`panel-${tab.id}`}
                         id={`tab-${tab.id}`}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap min-w-[120px] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 ${
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-bold transition-all whitespace-nowrap outline-none focus:ring-2 focus:ring-rose-500 min-w-[120px] ${
                             activeTab === tab.id 
-                            ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/20' 
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-slate-800 text-white shadow-md border border-white/10' 
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                         }`}
                     >
                         <tab.icon size={16} aria-hidden="true" />
                         {tab.label}
-                        {tab.id === 'doctors' && pendingDoctorsCount > 0 && (
-                             <span className="ml-2 bg-white text-rose-600 text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse" aria-label={`${pendingDoctorsCount} pending`}>{pendingDoctorsCount}</span>
+                        {tab.badge && (
+                             <span className="ml-2 bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">{tab.badge}</span>
                         )}
                     </button>
                 ))}
@@ -5244,7 +5276,7 @@ export const AdminView = () => {
                 id={`panel-${activeTab}`} 
                 role="tabpanel" 
                 aria-labelledby={`tab-${activeTab}`}
-                className="animate-in slide-in-from-bottom-4 relative z-10 focus:outline-none"
+                className="animate-in slide-in-from-bottom-4 relative z-10 outline-none"
                 tabIndex={-1}
             >
                 {activeTab === 'overview' && (
@@ -5275,14 +5307,20 @@ export const AdminView = () => {
                         deleteArticle={deleteArticle} 
                     />
                 )}
+
+                {activeTab === 'community' && userProfile && (
+                    <CommunityView currentUser={userProfile} />
+                )}
+
+                {activeTab === 'support' && userProfile && (
+                    <SupportView user={userProfile} />
+                )}
             </main>
 
             {/* --- SHARED MODALS --- */}
-
-            {/* DOCTOR DETAILS MODAL */}
             {selectedDoctor && !showRejectModal && (
                 <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="modal-doc-name"
@@ -5293,11 +5331,10 @@ export const AdminView = () => {
                         className="w-full max-w-lg relative outline-none"
                     >
                         <Card className="!bg-slate-900 border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden">
-                            {/* Modal Header */}
-                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-900/40 to-transparent pointer-events-none"></div>
                             <button 
                                 onClick={() => setSelectedDoctor(null)} 
-                                className="absolute top-4 right-4 p-2 bg-slate-800/50 rounded-full text-slate-400 hover:text-white z-20 backdrop-blur-md hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 aria-label={t('close')}
                             >
                                 <X size={20}/>
@@ -5316,7 +5353,8 @@ export const AdminView = () => {
                             </div>
 
                             <div className="px-8 pb-8 space-y-4">
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
+                                {/* Doctor Details Grid */}
+                                <div className="bg-slate-950 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
                                     <div className="flex justify-between border-b border-white/5 pb-2">
                                         <span className="text-slate-500 font-bold">License ID</span>
                                         <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
@@ -5363,10 +5401,9 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* REJECTION REASON MODAL */}
             {showRejectModal && (
                 <div 
-                    className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 animate-in fade-in"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="reject-title"
@@ -5409,10 +5446,10 @@ export const AdminView = () => {
 ### File: `views\ArticlesView.tsx`
 ```tsx
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, where, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Clock, CheckCircle, Trash2 } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -5470,13 +5507,17 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
     const fetchArticles = async () => {
         setLoading(true);
         try {
+            // FIX: Remove orderBy to prevent "Missing Index" error. Sort client-side instead.
             const q = query(
                 collection(db, "articles"), 
-                where("isPublished", "==", true),
-                orderBy("createdAt", "desc")
+                where("isPublished", "==", true)
             );
             const snapshot = await getDocs(q);
             const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article));
+            
+            // Client-side sort (Newest first)
+            fetched.sort((a, b) => b.createdAt - a.createdAt);
+            
             setArticles(fetched);
         } catch (e) {
             console.error("Error fetching articles", e);
@@ -5626,7 +5667,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 ) : filteredArticles.length === 0 ? (
                     <div className="col-span-full text-center py-20 bg-slate-900/40 rounded-[2.5rem] border border-dashed border-slate-800 backdrop-blur-sm">
                         <BookOpen size={48} className="mx-auto text-slate-700 mb-4" aria-hidden="true"/>
-                        <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات في هذا القسم حالياً.' : 'No articles found in this category.'}</p>
+                        <p className="text-slate-500">{t('no_articles')}</p>
                     </div>
                 ) : (
                     filteredArticles.map(article => {
@@ -5656,7 +5697,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                             {canDelete && (
                                                 <button 
                                                     onClick={(e) => handleDelete(e, article)}
-                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all"
+                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all z-30"
                                                     aria-label="Delete Article"
                                                 >
                                                     <Trash2 size={12} />
@@ -5713,7 +5754,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
-                                    placeholder="عنوان جذاب..."
+                                    placeholder={t('article_title_placeholder') || "Article Title..."}
                                     autoFocus
                                 />
                             </div>
@@ -5750,7 +5791,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 h-48 resize-none transition-all placeholder-slate-700 custom-scrollbar"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
-                                    placeholder="اكتب محتوى المقال هنا..."
+                                    placeholder={t('article_content_placeholder') || "Content..."}
                                 />
                             </div>
 
@@ -6207,7 +6248,9 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
             const filteredRooms = allRooms.filter(room => {
+                // ADMIN SEES ALL ROOMS
                 if (currentUser.role === 'admin') return true;
+                
                 if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
                 if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
                 if (currentUser.role === 'normal_user') return !room.isDoctorRoom;
@@ -6240,7 +6283,6 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             snapshot.forEach((doc) => m.push({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(m);
             
-            // Auto-scroll only if user is already near bottom
             if (chatContainerRef.current) {
                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
                 const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
@@ -6270,15 +6312,20 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // --- Actions ---
     const createRoom = async () => {
-        if (!newRoomName.trim() || !currentUser.uid) return;
+        if (!newRoomName.trim()) {
+            alert(language === 'ar' ? "يرجى كتابة اسم الغرفة" : "Please enter room name");
+            return;
+        }
+        if (!currentUser.uid) return;
+        
         setIsProcessing(true);
         const isDoctor = currentUser.role === 'doctor';
         try {
             await addDoc(collection(db, "rooms"), {
                 name: newRoomName.trim().slice(0, 30),
                 createdBy: currentUser.uid,
-                creatorName: currentUser.name || "Unknown",
-                language: 'mixed',
+                creatorName: currentUser.name || (language === 'ar' ? "مجهول" : "Unknown"),
+                language: language,
                 createdAt: Date.now(),
                 isDoctorRoom: isDoctor,
                 doctorId: isDoctor ? currentUser.uid : null
@@ -6287,6 +6334,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             setShowCreateModal(false);
         } catch (e) {
             console.error("Failed to create room", e);
+            alert(language === 'ar' ? "فشل إنشاء الغرفة. تحقق من الصلاحيات." : "Failed to create room.");
         } finally {
             setIsProcessing(false);
         }
@@ -6326,24 +6374,42 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     };
 
+    // Delete individual message (Admin only)
+    const handleDeleteMessage = async (msgId: string) => {
+        if (!activeRoom || !currentUser.uid) return;
+        if (!confirm(language === 'ar' ? "حذف هذه الرسالة؟" : "Delete this message?")) return;
+        
+        try {
+            await deleteDoc(doc(db, "rooms", activeRoom.id, "messages", msgId));
+        } catch (e) {
+            console.error("Error deleting message:", e);
+        }
+    };
+
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
         const cleanMessage = newMessage.trim().slice(0, 300);
         
-        await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
-            text: cleanMessage,
-            senderId: currentUser.uid,
-            senderName: currentUser.name || "Anonymous",
-            timestamp: Date.now(),
-            role: currentUser.role,
-            isDoctor: currentUser.role === 'doctor',
-            isAdmin: currentUser.role === 'admin'
-        });
-        setNewMessage("");
-        scrollToBottom();
+        try {
+            await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
+                text: cleanMessage,
+                senderId: currentUser.uid,
+                senderName: currentUser.name || (language === 'ar' ? "مجهول" : "Anonymous"),
+                timestamp: Date.now(),
+                role: currentUser.role,
+                isDoctor: currentUser.role === 'doctor',
+                isAdmin: currentUser.role === 'admin'
+            });
+            setNewMessage("");
+            scrollToBottom();
+        } catch(e) {
+            console.error("Send failed", e);
+            alert(language === 'ar' ? "فشل الإرسال" : "Failed to send");
+        }
     };
 
+    // Normal users can create rooms too now (per new rules)
     const canCreateRoom = currentUser.role !== 'patient';
 
     return (
@@ -6443,7 +6509,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                     <div className="flex justify-between items-center mb-6 shrink-0 px-1">
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <Globe size={20} className="text-indigo-400"/> 
-                            {currentUser.role === 'patient' ? "Your Clinic" : t('comm_rooms')}
+                            {currentUser.role === 'patient' ? (language === 'ar' ? 'عيادتي' : 'My Clinic') : t('comm_rooms')}
                         </h2>
                         {canCreateRoom && (
                             <Button variant="success" onClick={() => setShowCreateModal(true)} className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/20" aria-label={t('create_room')}>
@@ -6456,7 +6522,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         {rooms.length === 0 && (
                             <div className="col-span-full text-center py-20 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500 flex flex-col items-center">
                                 <MessageCircle size={48} className="mb-4 opacity-20"/>
-                                <p>No rooms available.</p>
+                                <p>{language === 'ar' ? 'لا توجد غرف متاحة.' : 'No rooms available.'}</p>
                             </div>
                         )}
                         {rooms.map(room => (
@@ -6483,8 +6549,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                                aria-label="Delete Room"
-                                                title="Delete Room"
+                                                aria-label={language === 'ar' ? 'حذف الغرفة' : 'Delete Room'}
+                                                title={language === 'ar' ? 'حذف الغرفة' : 'Delete Room'}
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -6496,7 +6562,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {room.isDoctorRoom && <Lock size={14} className="text-indigo-400"/>}
                                         </h3>
                                         <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">
-                                            {room.isDoctorRoom ? "Private Clinic" : `Host: ${room.creatorName || 'Unknown'}`}
+                                            {room.isDoctorRoom ? (language === 'ar' ? "عيادة خاصة" : "Private Clinic") : `${language === 'ar' ? "المضيف:" : "Host:"} ${room.creatorName || (language === 'ar' ? "مجهول" : 'Unknown')}`}
                                         </p>
                                     </div>
                                 </div>
@@ -6585,7 +6651,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-white text-base">{activeRoom.name}</h3>
-                                <span className="text-[10px] text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live</span>
+                                <span className="text-[10px] text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> {language === 'ar' ? 'مباشر' : 'Live'}</span>
                             </div>
                         </div>
                         <Button variant="secondary" className="!py-2 !px-4 !text-xs !rounded-xl hidden md:flex" onClick={() => setActiveRoom(null)}>
@@ -6613,7 +6679,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                             else if (msg.isAdmin || msg.role === 'admin') bubbleStyle = 'bg-gradient-to-br from-rose-900/90 to-rose-800/90 border-rose-500/30 text-rose-100 shadow-lg';
 
                             return (
-                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2`}>
+                                <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2 group`}>
                                     <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border border-white/10 shadow-md ${showAvatar ? (isMe ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400') : 'opacity-0'}`} aria-hidden="true">
                                         {msg.senderName.charAt(0).toUpperCase()}
                                     </div>
@@ -6622,13 +6688,24 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         {showAvatar && !isMe && (
                                             <span className="text-[10px] text-slate-500 mb-1 ml-1 flex items-center gap-1 font-bold">
                                                 {msg.senderName}
-                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0 shadow-none">DR</Badge>}
-                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0 shadow-none">ADMIN</Badge>}
+                                                {msg.role === 'doctor' && <Badge color="blue" className="!text-[8px] !px-1.5 !py-0 shadow-none">{language === 'ar' ? 'طبيب' : 'DR'}</Badge>}
+                                                {msg.role === 'admin' && <Badge color="rose" className="!text-[8px] !px-1.5 !py-0 shadow-none">{language === 'ar' ? 'مشرف' : 'ADMIN'}</Badge>}
                                             </span>
                                         )}
                                         
-                                        <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-sm ${bubbleStyle} ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
+                                        <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-sm relative ${bubbleStyle} ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
                                             {msg.text}
+                                            
+                                            {/* ADMIN DELETE BUTTON */}
+                                            {currentUser.role === 'admin' && (
+                                                <button 
+                                                    onClick={() => msg.id && handleDeleteMessage(msg.id)}
+                                                    className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 scale-75 hover:scale-90"
+                                                    title={language === 'ar' ? 'حذف الرسالة' : 'Delete Message'}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                         <span className="text-[9px] text-slate-600 mt-1 px-1 opacity-70 font-mono">
                                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -8354,6 +8431,30 @@ type OnboardingStep =
   | 'ALGO_SETUP_INV' 
   | 'ALGO_PREVIEW';
 
+// --- Extracted Components (DEFINED OUTSIDE TO FIX FOCUS ISSUE) ---
+
+const OnboardingWrapper = ({ children, dir }: { children: React.ReactNode, dir: 'rtl' | 'ltr' }) => (
+    <div className="min-h-screen bg-[#020617] p-4 md:p-6 flex flex-col items-center justify-center relative overflow-hidden" dir={dir}>
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50 pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000 pointer-events-none"></div>
+        <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
+        {children}
+    </div>
+);
+
+const NavBackBtn = ({ onClick, dir, disabled }: { onClick: () => void, dir: 'rtl' | 'ltr', disabled?: boolean }) => (
+    <button 
+      onClick={onClick}
+      className="absolute top-6 left-6 z-50 p-3 rounded-full glass hover:bg-white/10 text-slate-400 hover:text-white transition-all shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      disabled={disabled}
+      aria-label={dir === 'rtl' ? "رجوع" : "Go Back"}
+    >
+      {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+    </button>
+);
+
+// --- Main Component ---
+
 export const OnboardingView = ({ 
   userProfile, setUserProfile, inventory, setInventory, 
   currentDoseHabit, setCurrentDoseHabit, startPlan, email, handleLogout
@@ -8383,23 +8484,13 @@ export const OnboardingView = ({
   // Scientific Modal State
   const [showSciModal, setShowSciModal] = useState(false);
   
-  // -- Local Buffers for Numeric Inputs (Fixes Glitches) --
-  const [localInv, setLocalInv] = useState<{boxes: string, pills: string, loose: string}>({
-      boxes: '0', pills: '0', loose: '0'
-  });
-  const [localDose, setLocalDose] = useState<string>('0');
+  // -- Local Buffers for Numeric Inputs --
+  const [localInv, setLocalInv] = useState({ boxes: '0', pills: '0', loose: '0' });
+  const [localDose, setLocalDose] = useState('0');
 
-  // Initialize local buffers when entering inventory step
-  useEffect(() => {
-      if (step === 'ALGO_SETUP_INV') {
-          setLocalInv({
-              boxes: inventory.boxes.toString(),
-              pills: inventory.pillsPerBox.toString(),
-              loose: inventory.loosePills.toString()
-          });
-          setLocalDose(currentDoseHabit > 0 ? currentDoseHabit.toString() : '');
-      }
-  }, [step]); // Only reset on step entry
+  // ** HOISTED VARIABLES (FIX FOR RED LINES) **
+  const unitLabel = medUnit || 'mg';
+  const formLabel = medForm === 'liquid' ? (language === 'ar' ? 'عبوات' : 'Bottles') : (language === 'ar' ? 'علب' : 'Boxes');
 
   // Helper to calculate total from local strings
   const localTotalInventory = useMemo(() => {
@@ -8408,8 +8499,8 @@ export const OnboardingView = ({
       const l = parseFloat(localInv.loose) || 0;
       return (b * p) + l;
   }, [localInv]);
-  
-  // -- Load existing data if resubmitting --
+
+  // Load existing data if resubmitting
   useEffect(() => {
       if (userProfile.role === 'doctor' && userProfile.doctorData) {
           setDoctorName(userProfile.name);
@@ -8424,16 +8515,17 @@ export const OnboardingView = ({
       }
   }, [userProfile]);
 
-  const NavBackBtn = ({ to }: { to?: OnboardingStep }) => (
-      <button 
-        onClick={() => to ? setStep(to) : handleLogout?.()}
-        className="absolute top-6 left-6 z-50 p-3 rounded-full glass hover:bg-white/10 text-slate-400 hover:text-white transition-all shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        disabled={loading}
-        aria-label={dir === 'rtl' ? "رجوع" : "Go Back"}
-      >
-        {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-      </button>
-  );
+  // Sync Inventory to Local State ONLY when entering the step
+  useEffect(() => {
+      if (step === 'ALGO_SETUP_INV') {
+          setLocalInv({
+              boxes: inventory.boxes.toString(),
+              pills: inventory.pillsPerBox.toString(),
+              loose: inventory.loosePills.toString()
+          });
+          setLocalDose(currentDoseHabit > 0 ? currentDoseHabit.toString() : '');
+      }
+  }, [step]); 
 
   // --- Actions ---
 
@@ -8513,33 +8605,6 @@ export const OnboardingView = ({
       setLoading(false);
   };
 
-  const confirmAlgorithmPlan = async () => {
-      if (!auth || !auth.currentUser) return;
-      setLoading(true);
-      const currentUser = auth.currentUser;
-
-      const newProfile: UserProfile = {
-          ...userProfile,
-          uid: currentUser.uid,
-          role: 'normal_user',
-          planType: 'algorithm',
-          medType: medType,
-          medForm: medForm!,
-          medUnit: medUnit!,
-          setupComplete: true
-      };
-
-      startPlan(previewPlan, 1.0, 'algorithm');
-      
-      try {
-          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
-      } catch(e: any) {
-          console.error(e);
-          alert("حدث خطأ.");
-      }
-      setLoading(false);
-  };
-
   useEffect(() => {
       if (step === 'DOCTOR_SELECT') {
           const fetchDocs = async () => {
@@ -8564,51 +8629,82 @@ export const OnboardingView = ({
   };
 
   const generatePreview = () => {
-      // Sync local state to parent state just before generating
-      const finalInventory = {
-          boxes: parseInt(localInv.boxes) || 0,
-          pillsPerBox: parseInt(localInv.pills) || 0,
-          loosePills: parseFloat(localInv.loose) || 0,
-          totalPills: localTotalInventory
-      };
-      const finalDose = parseFloat(localDose) || 0;
+      // Safe parsing
+      const boxes = Math.max(0, parseInt(localInv.boxes) || 0);
+      const pills = Math.max(0, parseInt(localInv.pills) || 0);
+      const loose = Math.max(0, parseFloat(localInv.loose) || 0);
+      const dose = Math.max(0, parseFloat(localDose) || 0);
+      
+      const totalPills = (boxes * pills) + loose;
 
-      setInventory(finalInventory);
-      setCurrentDoseHabit(finalDose);
+      if (totalPills <= 0 || dose <= 0) {
+          alert(language === 'ar' ? "يرجى إدخال كميات صحيحة (أكبر من صفر)." : "Please enter valid quantities (>0).");
+          return;
+      }
 
-      const plan = generatePlan(localTotalInventory, finalDose, new Date().toISOString(), 1.0, [], medForm || 'tablet');
+      // Update parent state
+      setInventory({ boxes, pillsPerBox: pills, loosePills: loose, totalPills });
+      setCurrentDoseHabit(dose);
+
+      // Generate Plan
+      const plan = generatePlan(totalPills, dose, new Date().toISOString(), 1.0, [], medForm || 'tablet');
+      
+      if (plan.length === 0) {
+           alert(language === 'ar' ? "تعذر إنشاء خطة بهذه البيانات. تأكد أن الجرعة ليست أكبر من المخزون الكلي." : "Cannot generate plan. Ensure dose isn't larger than total inventory.");
+           return;
+      }
+
       setPreviewPlan(plan);
       setStep('ALGO_PREVIEW');
       setShowSciModal(true);
   };
 
-  // --- RENDERS ---
+  const confirmAlgorithmPlan = async () => {
+      if (!auth || !auth.currentUser) return;
+      setLoading(true);
+      const currentUser = auth.currentUser;
 
-  // Wrapper with Ambient Background
-  const OnboardingWrapper = ({ children }: { children: React.ReactNode }) => (
-      <div className="min-h-screen bg-[#020617] p-4 md:p-6 flex flex-col items-center justify-center relative overflow-hidden" dir={dir}>
-          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50 pointer-events-none"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000 pointer-events-none"></div>
-          <div className="absolute top-6 right-6 z-50"><LanguageSwitcher /></div>
-          {children}
-      </div>
-  );
+      const newProfile: UserProfile = {
+          ...userProfile,
+          uid: currentUser.uid,
+          role: 'normal_user',
+          planType: 'algorithm',
+          medType: medType,
+          medForm: medForm!,
+          medUnit: medUnit!,
+          setupComplete: true
+      };
+
+      // Ensure plan is valid before starting
+      if (previewPlan.length === 0) {
+          alert(language === 'ar' ? "لم يتم توليد خطة صالحة. يرجى التحقق من المدخلات." : "Invalid plan generated. Check inputs.");
+          setLoading(false);
+          return;
+      }
+
+      startPlan(previewPlan, 1.0, 'algorithm');
+      
+      try {
+          await setDoc(doc(db, "users", currentUser.uid), newProfile, { merge: true });
+      } catch(e: any) {
+          console.error(e);
+          alert("حدث خطأ في حفظ البيانات.");
+      }
+      setLoading(false);
+  };
+
+  // --- RENDERS ---
 
   if (step === 'ROLE_SELECT') {
       return (
-        <OnboardingWrapper>
-             {handleLogout && <NavBackBtn />}
+        <OnboardingWrapper dir={dir}>
+             {handleLogout && <NavBackBtn onClick={handleLogout} dir={dir} />}
              <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10">
                 <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('onboard_title')}</h1>
                 <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
              </header>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full relative z-10" role="group" aria-label="Role Selection">
-                 {/* خيار المريض */}
-                 <button 
-                    onClick={() => setStep('USER_PATH_SELECT')} 
-                    className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/30"
-                    aria-label={`${t('role_patient')} - ${t('role_patient_desc')}`}
-                 >
+                 <button onClick={() => setStep('USER_PATH_SELECT')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/30">
                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <div className="w-16 h-16 bg-indigo-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/20 border border-indigo-500/30">
                         <UserPlus size={32} className="text-indigo-400"/>
@@ -8617,12 +8713,7 @@ export const OnboardingView = ({
                      <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('role_patient_desc')}</p>
                  </button>
                  
-                 {/* خيار الطبيب */}
-                 <button 
-                    onClick={() => setStep('DOCTOR_FORM')} 
-                    className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/30"
-                    aria-label={`${t('role_doctor')} - ${t('role_doctor_desc')}`}
-                 >
+                 <button onClick={() => setStep('DOCTOR_FORM')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/30">
                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      <div className="w-16 h-16 bg-emerald-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/20 border border-emerald-500/30">
                         <Stethoscope size={32} className="text-emerald-400"/>
@@ -8637,8 +8728,8 @@ export const OnboardingView = ({
 
   if (step === 'DOCTOR_FORM') {
       return (
-          <OnboardingWrapper>
-              <NavBackBtn to="ROLE_SELECT" />
+          <OnboardingWrapper dir={dir}>
+              <NavBackBtn onClick={() => setStep('ROLE_SELECT')} dir={dir} />
               <div className="max-w-2xl w-full animate-in fade-in slide-in-from-bottom-8 relative z-10 pt-20">
                   <header className="text-center mb-8">
                       <h1 className="text-3xl font-black text-white mb-2">{t('doc_req_title')}</h1>
@@ -8703,36 +8794,26 @@ export const OnboardingView = ({
 
   if (step === 'USER_PATH_SELECT') { 
       return (
-        <OnboardingWrapper>
-            <NavBackBtn to="ROLE_SELECT" />
+        <OnboardingWrapper dir={dir}>
+            <NavBackBtn onClick={() => setStep('ROLE_SELECT')} dir={dir} />
             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10 pt-20">
                 <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('path_select_title')}</h1>
                 <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
             </header>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full relative z-10" role="group" aria-label="Path Selection">
-                <button 
-                    onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} 
-                    className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/30"
-                    aria-label={`${t('path_algo')} - ${t('path_algo_desc')}`}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="w-16 h-16 bg-indigo-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/20 border border-indigo-500/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full relative z-10">
+                <button onClick={() => {setMedType(null); setStep('ALGO_SETUP_MED');}} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                    <div className="w-16 h-16 bg-indigo-500/20 rounded-3xl flex items-center justify-center mb-6 border border-indigo-500/30">
                         <BrainCircuit size={32} className="text-indigo-400"/>
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_algo')}</h3>
-                    <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('path_algo_desc')}</p>
+                    <p className="text-slate-400 text-sm">{t('path_algo_desc')}</p>
                 </button>
-                <button 
-                    onClick={() => setStep('DOCTOR_SELECT')} 
-                    className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/30"
-                    aria-label={`${t('path_doctor')} - ${t('path_doctor_desc')}`}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="w-16 h-16 bg-blue-500/20 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/20 border border-blue-500/30">
+                <button onClick={() => setStep('DOCTOR_SELECT')} className="group bg-slate-900/60 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] hover:border-blue-500/50 hover:bg-slate-900/80 transition-all text-right relative overflow-hidden shadow-2xl">
+                    <div className="w-16 h-16 bg-blue-500/20 rounded-3xl flex items-center justify-center mb-6 border border-blue-500/30">
                         <Stethoscope size={32} className="text-blue-400"/>
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">{t('path_doctor')}</h3>
-                    <p className="text-slate-400 leading-relaxed text-sm font-medium">{t('path_doctor_desc')}</p>
+                    <p className="text-slate-400 text-sm">{t('path_doctor_desc')}</p>
                 </button>
             </div>
         </OnboardingWrapper>
@@ -8742,52 +8823,30 @@ export const OnboardingView = ({
   if (step === 'DOCTOR_SELECT') { 
       const filteredDocs = availableDoctors.filter(d => d.name.toLowerCase().includes(searchDoctor.toLowerCase())); 
       return (
-        <OnboardingWrapper>
-            <NavBackBtn to="USER_PATH_SELECT" />
+        <OnboardingWrapper dir={dir}>
+            <NavBackBtn onClick={() => setStep('USER_PATH_SELECT')} dir={dir} />
             <div className="max-w-4xl w-full animate-in fade-in relative z-10 pt-20">
                 <header className="mb-8 text-center">
                     <h1 className="text-3xl font-black text-white mb-2">{t('doc_select_title')}</h1>
                     <p className="text-slate-400">{t('path_doctor_desc')}</p>
                 </header>
                 <div className="relative mb-8 group">
-                    <label htmlFor="searchDoc" className="sr-only">Search Doctor</label>
-                    <Search className="absolute top-1/2 right-6 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20}/>
-                    <input id="searchDoc" className="w-full bg-slate-900/70 border border-white/10 rounded-2xl py-4 px-14 text-white outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all shadow-lg placeholder-slate-600" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/>
+                    <Search className="absolute top-1/2 right-6 -translate-y-1/2 text-slate-500" size={20}/>
+                    <input className="w-full bg-slate-900/70 border border-white/10 rounded-2xl py-4 px-14 text-white outline-none focus:border-indigo-500 focus:bg-slate-900 transition-all shadow-lg placeholder-slate-600" placeholder={t('doc_search_placeholder')} value={searchDoctor} onChange={e => setSearchDoctor(e.target.value)}/>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredDocs.length === 0 ? (
-                        <div className="col-span-2 text-center py-20 bg-slate-900/50 rounded-3xl border border-dashed border-slate-700">
-                            <Stethoscope className="mx-auto mb-4 text-slate-700" size={48} />
-                            <p className="text-slate-500">{availableDoctors.length === 0 ? 'لا يوجد أطباء متاحين حالياً.' : 'لم يتم العثور على نتائج.'}</p>
-                        </div>
-                    ) : (
-                        filteredDocs.map(doc => (
-                            <div key={doc.uid} className="bg-slate-900/80 backdrop-blur-xl border border-white/5 p-6 rounded-3xl hover:border-indigo-500/30 transition-all group flex flex-col h-full shadow-xl hover:shadow-indigo-500/10">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-4">
-                                        {doc.doctorData?.photoUrl ? (
-                                            <img src={doc.doctorData.photoUrl} alt={`Dr ${doc.name}`} className="w-14 h-14 rounded-2xl object-cover border border-white/10 shadow-lg" />
-                                        ) : (
-                                            <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20" aria-hidden="true">Dr</div>
-                                        )}
-                                        <div>
-                                            <h3 className="font-bold text-white text-lg">{doc.name}</h3>
-                                            <Badge color="blue">{doc.doctorData?.specialty}</Badge>
-                                        </div>
-                                    </div>
+                    {filteredDocs.map(doc => (
+                        <div key={doc.uid} className="bg-slate-900/80 p-6 rounded-3xl border border-white/5 flex flex-col hover:border-indigo-500/30 transition-all">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 font-bold">Dr</div>
+                                <div>
+                                    <h3 className="font-bold text-white">{doc.name}</h3>
+                                    <Badge color="blue">{doc.doctorData?.specialty}</Badge>
                                 </div>
-                                <p className="text-slate-400 text-sm mb-6 line-clamp-2 bg-slate-950/50 p-4 rounded-xl border border-white/5 flex-1 leading-relaxed">
-                                    {doc.doctorData?.bio || "لا توجد نبذة تعريفية."}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500 mb-4 font-bold uppercase tracking-wider">
-                                    <MapPin size={14}/> {doc.doctorData?.clinicLocation || "عيادة افتراضية"}
-                                </div>
-                                <Button onClick={() => handleAssignDoctor(doc)} className="w-full py-3" variant="secondary" disabled={loading}>
-                                    {loading ? 'جاري الإرسال...' : t('doc_select_btn')}
-                                </Button>
                             </div>
-                        ))
-                    )}
+                            <Button onClick={() => handleAssignDoctor(doc)} className="w-full py-3" variant="secondary" disabled={loading}>{loading ? '...' : t('doc_select_btn')}</Button>
+                        </div>
+                    ))}
                 </div>
             </div>
         </OnboardingWrapper>
@@ -8796,30 +8855,23 @@ export const OnboardingView = ({
 
   if (step === 'ALGO_SETUP_MED') { 
       if (blockedState) return (
-        <OnboardingWrapper>
+        <OnboardingWrapper dir={dir}>
             <div className="text-center animate-in zoom-in max-w-lg">
-                <div className="w-24 h-24 bg-rose-600/20 rounded-full flex items-center justify-center mb-6 mx-auto border border-rose-500/30 shadow-2xl shadow-rose-900/50 animate-bounce">
+                <div className="w-24 h-24 bg-rose-600/20 rounded-full flex items-center justify-center mb-6 mx-auto border border-rose-500/30 animate-bounce">
                     <AlertTriangle size={48} className="text-rose-500" />
                 </div>
                 <h1 className="text-4xl font-black text-white mb-4">{t('blocked_title')}</h1>
-                <p className="text-rose-200/80 text-xl leading-relaxed mb-8 bg-rose-900/20 p-6 rounded-2xl border border-rose-500/10">
-                    {t('med_type_narcotic_desc')}
-                </p>
+                <p className="text-rose-200/80 text-xl mb-8">{t('med_type_narcotic_desc')}</p>
                 <Button onClick={() => setBlockedState(false)} variant="secondary" className="px-8">{t('close')}</Button>
             </div>
         </OnboardingWrapper>
       ); 
       
       if (psychWarning) return (
-        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in" dir={dir}>
-            <Card className="max-w-md border-amber-500/30 bg-slate-900 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
-                <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mb-4 mx-auto animate-pulse border border-amber-500/30">
-                    <AlertTriangle size={32} className="text-amber-500" />
-                </div>
+        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6" dir={dir}>
+            <Card className="max-w-md border-amber-500/30 bg-slate-900">
                 <h2 className="text-2xl font-bold text-white text-center mb-4">{t('warning_title')}</h2>
-                <p className="text-slate-300 text-center mb-8 leading-relaxed bg-slate-950/50 p-4 rounded-xl border border-white/5">
-                    {t('med_type_psych_desc')}
-                </p>
+                <p className="text-slate-300 text-center mb-8">{t('med_type_psych_desc')}</p>
                 <div className="flex gap-4">
                     <Button variant="secondary" onClick={() => setPsychWarning(false)} className="flex-1">{t('close')}</Button>
                     <Button variant="primary" onClick={() => { setPsychWarning(false); setStep('ALGO_SETUP_FORM'); }} className="flex-1">موافق، تابع</Button>
@@ -8829,29 +8881,22 @@ export const OnboardingView = ({
       ); 
       
       return (
-        <OnboardingWrapper>
-            <NavBackBtn to="USER_PATH_SELECT" />
+        <OnboardingWrapper dir={dir}>
+            <NavBackBtn onClick={() => setStep('USER_PATH_SELECT')} dir={dir} />
             <header className="text-center mb-12 animate-in slide-in-from-top-4 relative z-10 pt-20">
                 <h1 className="text-4xl font-black text-white mb-4">{t('med_type_title')}</h1>
-                <p className="text-slate-400">حدد نوع الدواء الذي تريد التعافي منه</p>
             </header>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full relative z-10" role="group" aria-label="Medication Type Selection">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full relative z-10">
                 {[
-                    { type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose', desc: t('med_type_narcotic_desc') }, 
-                    { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber', desc: t('med_type_psych_desc') }, 
-                    { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald', desc: t('med_type_normal_desc') }
+                    { type: 'narcotic', label: t('med_type_narcotic'), icon: AlertTriangle, color: 'rose' }, 
+                    { type: 'psychiatric', label: t('med_type_psych'), icon: BrainCircuit, color: 'amber' }, 
+                    { type: 'normal', label: t('med_type_normal'), icon: CheckCircle, color: 'emerald' }
                 ].map((item: any) => (
-                    <button 
-                        key={item.type} 
-                        onClick={() => handleMedTypeSelect(item.type)} 
-                        className={`group relative p-8 rounded-[2.5rem] border border-white/10 bg-slate-900/60 backdrop-blur-md hover:bg-slate-900/80 transition-all text-right overflow-hidden hover:border-${item.color}-500/50 hover:shadow-2xl shadow-lg hover:scale-105 duration-300 focus:outline-none focus:ring-4 focus:ring-${item.color}-500/30`}
-                        aria-label={`${item.label} - ${item.desc}`}
-                    >
-                        <div className={`w-16 h-16 rounded-2xl bg-${item.color}-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform border border-${item.color}-500/20`}>
+                    <button key={item.type} onClick={() => handleMedTypeSelect(item.type)} className={`p-8 rounded-[2.5rem] border border-white/10 bg-slate-900/60 hover:bg-slate-900/80 transition-all text-right hover:scale-105 duration-300`}>
+                        <div className={`w-16 h-16 rounded-2xl bg-${item.color}-500/10 flex items-center justify-center mb-6 border border-${item.color}-500/20`}>
                             <item.icon className={`w-8 h-8 text-${item.color}-500`} />
                         </div>
                         <h3 className="text-2xl font-bold text-white mb-2">{item.label}</h3>
-                        <p className="text-sm text-slate-400 font-medium leading-relaxed">{item.desc}</p>
                     </button>
                 ))}
             </div>
@@ -8861,25 +8906,17 @@ export const OnboardingView = ({
   
   if (step === 'ALGO_SETUP_FORM') { 
       return (
-        <OnboardingWrapper>
-            <NavBackBtn to="ALGO_SETUP_MED" />
+        <OnboardingWrapper dir={dir}>
+            <NavBackBtn onClick={() => setStep('ALGO_SETUP_MED')} dir={dir} />
             <div className="max-w-2xl w-full animate-in zoom-in relative z-10 pt-20 text-center">
                 <h1 className="text-3xl font-black text-white mb-8">{t('med_form_title')}</h1>
-                <div className="grid grid-cols-2 gap-6 mb-10" role="group" aria-label="Medication Form">
-                    <button 
-                        onClick={() => setMedForm('tablet')} 
-                        className={`p-8 rounded-3xl border transition-all duration-300 group focus:outline-none focus:ring-4 focus:ring-indigo-500/30 ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/30 scale-105' : 'bg-slate-900/60 border-white/10 text-slate-400 hover:bg-slate-800 hover:border-white/20'}`}
-                        aria-pressed={medForm === 'tablet'}
-                    >
-                        <Pill className={`mx-auto mb-4 w-12 h-12 ${medForm === 'tablet' ? 'text-white' : 'text-indigo-400'}`} />
+                <div className="grid grid-cols-2 gap-6 mb-10">
+                    <button onClick={() => setMedForm('tablet')} className={`p-8 rounded-3xl border transition-all ${medForm === 'tablet' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/60 border-white/10 text-slate-400'}`}>
+                        <Pill className="mx-auto mb-4 w-12 h-12" />
                         <span className="block font-bold text-xl">{t('form_tablet')}</span>
                     </button>
-                    <button 
-                        onClick={() => setMedForm('liquid')} 
-                        className={`p-8 rounded-3xl border transition-all duration-300 group focus:outline-none focus:ring-4 focus:ring-indigo-500/30 ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/30 scale-105' : 'bg-slate-900/60 border-white/10 text-slate-400 hover:bg-slate-800 hover:border-white/20'}`}
-                        aria-pressed={medForm === 'liquid'}
-                    >
-                        <FlaskConical className={`mx-auto mb-4 w-12 h-12 ${medForm === 'liquid' ? 'text-white' : 'text-indigo-400'}`} />
+                    <button onClick={() => setMedForm('liquid')} className={`p-8 rounded-3xl border transition-all ${medForm === 'liquid' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/60 border-white/10 text-slate-400'}`}>
+                        <FlaskConical className="mx-auto mb-4 w-12 h-12" />
                         <span className="block font-bold text-xl">{t('form_liquid')}</span>
                     </button>
                 </div>
@@ -8887,14 +8924,9 @@ export const OnboardingView = ({
                 {medForm && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 mb-10">
                         <h2 className="text-xl font-bold text-white mb-4">{t('unit_title')}</h2>
-                        <div className="flex justify-center gap-4" role="group" aria-label="Unit Selection">
+                        <div className="flex justify-center gap-4">
                             {(medForm === 'tablet' ? ['mg', 'g'] : ['ml', 'l', 'mg']).map((u) => (
-                                <button 
-                                    key={u} 
-                                    onClick={() => setMedUnit(u as MedUnit)} 
-                                    className={`px-8 py-4 rounded-2xl font-bold text-lg border transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-900/50 border-white/10 text-slate-500 hover:text-white hover:bg-slate-800'}`}
-                                    aria-pressed={medUnit === u}
-                                >
+                                <button key={u} onClick={() => setMedUnit(u as MedUnit)} className={`px-8 py-4 rounded-2xl font-bold text-lg border transition-all ${medUnit === u ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-900/50 border-white/10 text-slate-500'}`}>
                                     {u}
                                 </button>
                             ))}
@@ -8902,7 +8934,7 @@ export const OnboardingView = ({
                     </div>
                 )}
                 
-                <Button variant="success" className="w-full py-5 text-xl rounded-2xl shadow-xl shadow-emerald-500/20" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>
+                <Button variant="success" className="w-full py-5 text-xl rounded-2xl" disabled={!medForm || !medUnit} onClick={() => setStep('ALGO_SETUP_INV')}>
                     التالي <ArrowRight className={dir === 'rtl' ? 'rotate-180 mr-2' : 'ml-2'} />
                 </Button>
             </div>
@@ -8911,11 +8943,9 @@ export const OnboardingView = ({
   }
   
   if (step === 'ALGO_SETUP_INV') { 
-      const formLabel = medForm === 'liquid' ? 'عبوات' : 'علب'; 
-      const unitLabel = medUnit || 'mg'; 
       return (
-        <OnboardingWrapper>
-            <NavBackBtn to="ALGO_SETUP_FORM" />
+        <OnboardingWrapper dir={dir}>
+            <NavBackBtn onClick={() => setStep('ALGO_SETUP_FORM')} dir={dir} />
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in relative z-10 pt-20 w-full">
                 <Card className="border-white/10 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
                     <h2 className="text-3xl font-bold text-white mb-8 flex items-center gap-4">
@@ -8924,9 +8954,8 @@ export const OnboardingView = ({
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="group">
-                            <label htmlFor="boxes" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('boxes')} ({formLabel})</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider">{t('boxes')} ({formLabel})</label>
                             <input 
-                                id="boxes" 
                                 type="number" 
                                 min="0" 
                                 className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
@@ -8936,9 +8965,8 @@ export const OnboardingView = ({
                             />
                         </div>
                         <div className="group">
-                            <label htmlFor="pillsPerBox" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('pills_per_box')}</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider">{t('pills_per_box')}</label>
                             <input 
-                                id="pillsPerBox" 
                                 type="number" 
                                 min="1" 
                                 className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
@@ -8948,9 +8976,8 @@ export const OnboardingView = ({
                             />
                         </div>
                         <div className="group">
-                            <label htmlFor="loosePills" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('loose_pills')}</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider">{t('loose_pills')}</label>
                             <input 
-                                id="loosePills" 
                                 type="number" 
                                 min="0" 
                                 step="0.5"
@@ -8978,9 +9005,7 @@ export const OnboardingView = ({
                             <button key={dose} onClick={() => setLocalDose(dose.toString())} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${parseFloat(localDose) === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
                         ))}
                         <div className="relative flex-1 min-w-[120px]">
-                            <label htmlFor="customDose" className="sr-only">Custom Dose</label>
                             <input 
-                                id="customDose"
                                 type="number" 
                                 min="0.1"
                                 step="0.1"
@@ -9003,20 +9028,19 @@ export const OnboardingView = ({
   
   if (step === 'ALGO_PREVIEW') { 
       return (
-        <OnboardingWrapper>
+        <OnboardingWrapper dir={dir}>
             <ScientificPlanModal 
                 isOpen={showSciModal} 
                 onClose={() => setShowSciModal(false)} 
                 onConfirm={() => setShowSciModal(false)} 
             />
 
-            <NavBackBtn to="ALGO_SETUP_INV" />
+            <NavBackBtn onClick={() => setStep('ALGO_SETUP_INV')} dir={dir} />
             <div className="max-w-4xl w-full text-center space-y-8 animate-in zoom-in relative z-10 pt-20">
                 <div className="inline-flex p-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4 shadow-[0_0_60px_rgba(16,185,129,0.2)]">
                     <CheckCircle size={64} className="text-emerald-400" />
                 </div>
                 <h1 className="text-5xl font-black text-white tracking-tight">تم إنشاء الخطة المبدئية</h1>
-                <p className="text-slate-400 text-xl">بناءً على مخزونك الحالي، هذا هو مقترح الجدول الزمني:</p>
                 
                 {/* Safety Warning Block */}
                 <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl text-left flex items-start gap-4">
@@ -10353,7 +10377,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
 ### File: `App.tsx`
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone } from 'lucide-react';
 
 // Contexts
@@ -10365,22 +10389,25 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { AppView, Inventory, DailyLog, PlanDay, UserProfile } from './types';
 
-// Components & Views
-import { Button } from './components/ui/Button';
+// Components (Eager Load Core UI)
+import { Button } from './components/ui/Button'; // Fixed Import
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav'; 
-import { LoginView } from './views/LoginView';
-import { OnboardingView } from './views/OnboardingView';
-import { DashboardView } from './views/DashboardView';
-import { CalendarView } from './views/CalendarView';
-import { StatsView } from './views/StatsView';
-import { AdminView } from './views/AdminView';
-import { CommunityView } from './views/CommunityView';
-import { SupportView } from './views/SupportView';
-import { ArticlesView } from './views/ArticlesView';
-import { DoctorDashboardView } from './views/DoctorDashboardView'; 
-import { DoctorPatientsView } from './views/DoctorPatientsView';
-import { SettingsView } from './views/SettingsView';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
+// Lazy Load Views (Performance Optimization)
+const LoginView = React.lazy(() => import('./views/LoginView').then(m => ({ default: m.LoginView })));
+const OnboardingView = React.lazy(() => import('./views/OnboardingView').then(m => ({ default: m.OnboardingView })));
+const DashboardView = React.lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
+const CalendarView = React.lazy(() => import('./views/CalendarView').then(m => ({ default: m.CalendarView })));
+const StatsView = React.lazy(() => import('./views/StatsView').then(m => ({ default: m.StatsView })));
+const AdminView = React.lazy(() => import('./views/AdminView').then(m => ({ default: m.AdminView })));
+const CommunityView = React.lazy(() => import('./views/CommunityView').then(m => ({ default: m.CommunityView })));
+const SupportView = React.lazy(() => import('./views/SupportView').then(m => ({ default: m.SupportView })));
+const ArticlesView = React.lazy(() => import('./views/ArticlesView').then(m => ({ default: m.ArticlesView })));
+const DoctorDashboardView = React.lazy(() => import('./views/DoctorDashboardView').then(m => ({ default: m.DoctorDashboardView })));
+const DoctorPatientsView = React.lazy(() => import('./views/DoctorPatientsView').then(m => ({ default: m.DoctorPatientsView })));
+const SettingsView = React.lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })));
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -10389,7 +10416,7 @@ const addDaysSafe = (dateStr: string, days: number): string => {
   return date.toISOString().split('T')[0];
 };
 
-// --- New Medical Disclaimer Component (Internal) ---
+// --- Medical Disclaimer Component ---
 const MedicalSafetyBanner = () => {
   const { language } = useLanguage();
   const isAr = language === 'ar';
@@ -10414,6 +10441,14 @@ const MedicalSafetyBanner = () => {
     </div>
   );
 };
+
+// --- Loader Component ---
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-indigo-400 gap-4">
+    <Loader2 size={48} className="animate-spin" />
+    <span className="font-bold tracking-widest text-sm animate-pulse">LOADING...</span>
+  </div>
+);
 
 function AppContent() {
   // -- Context Hooks --
@@ -10451,15 +10486,28 @@ function AppContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // 🛡️ ADMIN BYPASS CHECK
+  const isAdminEmail = currentUser?.email?.toLowerCase() === 'admin@islamguide.com';
+  
+  // Layout Logic: Hide Sidebar for Admin View
+  const isFullWidthLayout = currentView === AppView.ADMIN;
+
   // -- Routing Logic --
   useEffect(() => {
+    // 0. ADMIN FORCE REDIRECT
+    if (isAdminEmail) {
+        if (currentView !== AppView.ADMIN) {
+            setCurrentView(AppView.ADMIN);
+        }
+        return;
+    }
+
     if (userProfile) {
-        // 1. منطق الأدمن
+        // 1. Role-Based Redirects
         if (userProfile.role === 'admin' && currentView === AppView.DASHBOARD) {
             setCurrentView(AppView.ADMIN);
         } 
         
-        // 2. منطق الطبيب
         else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
             const allowedDoctorViews = [
                 AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, 
@@ -10470,7 +10518,7 @@ function AppContent() {
             }
         }
         
-        // 3. إعادة تعيين حالة إعادة الإرسال
+        // 2. Reset Resubmit State
         if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending') {
             setIsResubmitting(false);
         }
@@ -10478,7 +10526,7 @@ function AppContent() {
             setIsResubmitting(false);
         }
     }
-  }, [userProfile, currentView]);
+  }, [userProfile, currentView, isAdminEmail]);
 
   // -- Navigation Handlers --
   const navigateTo = (view: AppView) => {
@@ -10493,14 +10541,14 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      const defaultView = userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : 
-                          userProfile?.role === 'admin' ? AppView.ADMIN : AppView.DASHBOARD;
+      // Default fallback
+      const defaultView = isAdminEmail ? AppView.ADMIN : 
+                          userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : AppView.DASHBOARD;
       setCurrentView(defaultView);
     }
   };
 
   // -- Logic Handlers --
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       clearError();
@@ -10530,23 +10578,9 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Check for existing log to prevent double deduction
-    const existingLog = logs.find(l => l.date === today);
-    
-    // Calculate current total pills
-    let currentTotal = calculateTotalInventory(inventory);
-    
-    // If we are updating, we must first REFUND the old dose to the inventory
-    if (existingLog) {
-        currentTotal += existingLog.doseTaken;
-    }
-    
-    // Now deduct the new dose
+    const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
-    // Construct new inventory object
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
@@ -10556,19 +10590,15 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // Create the new log entry
+    const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
     };
-    
-    // Update logs array (replace if exists, or add new)
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // Update Plan if Algorithm is active
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
-        // Recalculate theoretical start for the algorithm projection
         const theoreticalInitial = newTotal + totalUsed;
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier, userProfile.medForm || 'tablet');
         setPlan(newPlan);
@@ -10652,36 +10682,43 @@ function AppContent() {
         <div className="min-h-screen bg-[#020617] flex flex-col">
             <MedicalSafetyBanner />
             <div className="flex-1 flex items-center justify-center">
-                <LoginView 
-                    handleLogin={handleLoginSubmit} 
-                    handleGoogleLogin={loginWithGoogle} 
-                    email={email} setEmail={setEmail} 
-                    password={password} setPassword={setPassword} 
-                    loginError={loginError || ''} 
-                    setDemoCreds={enableDemoMode} 
-                />
+                <Suspense fallback={<PageLoader />}>
+                    <LoginView 
+                        handleLogin={handleLoginSubmit} 
+                        handleGoogleLogin={loginWithGoogle} 
+                        email={email} setEmail={setEmail} 
+                        password={password} setPassword={setPassword} 
+                        loginError={loginError || ''} 
+                        setDemoCreds={enableDemoMode} 
+                    />
+                </Suspense>
             </div>
         </div>
     );
   }
 
-  // 2. ONBOARDING & RESUBMISSION
-  if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
+  // 2. ONBOARDING & RESUBMISSION (Skipped for Admins)
+  if (!isAdminEmail && (
+      (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || 
+      isResubmitting
+     )) {
     return (
         <div className="min-h-screen bg-[#020617] flex flex-col">
             <MedicalSafetyBanner />
             <div className="flex-1">
-                <OnboardingView 
-                    userProfile={userProfile!} 
-                    setUserProfile={setUserProfile} 
-                    inventory={inventory} 
-                    setInventory={setInventory} 
-                    currentDoseHabit={currentDoseHabit} 
-                    setCurrentDoseHabit={setCurrentDoseHabit} 
-                    startPlan={startPlan} 
-                    email={currentUser?.email || email} 
-                    handleLogout={logout} 
-                />
+                <Suspense fallback={<PageLoader />}>
+                    <OnboardingView 
+                        userProfile={userProfile!} 
+                        setUserProfile={setUserProfile} 
+                        inventory={inventory} 
+                        setInventory={setInventory} 
+                        currentDoseHabit={currentDoseHabit} 
+                        setCurrentDoseHabit={setCurrentDoseHabit} 
+                        startPlan={startPlan} 
+                        email={currentUser?.email || email} 
+                        handleLogout={logout} 
+                    />
+                </Suspense>
             </div>
         </div>
     );
@@ -10691,10 +10728,9 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30 flex flex-col" dir={dir}>
       
-      {/* Medical Banner - Always visible at top */}
       <MedicalSafetyBanner />
 
-      {/* --- Ambient Background Effects (The New Magic) --- */}
+      {/* --- Ambient Background Effects --- */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000"></div>
@@ -10748,107 +10784,115 @@ function AppContent() {
       {/* NORMAL APP FLOW */}
       {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
           <div className="flex-1 flex flex-col md:flex-row h-full">
-              {/* Mobile Back Nav - Moved Top */}
-              {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
+              {/* Mobile Back Nav - Only show if sidebar is visible */}
+              {!isFullWidthLayout && (viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
                   <button onClick={goBack} className="fixed top-24 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
                       {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                   </button>
               )}
 
-              <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
-              <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
+              {/* Sidebar & Mobile Nav - HIDDEN IN ADMIN MODE */}
+              {!isFullWidthLayout && (
+                <>
+                  <Sidebar currentView={currentView} setCurrentView={navigateTo} handleLogout={logout} userProfile={userProfile} />
+                  <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
+                </>
+              )}
               
-              <div className="flex-1 md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
-                
-                {/* PENDING SCREENS */}
-                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Clock size={48} className="text-amber-500 animate-pulse" />
+              <div className={`flex-1 ${!isFullWidthLayout ? 'md:mr-80' : ''} p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10`}>
+                 {/* Suspense Wrapper for Lazy Views */}
+                 <Suspense fallback={<PageLoader />}>
+                    
+                    {/* PENDING SCREENS */}
+                    {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Clock size={48} className="text-amber-500 animate-pulse" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                طلبك قيد المراجعة من الإدارة. سيتم توجيهك تلقائياً فور الاعتماد.
+                            </p>
+                            <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            طلبك قيد المراجعة من الإدارة. سيتم توجيهك تلقائياً فور الاعتماد.
-                        </p>
-                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
-                    </div>
-                ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Clock size={48} className="text-blue-500 animate-pulse" />
+                    ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Clock size={48} className="text-blue-500 animate-pulse" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                طلبك للانضمام قيد المراجعة من قبل الطبيب.
+                            </p>
+                            <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            طلبك للانضمام قيد المراجعة من قبل الطبيب.
-                        </p>
-                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
-                    </div>
-                ) : userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                    ) : userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                وافق الطبيب على انضمامك. يرجى الانتظار حتى يقوم بوضع الجدول العلاجي.
+                            </p>
+                            <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
+                                دخول المجتمع مؤقتاً
+                            </Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            وافق الطبيب على انضمامك. يرجى الانتظار حتى يقوم بوضع الجدول العلاجي.
-                        </p>
-                        <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
-                            دخول المجتمع مؤقتاً
-                        </Button>
-                    </div>
-                ) : (
-                    /* ACTIVE VIEWS - Main Routing */
-                    <>
-                        {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
-                            <>
-                                {currentView === AppView.DASHBOARD && (
-                                    <DashboardView 
-                                        userProfile={userProfile}
-                                        plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
-                                        progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
-                                        showDoctorWarning={showDoctorWarning}
-                                        selectedDose={selectedDose} setSelectedDose={setSelectedDose}
-                                        selectedMood={selectedMood} setSelectedMood={setSelectedMood}
-                                        submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
-                                    />
-                                )}
-                                {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
-                                {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
-                            </>
-                        )}
+                    ) : (
+                        /* ACTIVE VIEWS */
+                        <>
+                            {(userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned))) && (
+                                <>
+                                    {currentView === AppView.DASHBOARD && (
+                                        <DashboardView 
+                                            userProfile={userProfile}
+                                            plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
+                                            progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
+                                            showDoctorWarning={showDoctorWarning}
+                                            selectedDose={selectedDose} setSelectedDose={setSelectedDose}
+                                            selectedMood={selectedMood} setSelectedMood={setSelectedMood}
+                                            submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                                        />
+                                    )}
+                                    {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
+                                    {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
+                                </>
+                            )}
 
-                        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
-                            <>
-                                {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
-                                {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
-                            </>
-                        )}
+                            {(userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') && (
+                                <>
+                                    {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
+                                    {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
+                                </>
+                            )}
 
-                        {currentView === AppView.COMMUNITY && (
-                            <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
-                        )}
+                            {currentView === AppView.COMMUNITY && (
+                                <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
+                            )}
 
-                        {currentView === AppView.SUPPORT && (
-                            <SupportView user={{...userProfile!, uid: currentUser?.uid || ''}} />
-                        )}
+                            {currentView === AppView.SUPPORT && (
+                                <SupportView user={{...userProfile!, uid: currentUser?.uid || ''}} />
+                            )}
 
-                        {currentView === AppView.ARTICLES && (
-                            <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
-                        )}
-                        
-                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
-                            <AdminView />
-                        )}
-                        
-                        {currentView === AppView.SETTINGS && userProfile && (
-                            <SettingsView 
-                                userProfile={userProfile} 
-                                resetAllData={resetAllData} 
-                                updateSpeedSettings={updateSpeedSettings} 
-                            />
-                        )}
-                    </>
-                )}
+                            {currentView === AppView.ARTICLES && (
+                                <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
+                            )}
+                            
+                            {currentView === AppView.ADMIN && (userProfile?.role === 'admin' || isAdminEmail) && (
+                                <AdminView />
+                            )}
+                            
+                            {currentView === AppView.SETTINGS && userProfile && (
+                                <SettingsView 
+                                    userProfile={userProfile} 
+                                    resetAllData={resetAllData} 
+                                    updateSpeedSettings={updateSpeedSettings} 
+                                />
+                            )}
+                        </>
+                    )}
+                 </Suspense>
               </div>
           </div>
       )}
@@ -10861,7 +10905,9 @@ export default function App() {
     <LanguageProvider>
       <AuthProvider>
         <DataProvider>
-          <AppContent />
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
         </DataProvider>
       </AuthProvider>
     </LanguageProvider>
@@ -10877,129 +10923,98 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =========================================================
-    // 🛡️ HELPER FUNCTIONS (دوال مساعدة للتحقق والحماية)
+    // 🛡️ HELPER FUNCTIONS
     // =========================================================
     
-    // التحقق من تسجيل الدخول
     function isSignedIn() {
       return request.auth != null;
     }
     
-    // التحقق من ملكية المستند
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // جلب بيانات المستخدم الحالي من القاعدة
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // التحقق من صلاحية "أدمن"
     function isAdmin() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
-        // Hardcoded fallback for bootstrap admins (remove in production if user collection is seeded)
         request.auth.token.email.matches('.*@islamguide.com') 
       );
     }
     
-    // التحقق من صلاحية "طبيب معتمد"
     function isApprovedDoctor() {
       let user = getUserData();
       return isSignedIn() && user.role == 'doctor' && user.doctorData.accountStatus == 'approved';
     }
 
-    // التحقق من البيانات القادمة (Incoming Data Helpers)
     function incomingData() {
       return request.resource.data;
     }
     
-    // التحقق من عدم تغيير حقل معين (Immutability)
     function notUpdating(field) {
       return !(field in incomingData()) || resource.data[field] == incomingData()[field];
     }
 
-    // التحقق من صحة النصوص (الطول)
     function isValidString(text, min, max) {
       return text is string && text.size() >= min && text.size() <= max;
     }
 
     // =========================================================
-    // 📂 COLLECTION RULES (قواعد المجموعات)
+    // 📂 COLLECTION RULES
     // =========================================================
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      // Admin: Full Access
       allow read, write, delete: if isAdmin();
 
-      // Read Permissions
       allow read: if isSignedIn() && (
         isOwner(userId) || 
-        // Doctors can read specific profiles (pending/approved doctors logic needed?)
         (resource.data.role == 'doctor' && resource.data.doctorData.accountStatus == 'approved') ||
-        // Approved doctors can read their assigned patients
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Allow reading doctors list for selection (usually handled by query filters, but good to be explicit)
         (resource.data.role == 'doctor')
       );
 
-      // Create: Users can create their own profile
-      allow create: if isSignedIn() && isOwner(userId) && (
-        // Validate initial role
-        (!('role' in incomingData()) || incomingData().role in ['patient', 'normal_user', 'doctor'])
-      );
+      allow create: if isSignedIn() && isOwner(userId);
 
-      // Update: Strict validation
       allow update: if isSignedIn() && (
         (isOwner(userId) && 
-         // 🚫 SECURITY: User cannot change their own role or banned status
          notUpdating('role') && 
-         notUpdating('isBanned') &&
-         // Validation
-         (incomingData().age == null || (incomingData().age > 10 && incomingData().age < 120))
+         notUpdating('isBanned')
         ) ||
-        // Doctor updating patient data (Plan assignment)
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
-        // Doctor accepting/rejecting patient request
         (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
       
-      // Delete: Users can delete their own account (GDPR compliance)
+      // ✅ FIX: Explicitly allow owner to delete their doc
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      // Admins can always delete
       allow delete: if isAdmin();
 
       allow read: if isSignedIn() && (
-        // Public rooms
         resource.data.isDoctorRoom == false ||
-        // Doctor sees their own rooms
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
-        // Patient sees their assigned doctor's room
         (resource.data.isDoctorRoom == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      // Only approved doctors can create rooms
-      allow create: if isApprovedDoctor() && 
+      // ✅ FIX: Allow ANY signed-in user to create a room (was isApprovedDoctor only)
+      allow create: if isSignedIn() && 
                     isValidString(incomingData().name, 3, 50);
       
-      // Creator can update OR DELETE their own room
+      // Creator (Doctor or User) can update or delete their own room
       allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
-      // Messages Sub-collection
       match /messages/{msgId} {
         allow read: if isSignedIn();
-        // Create message: Must be authenticated and valid text
         allow create: if isSignedIn() && 
                       isValidString(incomingData().text, 1, 1000) &&
                       incomingData().senderId == request.auth.uid;
         
-        // FIX: Allow delete if Admin OR if User is the Room Creator (required for cleaning up room)
         allow delete: if isAdmin() || (
           isSignedIn() && 
           get(/databases/$(database)/documents/rooms/$(roomId)).data.createdBy == request.auth.uid
@@ -11011,15 +11026,13 @@ service cloud.firestore {
     match /articles/{articleId} {
       allow read, write, delete: if isAdmin();
       
-      // Public read for published articles
+      // Anyone can read published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
       
-      // Doctors can create drafts/articles
-      allow create: if isApprovedDoctor() && 
-                    isValidString(incomingData().title, 5, 200) &&
-                    isValidString(incomingData().content, 20, 10000);
+      // Doctors can create
+      allow create: if isApprovedDoctor();
                     
-      // Doctors can edit/delete their own articles
+      // Doctors can edit/delete THEIR OWN articles
       allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
     }
 
@@ -11027,12 +11040,10 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow read, write, delete: if isAdmin();
       
-      // User can read/update their own tickets
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow create: if isSignedIn() && 
-                    incomingData().userId == request.auth.uid &&
-                    isValidString(incomingData().subject, 3, 200);
+                    incomingData().userId == request.auth.uid;
                     
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
@@ -11040,10 +11051,7 @@ service cloud.firestore {
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      // FIX: Restrict audit log creation to Admins only
-      allow create: if isAdmin() && 
-                    incomingData().keys().hasAll(['action', 'timestamp']) &&
-                    request.resource.data.timestamp is number;
+      allow create: if isAdmin();
     }
   }
 }
@@ -11374,7 +11382,8 @@ root.render(
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "dependencies": {
     "firebase": "^10.8.0",
@@ -11384,14 +11393,18 @@ root.render(
     "recharts": "^2.12.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
+    "jsdom": "^24.0.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "vitest": "^1.3.1"
   }
 }
 ```
@@ -11790,5 +11803,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 57
-- Total Characters: 603715
-- Estimated Tokens: ~150.929 (GPT-4 Context)
+- Total Characters: 602783
+- Estimated Tokens: ~150.696 (GPT-4 Context)

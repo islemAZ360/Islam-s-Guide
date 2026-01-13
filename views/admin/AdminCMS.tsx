@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, FileText, Image, Tag, AlignLeft, X, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, FileText, Image, X, Clock, AlertCircle } from 'lucide-react';
 import { Article, ArticleCategory } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -49,9 +49,13 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             case 'medical': return 'indigo';
             case 'motivation': return 'rose';
             case 'news': return 'blue';
-            default: return 'amber';
+            case 'announcement': return 'red';
+            case 'tip': return 'amber';
+            default: return 'slate';
         }
     };
+
+    const categories: ArticleCategory[] = ['medical', 'motivation', 'tip', 'news', 'announcement'];
 
     return (
         <section aria-labelledby="cms-heading" className="animate-in fade-in space-y-8">
@@ -109,7 +113,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                                  id="art-title"
                                                  ref={titleInputRef}
                                                  className="w-full bg-slate-950/50 p-4 pr-12 rounded-xl text-white border border-white/10 outline-none focus:border-indigo-500 transition-all placeholder-slate-700 font-bold text-lg focus:ring-1 focus:ring-indigo-500" 
-                                                 placeholder="Article Title..."
+                                                 placeholder={t('article_title_placeholder')}
                                                  value={newArticle.title} 
                                                  onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
                                                  maxLength={100}
@@ -120,7 +124,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                      <div role="group" aria-labelledby="cat-label">
                                          <label id="cat-label" className="text-xs font-bold text-slate-500 uppercase mb-3 block ml-1">{t('article_cat_label')}</label>
                                          <div className="flex gap-3 flex-wrap">
-                                             {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
+                                             {categories.map(cat => (
                                                  <button 
                                                     key={cat}
                                                     onClick={() => setNewArticle({...newArticle, category: cat})}
@@ -131,7 +135,8 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                                         : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'
                                                     }`}
                                                  >
-                                                     {cat.toUpperCase()}
+                                                     {/* Using translation keys if available or fallback to uppercase */}
+                                                     {t(`cat_${cat}` as any) || cat.toUpperCase()}
                                                  </button>
                                              ))}
                                          </div>
@@ -142,7 +147,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                          <textarea 
                                              id="art-content"
                                              className="w-full bg-slate-950/50 p-4 rounded-xl text-white border border-white/10 h-40 outline-none focus:border-indigo-500 transition-all resize-none placeholder-slate-700 custom-scrollbar focus:ring-1 focus:ring-indigo-500" 
-                                             placeholder="Write something amazing..."
+                                             placeholder={t('article_content_placeholder')}
                                              value={newArticle.content} 
                                              onChange={e => setNewArticle({...newArticle, content: e.target.value})} 
                                              maxLength={5000}
@@ -167,7 +172,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             {articles.length === 0 ? (
                 <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600">
                     <Image size={48} className="mx-auto mb-4 opacity-20" aria-hidden="true"/>
-                    <p>No articles published yet.</p>
+                    <p>{t('no_articles')}</p>
                 </div>
             ) : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
@@ -177,7 +182,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                             
                             <div className="flex justify-between items-start mb-4 relative z-10">
                                 <Badge color={getCategoryColor(art.category) as any} className="shadow-none bg-slate-950/50 border-white/10">
-                                    {art.category.toUpperCase()}
+                                    {t(`cat_${art.category}` as any) || art.category.toUpperCase()}
                                 </Badge>
                                 <button 
                                     onClick={() => art.id && deleteArticle(art.id)}

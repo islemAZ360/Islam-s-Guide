@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { 
     collection, query, orderBy, deleteDoc, onSnapshot, doc 
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 import { UserProfile, Article } from '../types';
-import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle, MessageSquare, LifeBuoy } from 'lucide-react';
 
 // Services
 import { 
@@ -24,19 +24,22 @@ import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 
-// Sub-views
+// Sub-views & Modules
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminDoctors } from './admin/AdminDoctors';
 import { AdminUsers } from './admin/AdminUsers';
 import { AdminCMS } from './admin/AdminCMS';
+import { CommunityView } from './CommunityView'; // Reusing existing view
+import { SupportView } from './SupportView';     // Reusing existing view
 
 export const AdminView = () => {
     const { t, language } = useLanguage();
-    const { userProfile } = useData(); // Get current admin profile for logging
+    const { userProfile } = useData();
 
     // -- Global State --
-    const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms' | 'community' | 'support'>('overview');
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
@@ -53,10 +56,10 @@ export const AdminView = () => {
     const modalRef = useRef<HTMLDivElement>(null);
     const rejectInputRef = useRef<HTMLTextAreaElement>(null);
 
-    // -- 1. REAL-TIME DATA FETCHING (Keep direct listeners for live UI) --
+    // -- 1. REAL-TIME DATA FETCHING --
     useEffect(() => {
         setLoading(true);
-        // Listen to Users
+        // Users
         const qUsers = query(collection(db, "users"));
         const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
             const fetchedUsers: UserProfile[] = [];
@@ -69,7 +72,7 @@ export const AdminView = () => {
             setLoading(false);
         });
 
-        // Listen to Articles
+        // Articles
         const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
             setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
@@ -97,8 +100,7 @@ export const AdminView = () => {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    // -- ACTIONS (Using Atomic Services) --
-    
+    // -- ACTIONS --
     const approveDoctor = async (docUid: string) => {
         if (!userProfile) return;
         if (!window.confirm(language === 'ar' ? "هل تؤكد اعتماد هذا الطبيب؟" : "Confirm doctor approval?")) return;
@@ -187,7 +189,6 @@ export const AdminView = () => {
         }
     };
 
-    // Direct delete for articles (less critical, can be moved to service later if needed)
     const deleteArticle = async (id: string) => {
         if(window.confirm(language === 'ar' ? "حذف هذا المقال؟" : "Delete this article?")) {
             try {
@@ -201,12 +202,34 @@ export const AdminView = () => {
 
     const pendingDoctorsCount = users.filter(u => u.role === 'doctor' && u.doctorData?.accountStatus === 'pending').length;
 
+    // Tabs Configuration
+    const tabs = [
+        { id: 'overview', icon: Activity, label: t('tab_overview') },
+        { id: 'doctors', icon: Stethoscope, label: t('tab_doctors'), badge: pendingDoctorsCount > 0 ? pendingDoctorsCount : null },
+        { id: 'users', icon: Users, label: t('tab_users') },
+        { id: 'cms', icon: FileText, label: t('tab_cms') },
+        { id: 'community', icon: MessageSquare, label: language === 'ar' ? 'الرقابة' : 'Chat Mod' },
+        { id: 'support', icon: LifeBuoy, label: t('nav_support') },
+    ];
+
     return (
-        <LayoutContainer>
-            <div className="relative">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-                <PageHeader title={t('admin_title')} subtitle={t('admin_subtitle')} />
-            </div>
+        <LayoutContainer className="max-w-full px-4 md:px-8">
+            {/* Header / Top Bar */}
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-slate-900 border-b border-white/10 pb-6 pt-2">
+                <div>
+                    <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+                        <ShieldAlert className="text-rose-500" size={32} />
+                        {language === 'ar' ? 'غرفة التحكم المركزية' : 'Admin Command Center'}
+                    </h1>
+                    <p className="text-slate-500 font-mono text-xs mt-1 tracking-widest uppercase">
+                        System Status: <span className="text-emerald-500">ONLINE</span> • {users.length} Users
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <LanguageSwitcher />
+                </div>
+            </header>
 
             {/* Status Toast */}
             {statusMsg && (
@@ -223,18 +246,13 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* Navigation Tabs */}
+            {/* Navigation Tabs - Performance Optimized */}
             <div 
-                className="flex p-1.5 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-2xl relative z-10"
+                className="flex p-1 bg-slate-900 rounded-lg border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-lg relative z-10"
                 role="tablist"
                 aria-label="Admin Sections"
             >
-                {[
-                    { id: 'overview', icon: Activity, label: t('tab_overview') },
-                    { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
-                    { id: 'users', icon: Users, label: t('tab_users') },
-                    { id: 'cms', icon: FileText, label: t('tab_cms') },
-                ].map((tab) => (
+                {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         role="tab"
@@ -242,16 +260,16 @@ export const AdminView = () => {
                         aria-controls={`panel-${tab.id}`}
                         id={`tab-${tab.id}`}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap min-w-[120px] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 ${
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-bold transition-all whitespace-nowrap outline-none focus:ring-2 focus:ring-rose-500 min-w-[120px] ${
                             activeTab === tab.id 
-                            ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-500/20' 
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-slate-800 text-white shadow-md border border-white/10' 
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                         }`}
                     >
                         <tab.icon size={16} aria-hidden="true" />
                         {tab.label}
-                        {tab.id === 'doctors' && pendingDoctorsCount > 0 && (
-                             <span className="ml-2 bg-white text-rose-600 text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse" aria-label={`${pendingDoctorsCount} pending`}>{pendingDoctorsCount}</span>
+                        {tab.badge && (
+                             <span className="ml-2 bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">{tab.badge}</span>
                         )}
                     </button>
                 ))}
@@ -262,7 +280,7 @@ export const AdminView = () => {
                 id={`panel-${activeTab}`} 
                 role="tabpanel" 
                 aria-labelledby={`tab-${activeTab}`}
-                className="animate-in slide-in-from-bottom-4 relative z-10 focus:outline-none"
+                className="animate-in slide-in-from-bottom-4 relative z-10 outline-none"
                 tabIndex={-1}
             >
                 {activeTab === 'overview' && (
@@ -293,14 +311,20 @@ export const AdminView = () => {
                         deleteArticle={deleteArticle} 
                     />
                 )}
+
+                {activeTab === 'community' && userProfile && (
+                    <CommunityView currentUser={userProfile} />
+                )}
+
+                {activeTab === 'support' && userProfile && (
+                    <SupportView user={userProfile} />
+                )}
             </main>
 
             {/* --- SHARED MODALS --- */}
-
-            {/* DOCTOR DETAILS MODAL */}
             {selectedDoctor && !showRejectModal && (
                 <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="modal-doc-name"
@@ -311,11 +335,10 @@ export const AdminView = () => {
                         className="w-full max-w-lg relative outline-none"
                     >
                         <Card className="!bg-slate-900 border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden">
-                            {/* Modal Header */}
-                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/20 to-transparent"></div>
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-900/40 to-transparent pointer-events-none"></div>
                             <button 
                                 onClick={() => setSelectedDoctor(null)} 
-                                className="absolute top-4 right-4 p-2 bg-slate-800/50 rounded-full text-slate-400 hover:text-white z-20 backdrop-blur-md hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 aria-label={t('close')}
                             >
                                 <X size={20}/>
@@ -334,7 +357,8 @@ export const AdminView = () => {
                             </div>
 
                             <div className="px-8 pb-8 space-y-4">
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
+                                {/* Doctor Details Grid */}
+                                <div className="bg-slate-950 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
                                     <div className="flex justify-between border-b border-white/5 pb-2">
                                         <span className="text-slate-500 font-bold">License ID</span>
                                         <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
@@ -381,10 +405,9 @@ export const AdminView = () => {
                 </div>
             )}
 
-            {/* REJECTION REASON MODAL */}
             {showRejectModal && (
                 <div 
-                    className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 animate-in fade-in"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="reject-title"

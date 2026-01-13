@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, where, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Clock, CheckCircle, Trash2, Megaphone, Newspaper } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -62,11 +62,14 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         try {
             const q = query(
                 collection(db, "articles"), 
-                where("isPublished", "==", true),
-                orderBy("createdAt", "desc")
+                where("isPublished", "==", true)
             );
             const snapshot = await getDocs(q);
             const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Article));
+            
+            // Client-side sort (Newest first)
+            fetched.sort((a, b) => b.createdAt - a.createdAt);
+            
             setArticles(fetched);
         } catch (e) {
             console.error("Error fetching articles", e);
@@ -147,6 +150,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return <Stethoscope size={14} aria-hidden="true" />;
             case 'motivation': return <Heart size={14} aria-hidden="true" />;
+            case 'news': return <Newspaper size={14} aria-hidden="true" />;
+            case 'announcement': return <Megaphone size={14} aria-hidden="true" />;
             default: return <Lightbulb size={14} aria-hidden="true" />;
         }
     };
@@ -155,6 +160,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return 'indigo';
             case 'motivation': return 'rose';
+            case 'news': return 'blue';
+            case 'announcement': return 'red';
             default: return 'amber';
         }
     };
@@ -163,11 +170,23 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return 'from-indigo-500/20 to-blue-500/20 hover:from-indigo-500/30 hover:to-blue-500/30 border-indigo-500/20';
             case 'motivation': return 'from-rose-500/20 to-pink-500/20 hover:from-rose-500/30 hover:to-pink-500/30 border-rose-500/20';
+            case 'news': return 'from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border-blue-500/20';
+            case 'announcement': return 'from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 border-red-500/20';
             default: return 'from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border-amber-500/20';
         }
     };
 
     const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
+
+    // Updated Categories List
+    const categories = [
+        { id: 'all', label: t('cat_all'), icon: BookOpen },
+        { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
+        { id: 'motivation', label: t('cat_motivation'), icon: Heart },
+        { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
+        { id: 'news', label: t('cat_news' as any) || 'News', icon: Newspaper },
+        { id: 'announcement', label: t('cat_announcement' as any) || 'Announcements', icon: Megaphone },
+    ];
 
     return (
         <LayoutContainer>
@@ -185,12 +204,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Category Filters */}
             <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide" role="tablist" aria-label="Article Categories">
-                {[
-                    { id: 'all', label: t('cat_all'), icon: BookOpen },
-                    { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
-                    { id: 'motivation', label: t('cat_motivation'), icon: Heart },
-                    { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
-                ].map((cat) => (
+                {categories.map((cat) => (
                     <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id as any)}
@@ -216,7 +230,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                 ) : filteredArticles.length === 0 ? (
                     <div className="col-span-full text-center py-20 bg-slate-900/40 rounded-[2.5rem] border border-dashed border-slate-800 backdrop-blur-sm">
                         <BookOpen size={48} className="mx-auto text-slate-700 mb-4" aria-hidden="true"/>
-                        <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات في هذا القسم حالياً.' : 'No articles found in this category.'}</p>
+                        <p className="text-slate-500">{t('no_articles')}</p>
                     </div>
                 ) : (
                     filteredArticles.map(article => {
@@ -236,7 +250,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                 <div className="mb-4 relative z-20 pointer-events-none">
                                     <div className="flex justify-between items-start mb-4 pointer-events-auto">
                                         <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
-                                            {getCategoryIcon(article.category)} {article.category.toUpperCase()}
+                                            {getCategoryIcon(article.category)} {t(`cat_${article.category}` as any) || article.category.toUpperCase()}
                                         </Badge>
                                         
                                         <div className="flex gap-2">
@@ -246,7 +260,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                             {canDelete && (
                                                 <button 
                                                     onClick={(e) => handleDelete(e, article)}
-                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all"
+                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all z-30"
                                                     aria-label="Delete Article"
                                                 >
                                                     <Trash2 size={12} />
@@ -303,18 +317,20 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 transition-all placeholder-slate-700"
                                     value={newArticle.title}
                                     onChange={e => setNewArticle({...newArticle, title: e.target.value})}
-                                    placeholder="عنوان جذاب..."
+                                    placeholder={t('article_title_placeholder') || "Article Title..."}
                                     autoFocus
                                 />
                             </div>
 
                             <div>
                                 <label id="art-cat-label" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_cat_label')}</label>
-                                <div className="flex gap-2" role="radiogroup" aria-labelledby="art-cat-label">
+                                <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="art-cat-label">
                                     {[
                                         { id: 'medical', label: t('cat_medical'), color: 'indigo' },
                                         { id: 'motivation', label: t('cat_motivation'), color: 'rose' },
                                         { id: 'tip', label: t('cat_tip'), color: 'amber' },
+                                        { id: 'news', label: t('cat_news' as any) || 'News', color: 'blue' },
+                                        { id: 'announcement', label: t('cat_announcement' as any) || 'Announcement', color: 'red' },
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
@@ -340,7 +356,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-indigo-500 h-48 resize-none transition-all placeholder-slate-700 custom-scrollbar"
                                     value={newArticle.content}
                                     onChange={e => setNewArticle({...newArticle, content: e.target.value})}
-                                    placeholder="اكتب محتوى المقال هنا..."
+                                    placeholder={t('article_content_placeholder') || "Content..."}
                                 />
                             </div>
 
@@ -380,7 +396,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             
                             <div className="flex gap-2 mb-4">
                                 <Badge color={getCategoryColor(readingArticle.category) as any} className="bg-black/20 border-transparent text-white shadow-none">
-                                    {readingArticle.category.toUpperCase()}
+                                    {t(`cat_${readingArticle.category}` as any) || readingArticle.category.toUpperCase()}
                                 </Badge>
                                 {readingArticle.authorRole === 'doctor' && (
                                     <Badge color="blue" className="bg-blue-500/20 border-blue-500/30 text-blue-100 shadow-none">
