@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 13/1/2026, 02:37:46
+Generated: 13/1/2026, 04:52:21
 
 ## 🌳 Project Structure
 ```text
@@ -1072,7 +1072,7 @@ export const ProgressRing = ({ radius, stroke, progress, totalSteps, label }: Pr
 import React from 'react';
 import { 
   LayoutDashboard, Calendar as CalendarIcon, Activity, Settings, Users, 
-  LifeBuoy, ShieldAlert, MessageSquare 
+  LifeBuoy, ShieldAlert, MessageSquare, BookOpen
 } from 'lucide-react';
 import { AppView, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -1103,6 +1103,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         items.push(
             { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
             { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
+            { id: AppView.ARTICLES, icon: BookOpen, label: 'Articles' }, // Added for Doctors
             { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
         );
     } 
@@ -1111,6 +1112,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
              items.push(
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
+                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') }, // Added for new Patients
                 { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
              );
         } else {
@@ -1118,6 +1120,11 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
                 { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
                 { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
                 { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
+                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') }, // Added for Active Users
+                // Community is still accessible but maybe deprioritized if space is tight, 
+                // but let's keep it if we can fit 5 items + Settings = 6.
+                // If 6 is too many, we might swap Community/Articles or Stats/Articles.
+                // Given labels hide on inactive, 6 items fits on modern phones.
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
              );
         }
@@ -1133,21 +1140,21 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
 
   return (
     <nav 
-      className="md:hidden fixed bottom-5 left-4 right-4 h-[70px] glass rounded-[2rem] z-50 animate-in slide-in-from-bottom-8 shadow-2xl shadow-black/50"
+      className="md:hidden fixed bottom-5 left-4 right-4 h-[70px] glass rounded-[2rem] z-50 animate-in slide-in-from-bottom-8 shadow-2xl shadow-black/50 overflow-hidden"
       aria-label={language === 'ar' ? 'القائمة الرئيسية للجوال' : 'Mobile Main Navigation'}
     >
-      <ul className="flex items-center justify-between h-full px-2 m-0 list-none">
+      <ul className="flex items-center justify-between h-full px-1 m-0 list-none w-full">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
           return (
-            <li key={item.id} className="flex-1 h-full">
+            <li key={item.id} className="flex-1 h-full min-w-0">
               <button
                 onClick={() => setCurrentView(item.id)}
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={item.label}
                 className={`
                   w-full h-full flex flex-col items-center justify-center gap-1 relative group transition-all duration-500 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
-                  ${isActive ? '-translate-y-2' : ''}
+                  ${isActive ? '-translate-y-1' : ''}
                 `}
               >
                 {/* Active Glow Background */}
@@ -1163,12 +1170,12 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
                     ? 'bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-[#020617]' 
                     : 'text-slate-500 hover:text-slate-300'}
                 `}>
-                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
                 </div>
                 
                 {/* Label (Visible when active) */}
                 <span className={`
-                  text-[10px] font-bold tracking-wide transition-all duration-300 absolute bottom-2
+                  text-[9px] font-bold tracking-wide transition-all duration-300 absolute bottom-1 whitespace-nowrap
                   ${isActive ? 'opacity-100 text-white translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}
                 `}>
                     {item.label}
@@ -1176,7 +1183,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
                 
                 {/* Inactive Dot Indicator */}
                 {!isActive && (
-                     <span className="w-1 h-1 rounded-full bg-slate-700 absolute bottom-3 transition-all duration-300 group-hover:bg-slate-500" aria-hidden="true"></span>
+                     <span className="w-1 h-1 rounded-full bg-slate-700 absolute bottom-2 transition-all duration-300 group-hover:bg-slate-500" aria-hidden="true"></span>
                 )}
               </button>
             </li>
@@ -1759,15 +1766,25 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // New User Skeleton (Doc doesn't exist yet)
-                setUserProfile({
+                // D. Profile Initialization (The Fix)
+                // Ensure boolean value using null coalescing operator
+                const isAdminEmail = currentUser.email?.toLowerCase().endsWith('@islamguide.com') ?? false;
+                
+                const newProfile: UserProfile = {
                     uid: currentUser.uid,
                     email: currentUser.email || '',
-                    name: currentUser.displayName || 'New User',
-                    role: 'normal_user',
-                    setupComplete: false,
+                    name: currentUser.displayName || (isAdminEmail ? 'Administrator' : 'New User'),
+                    role: isAdminEmail ? 'admin' : 'normal_user',
+                    setupComplete: isAdminEmail, // Admins skip onboarding
                     durationMonths: 0
-                });
+                };
+
+                setUserProfile(newProfile);
+
+                // Persist the new profile immediately so next load finds it
+                setDoc(docRef, newProfile).catch(e => 
+                    console.error("Failed to auto-create profile:", e)
+                );
             }
             setDataLoading(false);
         }, (error) => {
@@ -3937,11 +3954,15 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
 
 ### File: `views\admin\AdminUsers.tsx`
 ```tsx
-import React, { useState, useMemo } from 'react';
-import { Search, Ban, Trash2, User, Shield, Stethoscope, Mail, CheckCircle, Smartphone, Calendar } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Ban, Trash2, User, Shield, Stethoscope, Mail, CheckCircle, Smartphone, Calendar, Eye, X, Activity, Ruler, Weight, Send, MessageSquare, Loader2 } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, auth } from '../../services/firebase';
 import { UserProfile } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Button } from '../../components/ui/Button'; 
+import { Card } from '../../components/ui/Card';     
 
 interface AdminUsersProps {
     users: UserProfile[];
@@ -3950,24 +3971,82 @@ interface AdminUsersProps {
 }
 
 export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) => {
-    const { t, language } = useLanguage();
+    const { t, language, dir } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
 
-    // Performance: Memoize filtering to prevent lag on large lists
+    // Message State
+    const [showMsgForm, setShowMsgForm] = useState(false);
+    const [msgSubject, setMsgSubject] = useState("");
+    const [msgContent, setMsgContent] = useState("");
+    const [isSending, setIsSending] = useState(false);
+
+    // Focus management for accessibility
+    useEffect(() => {
+        if (selectedUser) {
+            setTimeout(() => modalRef.current?.focus(), 100);
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+            setShowMsgForm(false);
+            setMsgSubject("");
+            setMsgContent("");
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [selectedUser]);
+
+    // Performance: Memoize filtering
     const filteredUsers = useMemo(() => {
         const lowerTerm = searchTerm.toLowerCase();
-        // Filter out admins/doctors to show only normal users/patients
         return users.filter(u => 
             (u.role === 'normal_user' || u.role === 'patient') &&
             (u.name.toLowerCase().includes(lowerTerm) || u.email.toLowerCase().includes(lowerTerm))
         );
     }, [users, searchTerm]);
 
+    const handleCloseModal = () => setSelectedUser(null);
+
+    const handleSendMessage = async () => {
+        if (!selectedUser?.uid || !msgSubject.trim() || !msgContent.trim()) return;
+        
+        setIsSending(true);
+        try {
+            // FIX: Safe access to auth using optional chaining
+            const adminUser = auth?.currentUser;
+            
+            await addDoc(collection(db, "tickets"), {
+                userId: selectedUser.uid,
+                userEmail: selectedUser.email,
+                subject: `[Admin] ${msgSubject}`,
+                status: 'open',
+                createdAt: Date.now(),
+                lastUpdate: Date.now(),
+                messages: [{
+                    senderId: adminUser?.uid || 'admin',
+                    senderName: 'Administrator',
+                    text: msgContent,
+                    timestamp: Date.now(),
+                    isAdmin: true
+                }]
+            });
+            alert(language === 'ar' ? "تم إرسال الرسالة بنجاح" : "Message sent successfully");
+            setShowMsgForm(false);
+            setMsgSubject("");
+            setMsgContent("");
+        } catch (e) {
+            console.error("Failed to send message", e);
+            alert("Error sending message");
+        } finally {
+            setIsSending(false);
+        }
+    };
+
     return (
         <section aria-labelledby="users-section-title" className="space-y-8 animate-in fade-in">
             <h2 id="users-section-title" className="sr-only">{language === 'ar' ? 'إدارة المستخدمين' : 'User Management'}</h2>
 
-            {/* Search Bar with Live Region */}
+            {/* Search Bar */}
             <div className="relative group">
                 <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                 <div className="relative flex items-center bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
@@ -3982,7 +4061,6 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
-                    {/* Live Region for Screen Readers */}
                     <div className="px-4 text-xs text-slate-500 font-bold uppercase tracking-wider hidden md:block" aria-live="polite">
                         {filteredUsers.length} {language === 'ar' ? 'مستخدم' : 'Users'}
                     </div>
@@ -3999,7 +4077,6 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-6" role="list">
                     {filteredUsers.map(user => (
                         <li key={user.uid} className="group relative bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/90 transition-all duration-300 overflow-hidden shadow-lg list-none focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-slate-950">
-                            {/* Decorative Background */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
                             
                             <div className="flex items-start justify-between mb-6 relative z-10">
@@ -4051,23 +4128,32 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 relative z-10 pt-2 border-t border-white/5">
+                            <div className="flex gap-2 relative z-10 pt-2 border-t border-white/5">
+                                <button 
+                                    onClick={() => setSelectedUser(user)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                    aria-label={language === 'ar' ? 'عرض الملف' : 'View Profile'}
+                                >
+                                    <Eye size={14} aria-hidden="true" />
+                                    {language === 'ar' ? 'عرض الملف' : 'View Profile'}
+                                </button>
+
                                 <button 
                                     onClick={() => toggleBan(user)} 
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
+                                    className={`p-2.5 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
                                         user.isBanned 
                                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white focus-visible:ring-emerald-500' 
                                         : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500 hover:text-white focus-visible:ring-amber-500'
                                     }`}
+                                    title={user.isBanned ? t('unban_user') : t('ban_user')}
                                     aria-label={user.isBanned ? t('unban_user') : t('ban_user')}
                                 >
-                                    {user.isBanned ? <CheckCircle size={14} aria-hidden="true"/> : <Ban size={14} aria-hidden="true"/>}
-                                    {user.isBanned ? t('unban_user') : t('ban_user')}
+                                    {user.isBanned ? <CheckCircle size={16} aria-hidden="true"/> : <Ban size={16} aria-hidden="true"/>}
                                 </button>
                                 
                                 <button 
                                     onClick={() => user.uid && deleteUser(user.uid)} 
-                                    className="flex-none p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-rose-500"
+                                    className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-rose-500"
                                     title={t('delete_user')}
                                     aria-label={`${t('delete_user')} ${user.name}`}
                                 >
@@ -4077,6 +4163,135 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {/* USER DETAILS MODAL */}
+            {selectedUser && (
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in duration-300"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="user-modal-title"
+                >
+                    <div 
+                        ref={modalRef}
+                        tabIndex={-1}
+                        className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden outline-none flex flex-col max-h-[90vh]"
+                    >
+                        {/* Header */}
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
+                        <button 
+                            onClick={handleCloseModal}
+                            className="absolute top-6 right-6 p-2 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors z-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            aria-label={t('close')}
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <div className="p-8 pt-10 relative z-10 overflow-y-auto custom-scrollbar">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center text-3xl font-bold text-slate-400 border-4 border-slate-950 shadow-xl">
+                                    {selectedUser.name.charAt(0).toUpperCase()}
+                                </div>
+                                <h2 id="user-modal-title" className="text-2xl font-black text-white">{selectedUser.name}</h2>
+                                <p className="text-slate-500 font-mono text-xs mt-1">{selectedUser.email}</p>
+                                {selectedUser.isBanned && (
+                                    <span className="inline-block mt-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
+                                        ACCOUNT BANNED
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-3 gap-4 mb-8">
+                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
+                                    <Activity size={18} className="mx-auto mb-2 text-indigo-400" />
+                                    <span className="block text-xs text-slate-500 uppercase font-bold">Progress</span>
+                                    <span className="block text-lg font-black text-white">{Math.round(selectedUser.progress || 0)}%</span>
+                                </div>
+                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
+                                    <Weight size={18} className="mx-auto mb-2 text-emerald-400" />
+                                    <span className="block text-xs text-slate-500 uppercase font-bold">Weight</span>
+                                    <span className="block text-lg font-black text-white">{selectedUser.weight || '-'} <span className="text-xs text-slate-600">kg</span></span>
+                                </div>
+                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
+                                    <Ruler size={18} className="mx-auto mb-2 text-amber-400" />
+                                    <span className="block text-xs text-slate-500 uppercase font-bold">Age</span>
+                                    <span className="block text-lg font-black text-white">{selectedUser.age || '-'}</span>
+                                </div>
+                            </div>
+
+                            {/* Actions / Message Toggle */}
+                            <div className="mb-6">
+                                {!showMsgForm ? (
+                                    <Button 
+                                        onClick={() => setShowMsgForm(true)} 
+                                        variant="secondary" 
+                                        className="w-full !py-3 bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500 hover:text-white"
+                                    >
+                                        <MessageSquare size={18} className="mr-2" /> {language === 'ar' ? 'إرسال رسالة خاصة' : 'Send Direct Message'}
+                                    </Button>
+                                ) : (
+                                    <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 animate-in slide-in-from-top-2">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h4 className="text-sm font-bold text-white flex items-center gap-2"><Send size={14} className="text-indigo-400"/> New Message</h4>
+                                            <button onClick={() => setShowMsgForm(false)} className="text-slate-500 hover:text-white text-xs">Cancel</button>
+                                        </div>
+                                        <input 
+                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mb-3 text-white text-sm focus:border-indigo-500 outline-none"
+                                            placeholder="Subject"
+                                            value={msgSubject}
+                                            onChange={(e) => setMsgSubject(e.target.value)}
+                                        />
+                                        <textarea 
+                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mb-4 text-white text-sm focus:border-indigo-500 outline-none h-24 resize-none"
+                                            placeholder="Message content..."
+                                            value={msgContent}
+                                            onChange={(e) => setMsgContent(e.target.value)}
+                                        />
+                                        <Button 
+                                            onClick={handleSendMessage} 
+                                            variant="primary" 
+                                            className="w-full !py-2" 
+                                            disabled={!msgSubject.trim() || !msgContent.trim() || isSending}
+                                        >
+                                            {isSending ? <Loader2 className="animate-spin" size={18} /> : "Send Ticket"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Medical Info */}
+                            <div className="space-y-4 bg-slate-950/30 p-5 rounded-3xl border border-white/5">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                                    <Activity size={14} /> Clinical Profile
+                                </h3>
+                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
+                                    <span className="text-slate-500">Medication</span>
+                                    <span className="text-white font-bold">{selectedUser.medType || 'Not Set'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
+                                    <span className="text-slate-500">Form</span>
+                                    <span className="text-white font-bold">{selectedUser.medForm || '-'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
+                                    <span className="text-slate-500">Plan Type</span>
+                                    <span className="text-indigo-400 font-bold uppercase">{selectedUser.planType || 'None'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Last Active</span>
+                                    <span className="text-white font-mono">{selectedUser.lastActive ? new Date(selectedUser.lastActive).toLocaleDateString() : 'Never'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-6 border-t border-white/5 bg-slate-900/50 backdrop-blur-md">
+                            <Button onClick={handleCloseModal} variant="secondary" className="w-full rounded-xl">
+                                {t('close')}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </section>
     );
@@ -4370,12 +4585,16 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
     const unitLabel = userProfile?.medUnit || 'mg';
 
     // Prepare chart data (First 30 days)
+    // FIX: Sort plan by date to prevent "zigzag" lines if plan array is unsorted
     const chartData = useMemo(() => {
-        return plan.slice(0, 30).map(p => ({
-            fullDate: p.date,
-            displayDate: p.date.slice(5), // MM-DD
-            dose: p.plannedDose
-        }));
+        return [...plan]
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 30)
+            .map(p => ({
+                fullDate: p.date,
+                displayDate: p.date.slice(5), // MM-DD
+                dose: p.plannedDose
+            }));
     }, [plan]);
 
     return (
@@ -4504,8 +4723,8 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
 
 ### File: `views\dashboard\DashboardHeader.tsx`
 ```tsx
-import React from 'react';
-import { ShieldCheck, CheckCircle, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, CheckCircle, Activity, Edit3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { ProgressRing } from '../../components/ui/ProgressRing';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -4533,6 +4752,9 @@ export const DashboardHeader = ({
     const { t, language } = useLanguage();
     const unitLabel = userProfile?.medUnit || 'mg';
     const doseValue = todayPlan ? todayPlan.plannedDose : 0;
+    
+    // Local state to toggle between "Success Banner" and "Edit Form"
+    const [isEditing, setIsEditing] = useState(false);
 
     return (
         // تم نقل role و aria-label و col-span إلى عنصر section قياسي لتجنب أخطاء TypeScript
@@ -4590,7 +4812,7 @@ export const DashboardHeader = ({
 
                     {/* القسم السفلي: إما رسالة النجاح أو نموذج التسجيل */}
                     <div aria-live="polite" className="mt-8">
-                        {todayLog ? (
+                        {todayLog && !isEditing ? (
                             // حالة النجاح (تم التوثيق) - بطاقة زجاجية خضراء
                             <div 
                                 className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-3xl flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-4 shadow-lg shadow-emerald-900/10"
@@ -4615,13 +4837,29 @@ export const DashboardHeader = ({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
-                                    <CheckCircle className="text-emerald-500 w-8 h-8" aria-hidden="true" />
+                                <div className="flex flex-col gap-2 items-end">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
+                                        <CheckCircle className="text-emerald-500 w-8 h-8" aria-hidden="true" />
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsEditing(true)}
+                                        className="text-xs text-emerald-400/60 hover:text-emerald-300 flex items-center gap-1 transition-colors mt-1 hover:underline"
+                                    >
+                                        <Edit3 size={12} /> {language === 'ar' ? 'تعديل' : 'Edit'}
+                                    </button>
                                 </div>
                             </div>
                         ) : (
                             // نموذج التسجيل (يتم تمريره كـ children)
-                            <div className="animate-in slide-in-from-bottom-2">
+                            <div className="animate-in slide-in-from-bottom-2 relative">
+                                {isEditing && (
+                                    <button 
+                                        onClick={() => setIsEditing(false)}
+                                        className="absolute -top-10 right-0 text-slate-500 text-xs hover:text-white transition-colors"
+                                    >
+                                        {language === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
+                                    </button>
+                                )}
                                 {children}
                             </div>
                         )}
@@ -5065,10 +5303,10 @@ export const AdminView = () => {
 ### File: `views\ArticlesView.tsx`
 ```tsx
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle, Trash2 } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -5114,7 +5352,6 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     // Focus Management Refs
     const modalRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLButtonElement | null>(null); // To return focus after closing modal
 
     // -- Helpers --
     const calculateReadingTime = (text: string) => {
@@ -5152,7 +5389,6 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
-            // Return focus to the card that opened it (if tracked, simplified here)
         }
         return () => { document.body.style.overflow = 'unset'; };
     }, [readingArticle]);
@@ -5183,6 +5419,26 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         } catch (e) {
             console.error("Error publishing article:", e);
             alert("Error publishing article.");
+        }
+    };
+
+    // -- Delete Action --
+    const handleDelete = async (e: React.MouseEvent, article: Article) => {
+        e.stopPropagation(); // Prevent opening the article
+        if (!article.id) return;
+        
+        const confirmMsg = language === 'ar' 
+            ? "هل أنت متأكد من حذف هذا المقال؟" 
+            : "Are you sure you want to delete this article?";
+
+        if (window.confirm(confirmMsg)) {
+            try {
+                await deleteDoc(doc(db, "articles", article.id));
+                setArticles(prev => prev.filter(a => a.id !== article.id));
+            } catch (err) {
+                console.error("Failed to delete article", err);
+                alert("Error deleting article");
+            }
         }
     };
 
@@ -5267,51 +5523,67 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                         <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات في هذا القسم حالياً.' : 'No articles found in this category.'}</p>
                     </div>
                 ) : (
-                    filteredArticles.map(article => (
-                        <article 
-                            key={article.id}
-                            className={`group rounded-[2rem] p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border bg-gradient-to-br ${getCategoryGradient(article.category)}`}
-                        >
-                            <button 
-                                onClick={() => setReadingArticle(article)}
-                                className="absolute inset-0 z-10 w-full h-full focus:outline-none focus:ring-4 focus:ring-indigo-500/50 rounded-[2rem]"
-                                aria-label={`Read article: ${article.title}`}
-                            ></button>
+                    filteredArticles.map(article => {
+                        const canDelete = userProfile?.role === 'admin' || (userProfile?.uid && userProfile.uid === article.authorId);
+                        
+                        return (
+                            <article 
+                                key={article.id}
+                                className={`group rounded-[2rem] p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border bg-gradient-to-br ${getCategoryGradient(article.category)}`}
+                            >
+                                <button 
+                                    onClick={() => setReadingArticle(article)}
+                                    className="absolute inset-0 z-10 w-full h-full focus:outline-none focus:ring-4 focus:ring-indigo-500/50 rounded-[2rem]"
+                                    aria-label={`Read article: ${article.title}`}
+                                ></button>
 
-                            <div className="mb-4 relative z-0 pointer-events-none">
-                                <div className="flex justify-between items-start mb-4">
-                                    <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
-                                        {getCategoryIcon(article.category)} {article.category.toUpperCase()}
-                                    </Badge>
-                                    <span className="text-[10px] font-bold text-white/40 flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full">
-                                        <Clock size={10} /> {calculateReadingTime(article.content)} min
-                                    </span>
+                                <div className="mb-4 relative z-20 pointer-events-none">
+                                    <div className="flex justify-between items-start mb-4 pointer-events-auto">
+                                        <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
+                                            {getCategoryIcon(article.category)} {article.category.toUpperCase()}
+                                        </Badge>
+                                        
+                                        <div className="flex gap-2">
+                                            <span className="text-[10px] font-bold text-white/40 flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full">
+                                                <Clock size={10} /> {calculateReadingTime(article.content)} min
+                                            </span>
+                                            {canDelete && (
+                                                <button 
+                                                    onClick={(e) => handleDelete(e, article)}
+                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all"
+                                                    aria-label="Delete Article"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
+                                        {article.title}
+                                    </h3>
                                 </div>
-                                <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
-                                    {article.title}
-                                </h3>
-                            </div>
-                            
-                            <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed relative z-0 pointer-events-none">
-                                {article.content}
-                            </p>
-                            
-                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-0 pointer-events-none">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        {article.authorRole === 'doctor' && <CheckCircle size={10} className="text-blue-400" />}
-                                        {article.authorName}
-                                    </span>
-                                    <span className="text-[10px] text-white/40 font-mono">
-                                        {new Date(article.createdAt).toLocaleDateString()}
-                                    </span>
+                                
+                                <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed relative z-0 pointer-events-none">
+                                    {article.content}
+                                </p>
+                                
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-0 pointer-events-none">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider flex items-center gap-1">
+                                            {article.authorRole === 'doctor' && <CheckCircle size={10} className="text-blue-400" />}
+                                            {article.authorName}
+                                        </span>
+                                        <span className="text-[10px] text-white/40 font-mono">
+                                            {new Date(article.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
+                                        <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''}/>
+                                    </div>
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
-                                    <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''}/>
-                                </div>
-                            </div>
-                        </article>
-                    ))
+                            </article>
+                        );
+                    })
                 )}
             </div>
 
@@ -5465,8 +5737,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
 ### File: `views\CalendarView.tsx`
 ```tsx
-import React, { useMemo, useRef } from 'react';
-import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair } from 'lucide-react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
@@ -5486,15 +5758,27 @@ interface CalendarViewProps {
 }
 
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
-    const { t, language } = useLanguage();
+    const { t, language, dir } = useLanguage();
     const todayRef = useRef<HTMLDivElement>(null);
 
     const unitLabel = userProfile?.medUnit || 'mg';
     const isDoctorPlan = userProfile?.planType === 'manual';
-    const dir = language === 'ar' ? 'rtl' : 'ltr';
 
-    // 1. Memoize Data Calculation for Performance
-    const { weekDays, calendarGrid } = useMemo(() => {
+    // State for Month Navigation
+    // Default to current month or the first month of the plan if current date is far off
+    const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
+
+    // Effect to scroll to today on initial load if it's in the view
+    useEffect(() => {
+        if (todayRef.current) {
+            setTimeout(() => {
+                todayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+    }, [currentMonthDate]);
+
+    // 1. Data Calculation for Current Month
+    const { weekDays, calendarGrid, monthLabel } = useMemo(() => {
         const daysMap: Record<string, string[]> = {
             ar: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
             en: ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -5503,40 +5787,76 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         
         const wDays = daysMap[language] || daysMap['en'];
         
-        // Calculate padding blanks for the first row
-        const startDate = new Date(plan[0]?.date || new Date());
+        // Month Formatting
+        const mLabel = currentMonthDate.toLocaleDateString(language, { month: 'long', year: 'numeric' });
+
+        // Filter Plan for Current Month
+        const year = currentMonthDate.getFullYear();
+        const month = currentMonthDate.getMonth();
+        
+        // Get number of days in month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Generate all days for this month (even if not in plan, to show complete calendar)
+        // or just map the plan days that fall in this month?
+        // Better approach: Create a grid for the month, fill with plan data if exists.
+        
+        const monthDays: Array<{ date: string, planDay?: PlanDay }> = [];
+        for(let d = 1; d <= daysInMonth; d++) {
+            // Construct YYYY-MM-DD
+            // Note: Month is 0-indexed in JS Date, but we need 1-indexed for string
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const planItem = plan.find(p => p.date === dateStr);
+            monthDays.push({ date: dateStr, planDay: planItem });
+        }
+
+        // Calculate padding blanks for the first row (based on 1st of month)
+        const firstDayOfMonth = new Date(year, month, 1);
         // Adjust getDay() to match Saturday start (0=Sat in this logic)
         // Standard getDay(): 0=Sun, 1=Mon... 6=Sat
         // We want Sat=0, Sun=1... Fri=6
         // (day + 1) % 7 gives: Sat(6)->0, Sun(0)->1 ... Fri(5)->6
-        const startDayIndex = (startDate.getDay() + 1) % 7; 
+        const startDayIndex = (firstDayOfMonth.getDay() + 1) % 7; 
         const blanks = Array.from({ length: startDayIndex });
 
-        return { weekDays: wDays, calendarGrid: { blanks, days: plan } };
-    }, [plan, language]);
+        return { 
+            weekDays: wDays, 
+            calendarGrid: { blanks, days: monthDays },
+            monthLabel: mLabel
+        };
+    }, [plan, language, currentMonthDate]);
 
-    // 2. Scroll to Today Action
-    const scrollToToday = () => {
-        if (todayRef.current) {
-            todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            todayRef.current.focus(); // Accessibility focus
-        }
+    // Navigation Actions
+    const nextMonth = () => {
+        setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    };
+
+    const prevMonth = () => {
+        setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    };
+
+    const jumpToToday = () => {
+        const now = new Date();
+        setCurrentMonthDate(now);
     };
 
     // Helper to generate accessible label
-    const getAriaLabel = (day: PlanDay, log?: DailyLog, isToday?: boolean) => {
-        const dateStr = new Date(day.date).toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' });
+    const getAriaLabel = (dayItem: { date: string, planDay?: PlanDay }, log?: DailyLog, isToday?: boolean) => {
+        const dateStr = new Date(dayItem.date).toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' });
+        
+        if (!dayItem.planDay) return `${dateStr} - ${language === 'ar' ? 'لا توجد خطة' : 'No plan'}`;
+
         let status = language === 'ar' ? 'مجدول' : 'Scheduled';
         
         if (isToday) status = language === 'ar' ? 'اليوم الحالي' : 'Today';
         else if (log) {
-            if (log.doseTaken <= day.plannedDose) status = language === 'ar' ? 'تم بنجاح' : 'Completed';
+            if (log.doseTaken <= dayItem.planDay.plannedDose) status = language === 'ar' ? 'تم بنجاح' : 'Completed';
             else status = language === 'ar' ? 'تجاوز الجرعة' : 'Dose Exceeded';
-        } else if (day.isPast) {
+        } else if (dayItem.planDay.isPast) {
             status = language === 'ar' ? 'فائت' : 'Missed';
         }
 
-        return `${dateStr}. ${language === 'ar' ? 'الهدف' : 'Target'}: ${day.plannedDose}${unitLabel}. ${language === 'ar' ? 'الحالة' : 'Status'}: ${status}.`;
+        return `${dateStr}. ${language === 'ar' ? 'الهدف' : 'Target'}: ${dayItem.planDay.plannedDose}${unitLabel}. ${language === 'ar' ? 'الحالة' : 'Status'}: ${status}.`;
     };
 
     return (
@@ -5546,7 +5866,7 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
             subtitle={language === 'ar' ? "خارطة الطريق نحو التعافي." : "Your recovery roadmap."}
             action={
                 <div className="flex gap-2 items-center">
-                    <Button onClick={scrollToToday} variant="secondary" className="!py-2 !px-4 !text-xs !rounded-xl hidden md:flex">
+                    <Button onClick={jumpToToday} variant="secondary" className="!py-2 !px-4 !text-xs !rounded-xl hidden md:flex">
                         <Crosshair size={16} className="mr-2" /> {language === 'ar' ? 'اذهب لليوم' : 'Jump to Today'}
                     </Button>
                     {isDoctorPlan ? (
@@ -5564,9 +5884,35 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         
         <Card className="overflow-hidden border-white/10 shadow-2xl !p-6 relative bg-slate-900/80">
           
-          {/* Header & Legend */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 border-b border-white/5 pb-6">
-              <div className="flex flex-wrap gap-4 text-[10px] md:text-xs font-bold text-slate-400" role="list" aria-label="Status Legend">
+          {/* Header & Controls */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 border-b border-white/5 pb-6">
+              
+              {/* Month Navigator */}
+              <div className="flex items-center gap-4 bg-slate-950/50 p-1.5 rounded-2xl border border-white/5">
+                  <button 
+                    onClick={prevMonth} 
+                    className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label={language === 'ar' ? 'الشهر السابق' : 'Previous Month'}
+                  >
+                      {dir === 'rtl' ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                  </button>
+                  
+                  <div className="text-white font-bold text-lg min-w-[140px] text-center flex items-center justify-center gap-2">
+                      <CalendarIcon size={18} className="text-indigo-400"/>
+                      {monthLabel}
+                  </div>
+
+                  <button 
+                    onClick={nextMonth} 
+                    className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label={language === 'ar' ? 'الشهر التالي' : 'Next Month'}
+                  >
+                      {dir === 'rtl' ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                  </button>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap justify-center gap-4 text-[10px] md:text-xs font-bold text-slate-400" role="list" aria-label="Status Legend">
                   <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'التزام تام' : 'Completed'}
@@ -5579,10 +5925,6 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                       <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'اليوم الحالي' : 'Today'}
                   </div>
-              </div>
-              
-              <div className="text-slate-500 text-xs flex items-center gap-2 font-mono bg-slate-950/30 px-3 py-1 rounded-md">
-                  <CalendarIcon size={14}/> {new Date().toLocaleDateString(language, { month: 'long', year: 'numeric' })}
               </div>
           </div>
 
@@ -5604,27 +5946,30 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
             ))}
 
             {/* Plan Days */}
-            {calendarGrid.days.map((day, idx) => {
-              const isToday = day.date === todayDate;
-              const log = logs.find(l => l.date === day.date);
-              const isPast = day.date < todayDate;
+            {calendarGrid.days.map((item, idx) => {
+              const isToday = item.date === todayDate;
+              const log = logs.find(l => l.date === item.date);
+              const isPast = item.date < todayDate;
+              const hasPlan = !!item.planDay;
               
               // Dynamic Styling
-              let containerClass = "bg-slate-900/40 border-white/5 text-slate-500 hover:border-white/10";
+              let containerClass = hasPlan 
+                ? "bg-slate-900/40 border-white/5 text-slate-500 hover:border-white/10" 
+                : "bg-slate-950/30 border-transparent opacity-40";
+                
               let statusGlow = "";
-              let activeIndicator = null;
 
               if (isToday) {
                   containerClass = "bg-indigo-600/20 border-indigo-500/50 text-white shadow-lg shadow-indigo-500/10 scale-[1.02] z-10 ring-1 ring-indigo-500/50";
                   statusGlow = "shadow-[0_0_15px_rgba(99,102,241,0.2)]";
-              } else if (log) {
-                  if (log.doseTaken <= day.plannedDose) { 
+              } else if (log && hasPlan) {
+                  if (log.doseTaken <= (item.planDay!.plannedDose)) { 
                       containerClass = "bg-emerald-900/20 border-emerald-500/30 text-emerald-100 hover:bg-emerald-900/30";
                   } else { 
                       containerClass = "bg-rose-900/20 border-rose-500/30 text-rose-100 hover:bg-rose-900/30";
                   }
-              } else if (isPast) {
-                  containerClass = "bg-slate-950/40 border-white/5 opacity-50 grayscale border-dashed";
+              } else if (isPast && hasPlan) {
+                  containerClass = "bg-slate-950/40 border-white/5 opacity-60 grayscale border-dashed";
               }
 
               return (
@@ -5633,7 +5978,7 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                     ref={isToday ? todayRef : null}
                     tabIndex={isToday || log ? 0 : -1}
                     role="gridcell"
-                    aria-label={getAriaLabel(day, log, isToday)}
+                    aria-label={getAriaLabel(item, log, isToday)}
                     className={`
                         relative rounded-2xl p-2 md:p-3 min-h-[80px] md:min-h-[120px] flex flex-col justify-between 
                         transition-all duration-300 border backdrop-blur-sm group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500
@@ -5642,13 +5987,13 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                 >
                    {/* Date & Status Icon */}
                    <div className="flex justify-between items-start">
-                        <span className={`text-[10px] md:text-sm font-bold opacity-80 font-mono`}>
-                            {day.date.slice(8)}
+                        <span className={`text-[10px] md:text-sm font-bold opacity-80 font-mono ${!hasPlan && 'text-slate-600'}`}>
+                            {item.date.split('-')[2]}
                         </span>
                         
-                        {log && (
-                            <div className={`p-1 rounded-full ${log.doseTaken <= day.plannedDose ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>
-                                {log.doseTaken <= day.plannedDose ? <Check size={10} strokeWidth={4} /> : <X size={10} strokeWidth={4} />}
+                        {log && hasPlan && (
+                            <div className={`p-1 rounded-full ${log.doseTaken <= item.planDay!.plannedDose ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>
+                                {log.doseTaken <= item.planDay!.plannedDose ? <Check size={10} strokeWidth={4} /> : <X size={10} strokeWidth={4} />}
                             </div>
                         )}
                         
@@ -5658,28 +6003,36 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                    </div>
                   
                   {/* Dose Info */}
-                  <div className="text-center my-1 md:my-2">
-                    <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
-                      {day.plannedDose}
-                    </span>
-                    <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
-                        {unitLabel}
-                    </span>
-                  </div>
+                  {hasPlan ? (
+                      <>
+                        <div className="text-center my-1 md:my-2">
+                            <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
+                            {item.planDay!.plannedDose}
+                            </span>
+                            <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
+                                {unitLabel}
+                            </span>
+                        </div>
 
-                  {/* Mood Bar (Footer) */}
-                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden mt-1 border border-white/5">
-                      {log ? (
-                          <div className={`h-full w-full ${
-                              log.mood === 'good' ? 'bg-emerald-400' : 
-                              log.mood === 'bad' ? 'bg-rose-400' : 'bg-amber-400'
-                          }`} />
-                      ) : isPast ? (
-                          <div className="h-full w-full bg-rose-900/30 striped-bg" />
-                      ) : (
-                          <div className="h-full w-1/3 bg-slate-700 rounded-full opacity-30" />
-                      )}
-                  </div>
+                        {/* Mood Bar (Footer) */}
+                        <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden mt-1 border border-white/5">
+                            {log ? (
+                                <div className={`h-full w-full ${
+                                    log.mood === 'good' ? 'bg-emerald-400' : 
+                                    log.mood === 'bad' ? 'bg-rose-400' : 'bg-amber-400'
+                                }`} />
+                            ) : isPast ? (
+                                <div className="h-full w-full bg-rose-900/30 striped-bg" />
+                            ) : (
+                                <div className="h-full w-1/3 bg-slate-700 rounded-full opacity-30" />
+                            )}
+                        </div>
+                      </>
+                  ) : (
+                      <div className="flex-1 flex items-center justify-center">
+                          <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+                      </div>
+                  )}
                 </div>
               );
             })}
@@ -5695,13 +6048,13 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
 ```tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc 
+    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc, getDocs, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles, ArrowDown
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles, ArrowDown, AlertTriangle, Loader2
 } from 'lucide-react';
 
 // المكونات
@@ -5717,7 +6070,7 @@ interface CommunityViewProps {
 }
 
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
-    const { t, dir } = useLanguage();
+    const { t, dir, language } = useLanguage();
     
     // -- State --
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
@@ -5728,8 +6081,11 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
     const [showScrollButton, setShowScrollButton] = useState(false);
     
-    // Create Room State
+    // Create/Delete Room State
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [roomToDelete, setRoomToDelete] = useState<ChatRoom | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [newRoomName, setNewRoomName] = useState("");
 
     // Refs
@@ -5809,31 +6165,65 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     // --- Actions ---
     const createRoom = async () => {
         if (!newRoomName.trim() || !currentUser.uid) return;
+        setIsProcessing(true);
         const isDoctor = currentUser.role === 'doctor';
-        await addDoc(collection(db, "rooms"), {
-            name: newRoomName.trim().slice(0, 30), // Validated length
-            createdBy: currentUser.uid,
-            creatorName: currentUser.name || "Unknown",
-            language: 'mixed',
-            createdAt: Date.now(),
-            isDoctorRoom: isDoctor,
-            doctorId: isDoctor ? currentUser.uid : null
-        });
-        setNewRoomName("");
-        setShowCreateModal(false);
+        try {
+            await addDoc(collection(db, "rooms"), {
+                name: newRoomName.trim().slice(0, 30),
+                createdBy: currentUser.uid,
+                creatorName: currentUser.name || "Unknown",
+                language: 'mixed',
+                createdAt: Date.now(),
+                isDoctorRoom: isDoctor,
+                doctorId: isDoctor ? currentUser.uid : null
+            });
+            setNewRoomName("");
+            setShowCreateModal(false);
+        } catch (e) {
+            console.error("Failed to create room", e);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
-    const deleteRoom = async (roomId: string) => {
-        if (confirm("Are you sure you want to delete this room?")) {
-            await deleteDoc(doc(db, "rooms", roomId));
-            if (activeRoom?.id === roomId) setActiveRoom(null);
+    const confirmDeleteRoom = (room: ChatRoom) => {
+        setRoomToDelete(room);
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteRoom = async () => {
+        if (!roomToDelete) return;
+        setIsProcessing(true);
+        try {
+            // 1. Delete Messages Subcollection (Batch)
+            const msgsRef = collection(db, "rooms", roomToDelete.id, "messages");
+            const msgsSnapshot = await getDocs(msgsRef);
+            
+            const batch = writeBatch(db);
+            msgsSnapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            // Commit message deletion
+            await batch.commit();
+
+            // 2. Delete Room Document
+            await deleteDoc(doc(db, "rooms", roomToDelete.id));
+            
+            if (activeRoom?.id === roomToDelete.id) setActiveRoom(null);
+            setShowDeleteModal(false);
+            setRoomToDelete(null);
+        } catch (e) {
+            console.error("Error deleting room:", e);
+            alert(language === 'ar' ? "حدث خطأ أثناء الحذف." : "Error deleting room.");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
-        const cleanMessage = newMessage.trim().slice(0, 300); // Input sanitization/limit
+        const cleanMessage = newMessage.trim().slice(0, 300);
         
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: cleanMessage,
@@ -5985,9 +6375,10 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         
                                         {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
+                                                onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
                                                 aria-label="Delete Room"
+                                                title="Delete Room"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -6021,6 +6412,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     maxLength={30}
                                     onChange={(e) => setNewRoomName(e.target.value)}
                                     autoFocus
+                                    disabled={isProcessing}
                                 />
                                 {currentUser.role === 'doctor' ? (
                                     <p className="text-xs text-indigo-300 mb-6 bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20">
@@ -6032,8 +6424,39 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     </p>
                                 )}
                                 <div className="flex gap-3 justify-end">
-                                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('close')}</Button>
-                                    <Button variant="primary" onClick={createRoom} disabled={!newRoomName.trim()}>{t('create_room')}</Button>
+                                    <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={isProcessing}>{t('close')}</Button>
+                                    <Button variant="primary" onClick={createRoom} disabled={!newRoomName.trim() || isProcessing}>
+                                        {isProcessing ? <Loader2 size={16} className="animate-spin" /> : t('create_room')}
+                                    </Button>
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* Delete Confirmation Modal */}
+                    {showDeleteModal && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in" role="dialog" aria-modal="true">
+                            <Card className="w-full max-w-sm bg-slate-900 border-rose-500/30 shadow-2xl relative border-2">
+                                <div className="flex flex-col items-center text-center p-4">
+                                    <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 border border-rose-500/20">
+                                        <AlertTriangle size={32} className="text-rose-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-2">
+                                        {language === 'ar' ? 'حذف الغرفة؟' : 'Delete Room?'}
+                                    </h3>
+                                    <p className="text-slate-400 text-sm mb-6">
+                                        {language === 'ar' 
+                                            ? 'سيتم حذف هذه الغرفة وجميع الرسائل بداخلها نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                                            : 'This will permanently delete the room and all its messages. This action cannot be undone.'}
+                                    </p>
+                                    <div className="flex gap-3 w-full">
+                                        <Button variant="secondary" onClick={() => setShowDeleteModal(false)} className="flex-1" disabled={isProcessing}>
+                                            {t('cancel_btn')}
+                                        </Button>
+                                        <Button variant="danger" onClick={handleDeleteRoom} className="flex-1 shadow-lg shadow-rose-900/20" disabled={isProcessing}>
+                                            {isProcessing ? <Loader2 size={16} className="animate-spin" /> : (language === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete')}
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card>
                         </div>
@@ -6153,7 +6576,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 ### File: `views\DashboardView.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope, Shield } from 'lucide-react';
+import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope, Shield, Package, Info } from 'lucide-react';
 
 // المكونات الأساسية
 import { Button } from '../components/ui/Button';
@@ -6173,6 +6596,8 @@ import { DashboardCharts } from './dashboard/DashboardCharts';
 
 import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext';
+import { calculateTotalInventory } from '../services/taperingEngine';
 
 interface DashboardViewProps {
   userProfile: UserProfile | null;
@@ -6199,6 +6624,7 @@ export const DashboardView = ({
   handleFreezePlan
 }: DashboardViewProps) => {
   const { t, language } = useLanguage();
+  const { inventory } = useData(); // Get inventory directly from context
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   
@@ -6206,6 +6632,13 @@ export const DashboardView = ({
   const isPatient = userProfile?.role === 'patient';
   const isManualPlan = userProfile?.planType === 'manual';
   const doctorName = userProfile?.patientData?.assignedDoctorName;
+
+  // Inventory Calculation
+  const totalStock = calculateTotalInventory(inventory);
+  const currentDailyDose = todayPlan?.plannedDose || 0;
+  // Estimate days left (safeguard against divide by zero)
+  const daysSupply = currentDailyDose > 0 ? totalStock / currentDailyDose : 999;
+  const isLowStock = daysSupply < 7 && totalStock > 0;
 
   return (
     <LayoutContainer>
@@ -6251,10 +6684,10 @@ export const DashboardView = ({
 
         {/* 1. لافتة المريض (تظهر فقط للمرضى المرتبطين بأطباء) */}
         {isPatient && (
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-indigo-500/20 p-5 rounded-3xl flex items-center justify-between mb-8 backdrop-blur-xl shadow-lg animate-in slide-in-from-top-2 group">
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-indigo-500/20 p-5 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-xl shadow-lg animate-in slide-in-from-top-2 group">
                 <div className="absolute inset-0 bg-indigo-500/5 blur-xl group-hover:bg-indigo-500/10 transition-colors duration-500 pointer-events-none"></div>
                 <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0">
                         <Stethoscope size={28} aria-hidden="true" />
                     </div>
                     <div>
@@ -6272,35 +6705,64 @@ export const DashboardView = ({
             </div>
         )}
 
-        {/* 2. تحذير الأمان (Safety Guard) - Accessible Alert */}
-        {showDoctorWarning && !isManualPlan && (
-          <div 
-            className="relative overflow-hidden bg-rose-950/60 border border-rose-500/50 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-500 mb-8 ring-1 ring-rose-500/50"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
-            <div className="flex items-center gap-5 relative z-10">
-              <div className="bg-rose-500/20 p-4 rounded-2xl border border-rose-500/30 shadow-inner">
-                  <AlertTriangle className="text-rose-400 w-8 h-8" aria-hidden="true" />
+        {/* 2. تحذيرات النظام (Doctor Notes & Safety Guard & Inventory) */}
+        <div className="space-y-4">
+            
+            {/* أ. ملاحظات الطبيب */}
+            {userProfile?.doctorNotes && (
+                <div className="bg-indigo-950/40 border border-indigo-500/30 p-5 rounded-3xl animate-in slide-in-from-top-2 flex gap-4 items-start">
+                    <div className="p-2 bg-indigo-500/20 rounded-xl shrink-0 text-indigo-400 mt-1">
+                        <Info size={20} />
+                    </div>
+                    <div>
+                        <h4 className="text-indigo-300 font-bold text-sm mb-1">{language === 'ar' ? 'ملاحظات الطبيب' : 'Doctor\'s Instructions'}</h4>
+                        <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.doctorNotes}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* ب. تحذير الأمان (Safety Guard) */}
+            {showDoctorWarning && !isManualPlan && (
+              <div 
+                className="relative overflow-hidden bg-rose-950/60 border border-rose-500/50 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-500 ring-1 ring-rose-500/50"
+                role="alert"
+                aria-live="assertive"
+              >
+                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
+                <div className="flex items-center gap-5 relative z-10">
+                  <div className="bg-rose-500/20 p-4 rounded-2xl border border-rose-500/30 shadow-inner">
+                      <AlertTriangle className="text-rose-400 w-8 h-8" aria-hidden="true" />
+                  </div>
+                  <div>
+                      <h3 className="font-bold text-white text-xl mb-1 flex items-center gap-2">
+                          {t('safety_active')} <Shield size={18} className="text-rose-400" aria-hidden="true"/>
+                      </h3>
+                      <p className="text-rose-100 text-sm max-w-lg leading-relaxed font-medium">{t('safety_desc')}</p>
+                  </div>
+                </div>
+                <Button 
+                    onClick={handleFreezePlan} 
+                    variant="danger" 
+                    className="w-full md:w-auto !py-3 !px-6 relative z-10 shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40 focus:ring-rose-400"
+                    aria-label={t('freeze_plan_btn')}
+                >
+                   <PauseCircle size={20} className="mr-2" aria-hidden="true" /> {t('freeze_plan_btn')}
+                </Button>
               </div>
-              <div>
-                  <h3 className="font-bold text-white text-xl mb-1 flex items-center gap-2">
-                      {t('safety_active')} <Shield size={18} className="text-rose-400" aria-hidden="true"/>
-                  </h3>
-                  <p className="text-rose-100 text-sm max-w-lg leading-relaxed font-medium">{t('safety_desc')}</p>
-              </div>
-            </div>
-            <Button 
-                onClick={handleFreezePlan} 
-                variant="danger" 
-                className="w-full md:w-auto !py-3 !px-6 relative z-10 shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40 focus:ring-rose-400"
-                aria-label={t('freeze_plan_btn')}
-            >
-               <PauseCircle size={20} className="mr-2" aria-hidden="true" /> {t('freeze_plan_btn')}
-            </Button>
-          </div>
-        )}
+            )}
+
+            {/* ج. تحذير انخفاض المخزون */}
+            {isLowStock && (
+                <div className="bg-amber-950/40 border border-amber-500/30 p-4 rounded-2xl animate-in slide-in-from-bottom-2 flex items-center gap-3 text-sm">
+                    <Package size={20} className="text-amber-500 shrink-0 animate-bounce" />
+                    <span className="text-amber-200">
+                        {language === 'ar' 
+                            ? `تنبيه: المخزون المتبقي يكفي لـ ${Math.round(daysSupply)} أيام فقط. يرجى توفير الدواء لضمان استمرار الخطة.`
+                            : `Warning: Remaining stock lasts for ~${Math.round(daysSupply)} days. Please restock to maintain the plan.`}
+                    </span>
+                </div>
+            )}
+        </div>
 
         {/* 3. الشبكة الرئيسية (Main Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
@@ -6341,7 +6803,7 @@ export const DashboardView = ({
 
 ### File: `views\DoctorDashboardView.tsx`
 ```tsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
     collection, query, where, getDocs, updateDoc, doc, getDoc 
 } from 'firebase/firestore';
@@ -6349,10 +6811,10 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, ManualPhase } from '../types';
 import { 
     Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
-    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser, Stethoscope, LineChart, Info, Check, AlertTriangle
+    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser, Stethoscope, LineChart, Info, Check, AlertTriangle, Eye
 } from 'lucide-react';
 import { 
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid 
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -6434,6 +6896,17 @@ export const DoctorDashboardView = () => {
         }
     }, [selectedPatient]);
 
+    // -- Preview Data Generation --
+    const previewData = useMemo(() => {
+        if (phases.length === 0) return [];
+        // Use a dummy start date to generate the sequence
+        const dummyPlan = generateManualPlan(phases, new Date().toISOString());
+        return dummyPlan.map((p, i) => ({
+            day: i + 1,
+            dose: p.plannedDose
+        }));
+    }, [phases]);
+
     // -- Helpers --
     const showStatus = (type: 'success' | 'error', text: string) => {
         setStatusMsg({ type, text });
@@ -6459,7 +6932,6 @@ export const DoctorDashboardView = () => {
     };
 
     const handleApplyPattern = () => {
-        // Safe parsing: split by comma, filter non-numbers and negatives
         const sequence = patternSeq
             .split(',')
             .map(s => parseFloat(s.trim()))
@@ -6498,7 +6970,6 @@ export const DoctorDashboardView = () => {
     const saveTreatmentPlan = async () => {
         if (!selectedPatient?.uid || phases.length === 0) return;
         
-        // Final confirmation logic implies clinical responsibility
         if (!window.confirm("Confirm: This will overwrite any existing plan and notify the patient immediately.")) return;
 
         const fullPlan = generateManualPlan(phases, new Date().toISOString());
@@ -6826,6 +7297,41 @@ export const DoctorDashboardView = () => {
                                 </section>
                             </div>
 
+                            {/* Plan Visual Preview */}
+                            <section className="bg-slate-950/80 p-6 rounded-3xl border border-white/5" aria-labelledby="preview-heading">
+                                <h3 id="preview-heading" className="text-white font-bold mb-4 flex items-center gap-2 text-lg">
+                                    <Eye size={20} className="text-sky-400" /> Plan Visual Preview
+                                </h3>
+                                <div className="h-64 w-full">
+                                    {previewData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={previewData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorDosePreview" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4}/>
+                                                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                                <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} tickFormatter={(val) => `Day ${val}`} />
+                                                <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
+                                                <Tooltip 
+                                                    contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                                    itemStyle={{color: '#fff', fontSize: '12px'}}
+                                                    formatter={(value) => [`${value} ${selectedPatient?.medUnit}`, 'Dose']}
+                                                />
+                                                <Area type="stepAfter" dataKey="dose" stroke="#38bdf8" strokeWidth={3} fill="url(#colorDosePreview)" animationDuration={1000} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-2xl">
+                                            <Activity size={40} className="mb-2 opacity-20" />
+                                            <p>Add phases to see the projection curve</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
                             {/* Phases List - Live Region */}
                             <section className="bg-slate-950/80 p-6 rounded-3xl border border-white/5" aria-labelledby="phases-heading">
                                 <div className="flex justify-between items-center mb-6">
@@ -6973,6 +7479,11 @@ export const DoctorPatientsView = () => {
     const filteredMyPatients = useMemo(() => {
         return myPatients.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [myPatients, searchTerm]);
+
+    // -- Memoized & Sorted Logs for Chart --
+    const sortedPatientLogs = useMemo(() => {
+        return [...patientLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [patientLogs]);
 
     // -- Actions --
 
@@ -7291,9 +7802,9 @@ export const DoctorPatientsView = () => {
                                         Adherence & Dosage
                                     </h3>
                                     <div className="flex-1 w-full" role="img" aria-label="Adherence Chart">
-                                        {patientLogs.length > 0 ? (
+                                        {sortedPatientLogs.length > 0 ? (
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={patientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                <AreaChart data={sortedPatientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
                                                     <defs>
                                                         <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
                                                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -7354,7 +7865,8 @@ export const DoctorPatientsView = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                            {patientLogs.slice().reverse().map((log, i) => (
+                                            {/* Using sortedPatientLogs for consistency in the list too, but reversing for latest first */}
+                                            {[...sortedPatientLogs].reverse().map((log, i) => (
                                                 <tr key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors mb-2">
                                                     <td className="text-slate-400 font-mono">{log.date}</td>
                                                     <td className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></td>
@@ -7383,8 +7895,9 @@ export const DoctorPatientsView = () => {
 ### File: `views\LoginView.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar, CheckSquare, Square, KeyRound, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
@@ -7404,11 +7917,14 @@ export const LoginView = ({
   handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds 
 }: LoginViewProps) => {
   const { t, dir, language } = useLanguage();
+  const { signupWithEmail, resetPassword } = useAuth();
   
-  // Local state for Signup Mode
+  // Local state
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
+  const [resetStatus, setResetStatus] = useState<{type: 'success'|'error', msg: string} | null>(null);
 
   // Additional Signup Data
   const [name, setName] = useState('');
@@ -7416,20 +7932,25 @@ export const LoginView = ({
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
 
-  // Use Auth Context directly here to avoid prop drilling for signup if possible, 
-  // but following existing pattern we use the props or import hook if needed. 
-  // For consistency with previous file, we import the hook to access signup function.
-  // Note: The previous file passed `signupWithEmail` implicitly via props or context? 
-  // The original App.tsx didn't pass `signupWithEmail` to LoginView props in the interface, 
-  // but LoginView imported `useAuth`. Let's stick to using `useAuth` hook inside.
-  const { signupWithEmail } = require('../contexts/AuthContext').useAuth(); 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setResetStatus(null);
 
     try {
-        if (isSignUp) {
+        if (isResetMode) {
+            if (!email) {
+                setResetStatus({ type: 'error', msg: language === 'ar' ? 'البريد الإلكتروني مطلوب' : 'Email is required' });
+                setIsLoading(false);
+                return;
+            }
+            await resetPassword(email);
+            setResetStatus({ type: 'success', msg: language === 'ar' ? 'تم إرسال رابط التعيين. تفقد بريدك.' : 'Reset link sent. Check your email.' });
+            setTimeout(() => {
+                setIsResetMode(false);
+                setResetStatus(null);
+            }, 3000);
+        } else if (isSignUp) {
             if (!hasConsented) {
                 alert(language === 'ar' ? "يجب الموافقة على الشروط والتنبيه الطبي للمتابعة." : "You must agree to the terms and medical disclaimer.");
                 setIsLoading(false);
@@ -7440,7 +7961,7 @@ export const LoginView = ({
                 setIsLoading(false);
                 return;
             }
-            // Use the hook function directly
+            
             await signupWithEmail(email, password, name, {
                 age: parseInt(age),
                 weight: parseFloat(weight),
@@ -7449,8 +7970,11 @@ export const LoginView = ({
         } else {
             await handleLogin(e);
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error("Auth Error", err);
+        if (isResetMode) {
+            setResetStatus({ type: 'error', msg: err.message || 'Failed to send reset email.' });
+        }
     } finally {
         setIsLoading(false);
     }
@@ -7469,22 +7993,23 @@ export const LoginView = ({
             {/* Logo & Header */}
             <div className="text-center mb-8">
                 <div className="inline-flex p-4 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4 ring-1 ring-white/10">
-                    <Activity className="w-10 h-10 text-white" />
+                    {isResetMode ? <KeyRound className="w-10 h-10 text-white" /> : <Activity className="w-10 h-10 text-white" />}
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
-                    {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
+                    {isResetMode ? (language === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password') : 
+                     isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
                 </h1>
                 <p className="text-slate-400 font-medium text-sm leading-relaxed max-w-xs mx-auto">
-                    {isSignUp 
-                        ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') 
-                        : t('subtitle')}
+                    {isResetMode ? (language === 'ar' ? 'أدخل بريدك لاستلام رابط التعيين' : 'Enter email to receive reset link') :
+                     isSignUp ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') : 
+                     t('subtitle')}
                 </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 
                 {/* Signup Fields */}
-                {isSignUp && (
+                {isSignUp && !isResetMode && (
                     <div className="space-y-4 animate-in slide-in-from-bottom-4">
                         <div className="relative group">
                             <label htmlFor="fullname" className="sr-only">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
@@ -7539,26 +8064,41 @@ export const LoginView = ({
                             required
                         />
                     </div>
-                    <div className="relative group">
-                        <label htmlFor="password" className="sr-only">{t('password')}</label>
-                        <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
-                        <input 
-                            id="password"
-                            type="password" 
-                            name="password"
-                            autoComplete={isSignUp ? "new-password" : "current-password"}
-                            placeholder={t('password')}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
-                            required
-                            minLength={6}
-                        />
-                    </div>
+                    {!isResetMode && (
+                        <div className="relative group animate-in slide-in-from-bottom-2">
+                            <label htmlFor="password" className="sr-only">{t('password')}</label>
+                            <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
+                            <input 
+                                id="password"
+                                type="password" 
+                                name="password"
+                                autoComplete={isSignUp ? "new-password" : "current-password"}
+                                placeholder={t('password')}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                    )}
                 </div>
 
+                {/* Forgot Password Link */}
+                {!isSignUp && !isResetMode && (
+                    <div className="flex justify-end -mt-1">
+                        <button 
+                            type="button"
+                            onClick={() => { setIsResetMode(true); setResetStatus(null); }}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                            {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
+                        </button>
+                    </div>
+                )}
+
                 {/* Privacy Consent Checkbox (Only for Signup) */}
-                {isSignUp && (
+                {isSignUp && !isResetMode && (
                     <div className="flex items-start gap-3 p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 animate-in slide-in-from-bottom-2 cursor-pointer" onClick={() => setHasConsented(!hasConsented)}>
                         <div className={`mt-0.5 shrink-0 transition-colors ${hasConsented ? 'text-indigo-400' : 'text-slate-500'}`}>
                             {hasConsented ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -7571,61 +8111,83 @@ export const LoginView = ({
                     </div>
                 )}
                 
-                {/* Error Messages */}
-                {loginError && (
-                    <div className="text-rose-400 text-xs bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2 font-bold" role="alert">
-                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></div> {loginError}
+                {/* Error/Status Messages */}
+                {(loginError || resetStatus) && (
+                    <div className={`text-xs p-3 rounded-xl border flex items-center gap-2 animate-in slide-in-from-top-2 font-bold ${resetStatus?.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`} role="alert">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${resetStatus?.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div> 
+                        {resetStatus ? resetStatus.msg : loginError}
                     </div>
                 )}
                 
                 {/* Submit Button */}
-                <Button 
-                    className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20 mt-2" 
-                    type="submit" 
-                    isLoading={isLoading}
-                    disabled={isSignUp && !hasConsented}
-                >
-                    {isSignUp 
-                        ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
-                        : t('login_email')} 
-                    {!isLoading && (isSignUp ? <UserPlus size={18} className="ml-2"/> : <LogIn size={18} className="ml-2"/>)}
-                </Button>
+                <div className="flex gap-3 mt-2">
+                    {isResetMode && (
+                        <Button 
+                            variant="secondary"
+                            onClick={() => { setIsResetMode(false); setResetStatus(null); }}
+                            className="px-4"
+                            disabled={isLoading}
+                        >
+                            {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+                        </Button>
+                    )}
+                    <Button 
+                        className="flex-1 py-4 text-lg shadow-lg shadow-indigo-500/20" 
+                        type="submit" 
+                        isLoading={isLoading}
+                        disabled={isSignUp && !hasConsented}
+                    >
+                        {isResetMode 
+                            ? (language === 'ar' ? 'إرسال الرابط' : 'Send Link')
+                            : isSignUp 
+                                ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
+                                : t('login_email')} 
+                        {!isLoading && !isResetMode && (isSignUp ? <UserPlus size={18} className="ml-2"/> : <LogIn size={18} className="ml-2"/>)}
+                    </Button>
+                </div>
             </form>
 
-            {/* Separator & Social Login */}
-            <div className="my-6 flex items-center gap-4 text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">
-                <div className="h-px bg-slate-800 flex-1"></div>
-                {t('or')}
-                <div className="h-px bg-slate-800 flex-1"></div>
-            </div>
+            {/* Separator & Social Login (Hide in Reset Mode) */}
+            {!isResetMode && (
+                <>
+                    <div className="my-6 flex items-center gap-4 text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">
+                        <div className="h-px bg-slate-800 flex-1"></div>
+                        {t('or')}
+                        <div className="h-px bg-slate-800 flex-1"></div>
+                    </div>
 
-            <Button 
-                onClick={handleGoogleLogin}
-                variant="secondary"
-                className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 flex items-center justify-center gap-2 font-bold"
-            >
-                <Chrome className="w-5 h-5 text-slate-900" />
-                <span>{t('login_google')}</span>
-            </Button>
+                    <Button 
+                        onClick={handleGoogleLogin}
+                        variant="secondary"
+                        className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 flex items-center justify-center gap-2 font-bold"
+                    >
+                        <Chrome className="w-5 h-5 text-slate-900" />
+                        <span>{t('login_google')}</span>
+                    </Button>
+                </>
+            )}
 
             {/* Toggle Mode */}
-            <div className="mt-8 text-center">
-                <p className="text-slate-400 text-sm">
-                    {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
-                    <button 
-                        onClick={() => {
-                            setIsSignUp(!isSignUp);
-                            setHasConsented(false); // Reset consent on toggle
-                        }}
-                        className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
-                    >
-                        {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
-                    </button>
-                </p>
-            </div>
+            {!isResetMode && (
+                <div className="mt-8 text-center">
+                    <p className="text-slate-400 text-sm">
+                        {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
+                        <button 
+                            onClick={() => {
+                                setIsSignUp(!isSignUp);
+                                setHasConsented(false); 
+                                setResetStatus(null);
+                            }}
+                            className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
+                        >
+                            {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
+                        </button>
+                    </p>
+                </div>
+            )}
 
             {/* Demo Button */}
-            {!isSignUp && (
+            {!isSignUp && !isResetMode && (
                 <div className="mt-6 pt-6 border-t border-white/5 text-center">
                     <button 
                         onClick={setDemoCreds}
@@ -7645,7 +8207,7 @@ export const LoginView = ({
 
 ### File: `views\OnboardingView.tsx`
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
   Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity, Info
@@ -7715,7 +8277,31 @@ export const OnboardingView = ({
   // Scientific Modal State
   const [showSciModal, setShowSciModal] = useState(false);
   
-  const totalInventory = calculateTotalInventory(inventory);
+  // -- Local Buffers for Numeric Inputs (Fixes Glitches) --
+  const [localInv, setLocalInv] = useState<{boxes: string, pills: string, loose: string}>({
+      boxes: '0', pills: '0', loose: '0'
+  });
+  const [localDose, setLocalDose] = useState<string>('0');
+
+  // Initialize local buffers when entering inventory step
+  useEffect(() => {
+      if (step === 'ALGO_SETUP_INV') {
+          setLocalInv({
+              boxes: inventory.boxes.toString(),
+              pills: inventory.pillsPerBox.toString(),
+              loose: inventory.loosePills.toString()
+          });
+          setLocalDose(currentDoseHabit > 0 ? currentDoseHabit.toString() : '');
+      }
+  }, [step]); // Only reset on step entry
+
+  // Helper to calculate total from local strings
+  const localTotalInventory = useMemo(() => {
+      const b = parseInt(localInv.boxes) || 0;
+      const p = parseInt(localInv.pills) || 0;
+      const l = parseFloat(localInv.loose) || 0;
+      return (b * p) + l;
+  }, [localInv]);
   
   // -- Load existing data if resubmitting --
   useEffect(() => {
@@ -7872,7 +8458,19 @@ export const OnboardingView = ({
   };
 
   const generatePreview = () => {
-      const plan = generatePlan(totalInventory, currentDoseHabit, new Date().toISOString(), 1.0, [], medForm || 'tablet');
+      // Sync local state to parent state just before generating
+      const finalInventory = {
+          boxes: parseInt(localInv.boxes) || 0,
+          pillsPerBox: parseInt(localInv.pills) || 0,
+          loosePills: parseFloat(localInv.loose) || 0,
+          totalPills: localTotalInventory
+      };
+      const finalDose = parseFloat(localDose) || 0;
+
+      setInventory(finalInventory);
+      setCurrentDoseHabit(finalDose);
+
+      const plan = generatePlan(localTotalInventory, finalDose, new Date().toISOString(), 1.0, [], medForm || 'tablet');
       setPreviewPlan(plan);
       setStep('ALGO_PREVIEW');
       setShowSciModal(true);
@@ -8221,21 +8819,46 @@ export const OnboardingView = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="group">
                             <label htmlFor="boxes" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('boxes')} ({formLabel})</label>
-                            <input id="boxes" type="number" min="0" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="boxes" 
+                                type="number" 
+                                min="0" 
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.boxes} 
+                                onChange={(e) => setLocalInv({...localInv, boxes: e.target.value})} 
+                            />
                         </div>
                         <div className="group">
                             <label htmlFor="pillsPerBox" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('pills_per_box')}</label>
-                            <input id="pillsPerBox" type="number" min="1" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="pillsPerBox" 
+                                type="number" 
+                                min="1" 
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.pills} 
+                                onChange={(e) => setLocalInv({...localInv, pills: e.target.value})} 
+                            />
                         </div>
                         <div className="group">
                             <label htmlFor="loosePills" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('loose_pills')}</label>
-                            <input id="loosePills" type="number" min="0" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="loosePills" 
+                                type="number" 
+                                min="0" 
+                                step="0.5"
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.loose} 
+                                onChange={(e) => setLocalInv({...localInv, loose: e.target.value})} 
+                            />
                         </div>
                     </div>
                     <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center bg-slate-950/30 -mx-8 -mb-8 p-8 rounded-b-[2.5rem]">
                         <span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span>
                         <span className="text-5xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
-                            {calculateTotalInventory(inventory)} <span className="text-lg text-slate-500">{unitLabel}</span>
+                            {localTotalInventory} <span className="text-lg text-slate-500">{unitLabel}</span>
                         </span>
                     </div>
                 </Card>
@@ -8246,7 +8869,7 @@ export const OnboardingView = ({
                     </h2>
                     <div className="flex flex-wrap gap-3">
                         {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
-                            <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
+                            <button key={dose} onClick={() => setLocalDose(dose.toString())} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${parseFloat(localDose) === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
                         ))}
                         <div className="relative flex-1 min-w-[120px]">
                             <label htmlFor="customDose" className="sr-only">Custom Dose</label>
@@ -8257,13 +8880,14 @@ export const OnboardingView = ({
                                 step="0.1"
                                 placeholder="جرعة أخرى..." 
                                 className="h-14 w-full bg-slate-950/50 rounded-xl border border-white/10 px-6 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all text-center placeholder-slate-600" 
-                                onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} 
+                                value={localDose}
+                                onChange={(e) => setLocalDose(e.target.value)} 
                             />
                         </div>
                     </div>
                 </Card>
                 
-                <Button className="w-full text-2xl py-6 rounded-3xl shadow-2xl shadow-indigo-500/20 animate-pulse-glow" variant="success" disabled={currentDoseHabit <= 0 || calculateTotalInventory(inventory) <= 0} onClick={generatePreview}>
+                <Button className="w-full text-2xl py-6 rounded-3xl shadow-2xl shadow-indigo-500/20 animate-pulse-glow" variant="success" disabled={parseFloat(localDose) <= 0 || localTotalInventory <= 0} onClick={generatePreview}>
                     {t('analyze_plan')} <BrainCircuit className="ml-3" size={28}/>
                 </Button>
             </div>
@@ -8328,10 +8952,10 @@ export const OnboardingView = ({
 
 ### File: `views\SettingsView.tsx`
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Info
+    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -8361,6 +8985,9 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     // Delete Confirmation State
     const [deleteInput, setDeleteInput] = useState('');
     const deleteKeyword = language === 'ar' ? 'حذف' : 'DELETE';
+
+    // File Import Ref
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // -- Doctor Form State --
     const [formData, setFormData] = useState({
@@ -8392,10 +9019,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         }
     }, [userProfile]);
 
-    // Sync Inventory
+    // Sync Inventory (Initialize only)
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
+                // Only sync if we haven't touched it yet (all zeros) or if it's a fresh load
+                // This prevents the "jumping" issue while typing
                 const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
                 if (isPrevEmpty) return inventory;
                 return prev;
@@ -8430,18 +9059,19 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     const handleUpdateInventory = () => {
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
-        setInventory(updatedInv);
-        setLocalInventory(updatedInv); 
+        setInventory(updatedInv); // Update Context
+        setLocalInventory(updatedInv); // Sync Local
         showStatus('success', language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
     const handleExportData = () => {
         const dataToExport = {
-            profile: userProfile,
+            profile: { ...userProfile, uid: undefined }, // Exclude UID for privacy in raw file
             inventory: inventory,
             plan: plan,
             logs: logs,
-            exportedAt: new Date().toISOString()
+            exportedAt: new Date().toISOString(),
+            version: '2.0'
         };
         
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
@@ -8453,6 +9083,53 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         downloadAnchorNode.remove();
         
         showStatus('success', language === 'ar' ? 'تم تحميل بياناتك بنجاح.' : 'Data exported successfully.');
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !userProfile.uid) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const json = JSON.parse(e.target?.result as string);
+                
+                // Validate Basic Structure
+                if (!json.inventory || !Array.isArray(json.plan) || !Array.isArray(json.logs)) {
+                    throw new Error("Invalid file format");
+                }
+
+                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية (السجلات، الخطة، المخزون). هل أنت متأكد؟' : 'Warning: Importing will overwrite current logs, plan, and inventory. Continue?')) {
+                    return;
+                }
+
+                setLoading(true);
+                
+                const dataToRestore = {
+                    inventory: json.inventory,
+                    plan: json.plan,
+                    logs: json.logs,
+                    speedModifier: json.profile?.speedModifier || 1.0,
+                    // We don't overwrite name/email/role here to prevent account lockout/corruption
+                };
+
+                await updateDoc(doc(db, "users", userProfile.uid!), dataToRestore);
+                
+                // Manually trigger context update if needed, but onSnapshot in DataContext should catch it
+                showStatus('success', language === 'ar' ? 'تم استعادة البيانات بنجاح.' : 'Data restored successfully.');
+            } catch (err) {
+                console.error("Import Error:", err);
+                showStatus('error', language === 'ar' ? 'ملف غير صالح أو تالف.' : 'Invalid or corrupt backup file.');
+            } finally {
+                setLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+            }
+        };
+        reader.readAsText(file);
     };
 
     return (
@@ -8651,7 +9328,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invBoxes"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.boxes || ''} 
+                                            value={localInventory.boxes}
                                             onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -8667,7 +9344,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invPills"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.pillsPerBox || ''}
+                                            value={localInventory.pillsPerBox}
                                             onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -8683,7 +9360,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invLoose"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.loosePills || ''}
+                                            value={localInventory.loosePills}
                                             onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -8716,12 +9393,27 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                     </h2>
                     <p className="text-indigo-200/60 text-sm mb-6 max-w-xl">
                         {language === 'ar' 
-                            ? 'يمكنك تحميل نسخة من بياناتك الطبية وسجلاتك كملف JSON للاحتفاظ بها أو مشاركتها مع طبيبك.' 
-                            : 'You can download a copy of your medical data and logs as a JSON file for your records.'}
+                            ? 'يمكنك تحميل نسخة احتياطية (تصدير) أو استعادة بياناتك السابقة (استيراد).' 
+                            : 'You can backup (Export) or restore previous data (Import).'}
                     </p>
-                    <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
-                        <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير بياناتي' : 'Export My Data'}
-                    </Button>
+                    
+                    <div className="flex gap-4 flex-wrap">
+                        <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
+                            <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير' : 'Export Data'}
+                        </Button>
+                        
+                        <Button onClick={handleImportClick} variant="secondary" className="border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400">
+                            <Upload size={18} className="mr-2" /> {language === 'ar' ? 'استيراد' : 'Import Data'}
+                        </Button>
+                        {/* Hidden Input for File Upload */}
+                        <input 
+                            type="file" 
+                            accept=".json"
+                            ref={fileInputRef} 
+                            style={{ display: 'none' }} 
+                            onChange={handleFileChange}
+                        />
+                    </div>
                 </section>
             </Card>
 
@@ -8800,13 +9492,17 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     ].filter(d => d.value > 0), [logs, t]);
 
     // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
-    // نأخذ آخر 14 يوم لضمان وضوح الرسم
-    const recentLogs = useMemo(() => logs.slice(-14), [logs]);
+    // FIX: Sort logs by date first to ensure we get the actual *latest* 14 days, not just the last 14 in the array
+    const recentLogs = useMemo(() => {
+        return [...logs]
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(-14);
+    }, [logs]);
     
     const correlationData = useMemo(() => {
         return recentLogs.map(log => ({
             date: log.date,
-            displayDate: log.date.slice(5),
+            displayDate: log.date.slice(5), // YYYY-MM-DD -> MM-DD
             dose: log.doseTaken,
             sleep: log.sleepHours || 0,
             moodLabel: log.mood
@@ -8814,13 +9510,14 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     }, [recentLogs]);
 
     // 3. منطق الأوسمة (Gamification)
+    // FIX: Also ensure badges use the sorted recent logs logic where applicable
     const badges = [
         {
             id: 'warrior',
             title: t('badge_7days'),
             icon: Shield,
             color: 'indigo',
-            achieved: logs.length >= 7,
+            achieved: logs.length >= 7, // Basic check on count is fine
             desc: "7 أيام متواصلة"
         },
         {
@@ -8828,7 +9525,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_halfway'),
             icon: Zap,
             color: 'amber',
-            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2),
+            achieved: logs.length > 0 && plan.length > 0 && recentLogs[recentLogs.length-1]?.doseTaken <= (plan[0].plannedDose / 2),
             desc: "نصف الكمية"
         },
         {
@@ -8836,15 +9533,15 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_sleep'),
             icon: Moon,
             color: 'blue',
-            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
-            desc: "نوم مستقر"
+            achieved: recentLogs.length >= 3 && (recentLogs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
+            desc: "نوم منتظم"
         },
         {
             id: 'stable',
             title: t('badge_stable'),
             icon: Smile,
             color: 'emerald',
-            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good'),
+            achieved: recentLogs.length >= 3 && recentLogs.slice(-3).every(l => l.mood === 'good'),
             desc: "مزاج ممتاز"
         }
     ];
@@ -9033,9 +9730,10 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                            {language === 'ar' ? 'استقرار النوم (آخر 7 أيام)' : 'Sleep Stability (Last 7 Days)'}
                       </h3>
                       <div className="flex-1 mt-4" aria-hidden="true">
-                          {logs.length > 0 ? (
+                          {recentLogs.length > 0 ? (
                               <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={logs.slice(-7)}> 
+                                  {/* Using recentLogs.slice(-7) ensures we use the sorted latest days */}
+                                  <BarChart data={recentLogs.slice(-7)}> 
                                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
                                       <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
                                       <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
@@ -9047,7 +9745,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                       />
                                       <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
                                       <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
-                                        {logs.slice(-7).map((entry, index) => (
+                                        {recentLogs.slice(-7).map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
                                         ))}
                                       </Bar>
@@ -9072,7 +9770,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                   </tr>
                               </thead>
                               <tbody>
-                                  {logs.slice(-7).map((log, i) => (
+                                  {recentLogs.slice(-7).map((log, i) => (
                                       <tr key={i}>
                                           <td>{log.date}</td>
                                           <td>{log.sleepHours || 0} {language === 'ar' ? 'ساعات' : 'hours'}</td>
@@ -9100,7 +9798,7 @@ import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
 import { 
     LifeBuoy, Plus, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, 
-    Stethoscope, ChevronRight, Loader2, AlertCircle, MessageSquare
+    Stethoscope, ChevronRight, Loader2, AlertCircle, MessageSquare, Mail
 } from 'lucide-react';
 
 // المكونات
@@ -9135,11 +9833,23 @@ export const SupportView = ({ user }: SupportViewProps) => {
     useEffect(() => {
         if (!user.uid) return;
         
-        const q = query(
-            collection(db, "tickets"), 
-            where("userId", "==", user.uid), 
-            orderBy("lastUpdate", "desc")
-        );
+        let q;
+        
+        // IF ADMIN: Fetch ALL tickets
+        if (user.role === 'admin') {
+            q = query(
+                collection(db, "tickets"), 
+                orderBy("lastUpdate", "desc")
+            );
+        } 
+        // IF USER: Fetch OWN tickets
+        else {
+            q = query(
+                collection(db, "tickets"), 
+                where("userId", "==", user.uid), 
+                orderBy("lastUpdate", "desc")
+            );
+        }
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedTickets = snapshot.docs.map(doc => ({
@@ -9156,7 +9866,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
         });
         
         return () => unsubscribe();
-    }, [user.uid, activeTicket?.id]);
+    }, [user.uid, user.role, activeTicket?.id]);
 
     // Scroll to bottom on new message
     useEffect(() => {
@@ -9179,7 +9889,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             senderName: user.name,
             text: newMessage.trim().slice(0, 1000), // Max length check
             timestamp: Date.now(),
-            isAdmin: false
+            isAdmin: user.role === 'admin'
         };
 
         try {
@@ -9213,13 +9923,16 @@ export const SupportView = ({ user }: SupportViewProps) => {
             senderName: user.name,
             text: newMessage.trim().slice(0, 1000),
             timestamp: Date.now(),
-            isAdmin: false
+            isAdmin: user.role === 'admin' // Dynamic check for admin role
         };
 
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
             const currentMessages = activeTicket.messages || [];
             
+            // If admin replies, status might be 'pending' (waiting for user) or keep 'open'.
+            // If user replies, status 'open'. 
+            // For simplicity, we keep 'open' or set 'resolved' manually later.
             await updateDoc(ticketRef, {
                 messages: [...currentMessages, newMsg],
                 lastUpdate: Date.now(),
@@ -9231,6 +9944,15 @@ export const SupportView = ({ user }: SupportViewProps) => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Mark ticket as resolved/closed (Admin or User)
+    const toggleResolve = async () => {
+        if (!activeTicket || !activeTicket.id) return;
+        const newStatus = activeTicket.status === 'resolved' ? 'open' : 'resolved';
+        try {
+            await updateDoc(doc(db, "tickets", activeTicket.id), { status: newStatus });
+        } catch(e) { console.error(e); }
     };
 
     // Helper for translation keys
@@ -9247,9 +9969,10 @@ export const SupportView = ({ user }: SupportViewProps) => {
     return (
         <LayoutContainer>
             <PageHeader 
-                title={t('nav_support')} 
-                subtitle={t('support_desc') || "Contact the support team directly."}
+                title={user.role === 'admin' ? (language === 'ar' ? 'مركز دعم العملاء' : 'Support Center') : t('nav_support')} 
+                subtitle={user.role === 'admin' ? (language === 'ar' ? 'إدارة التذاكر والردود' : 'Manage tickets and replies') : (t('support_desc') || "Contact the support team directly.")}
                 action={
+                    // Only show Create Ticket button if NOT admin, or keep it if admin wants to create internal tickets
                     <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20" aria-label={t('new_ticket')}>
                         <Plus size={18} aria-hidden="true" /> {t('new_ticket') || "New Ticket"}
                     </Button>
@@ -9261,6 +9984,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-900/20" aria-hidden="true">
                         {user.role === 'doctor' ? <Stethoscope size={24}/> : 
+                         user.role === 'admin' ? <Lock size={24} /> :
                          user.medForm === 'liquid' ? <FlaskConical size={24} /> : 
                          user.medForm === 'tablet' ? <Pill size={24} /> : <User size={24}/>}
                     </div>
@@ -9281,7 +10005,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 {/* LIST COLUMN */}
                 <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900/80 border-white/10 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/50 backdrop-blur-md">
-                        <h3 className="font-bold text-white text-lg">{t('my_tickets') || "My Tickets"}</h3>
+                        <h3 className="font-bold text-white text-lg">
+                            {user.role === 'admin' ? (language === 'ar' ? 'صندوق التذاكر' : 'Ticket Inbox') : (t('my_tickets') || "My Tickets")}
+                        </h3>
                         <Badge color="indigo">{tickets.length}</Badge>
                     </div>
                     
@@ -9289,7 +10015,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         {tickets.length === 0 && (
                             <li className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-2xl m-2 flex flex-col items-center">
                                 <LifeBuoy className="mb-3 opacity-30" size={32} aria-hidden="true"/>
-                                {t('no_tickets') || "No previous tickets."}
+                                {t('no_tickets') || "No tickets found."}
                             </li>
                         )}
                         {tickets.map(ticket => (
@@ -9304,9 +10030,15 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     aria-current={activeTicket?.id === ticket.id ? 'true' : undefined}
                                 >
                                     <div className="flex justify-between items-start mb-3">
-                                        <h4 className={`font-bold text-sm truncate max-w-[70%] ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
-                                            {ticket.subject}
-                                        </h4>
+                                        <div className="max-w-[70%]">
+                                            {/* Show user email if Admin */}
+                                            {user.role === 'admin' && (
+                                                <p className="text-[10px] text-indigo-400 font-mono mb-1 truncate">{ticket.userEmail || ticket.userId}</p>
+                                            )}
+                                            <h4 className={`font-bold text-sm truncate ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
+                                                {ticket.subject}
+                                            </h4>
+                                        </div>
                                         <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-2 !py-0.5">
                                             {getStatusLabel(ticket.status)}
                                         </Badge>
@@ -9334,7 +10066,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                         <>
                             {/* Ticket Header */}
                             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-20">
-                                <div>
+                                <div className="flex-1 mr-4">
                                     <button 
                                         type="button" 
                                         onClick={() => setActiveTicket(null)} 
@@ -9343,39 +10075,57 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     >
                                         <ChevronRight size={14} className={language === 'ar' ? 'rotate-180' : 'rotate-0'}/> {t('close')}
                                     </button>
-                                    <h3 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Lock size={16} className="text-emerald-500" aria-hidden="true"/></div>
+                                    <h3 className="font-bold text-white flex items-center gap-3 text-lg truncate">
+                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg shrink-0"><Lock size={16} className="text-emerald-500" aria-hidden="true"/></div>
                                         {activeTicket.subject}
                                     </h3>
-                                    <p className="text-[10px] text-slate-500 font-mono mt-1 ml-9">Ref: {activeTicket.id}</p>
+                                    {user.role === 'admin' && (
+                                        <div className="flex items-center gap-2 mt-1 ml-9">
+                                            <Mail size={10} className="text-slate-500"/>
+                                            <p className="text-[10px] text-slate-400 font-mono">{activeTicket.userEmail}</p>
+                                        </div>
+                                    )}
                                 </div>
-                                {activeTicket.status === 'resolved' && (
-                                    <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold flex items-center gap-2">
-                                        <CheckCircle size={14} aria-hidden="true"/> {t('status_resolved') || "Resolved"}
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {activeTicket.status === 'resolved' ? (
+                                        <button onClick={toggleResolve} className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-emerald-500/20 transition-colors">
+                                            <CheckCircle size={14} aria-hidden="true"/> {t('status_resolved') || "Resolved"}
+                                        </button>
+                                    ) : (
+                                        <button onClick={toggleResolve} className="px-3 py-1 bg-slate-800 border border-white/10 text-slate-400 rounded-full text-xs font-bold hover:bg-slate-700 hover:text-white transition-colors">
+                                            Mark Resolved
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Messages Area (Live Region) */}
                             <div 
-                                className="flex-1 overflow-y-auto p-6 pt-28 space-y-6 custom-scrollbar bg-slate-900/30"
+                                className="flex-1 overflow-y-auto p-6 pt-32 space-y-6 custom-scrollbar bg-slate-900/30"
                                 role="log"
                                 aria-live="polite"
                                 aria-label="Ticket Conversation"
                             >
                                 {activeTicket.messages?.map((msg, idx) => {
-                                    const isMe = !msg.isAdmin; 
+                                    // If user is Admin, they are "Me" (right side) if msg.isAdmin is true.
+                                    // If user is User, they are "Me" (right side) if msg.isAdmin is false.
+                                    
+                                    const isMe = (user.role === 'admin' && msg.isAdmin) || (user.role !== 'admin' && !msg.isAdmin);
+                                    const senderLabel = msg.isAdmin 
+                                        ? (user.role === 'admin' ? (t('me') || 'Me') : (t('support_team') || 'Support'))
+                                        : (user.role === 'admin' ? 'User' : (t('me') || 'Me'));
+
                                     return (
-                                        <div key={idx} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'} animate-in slide-in-from-bottom-2`}>
+                                        <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
                                             <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${
                                                 isMe 
-                                                ? 'bg-slate-800 text-slate-200 rounded-tl-none border border-white/5' 
-                                                : 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/20'
+                                                ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/20' 
+                                                : 'bg-slate-800 text-slate-200 rounded-tl-none border border-white/5'
                                             }`}>
                                                 {msg.text}
                                             </div>
                                             <span className="text-[10px] text-slate-500 mt-2 px-1 flex items-center gap-1 font-bold uppercase tracking-wider">
-                                                {isMe ? (t('me') || "Me") : (t('support_team') || "Support")} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {senderLabel} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </div>
                                     );
@@ -9385,7 +10135,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
                             {/* Reply Input */}
                             <div className="p-4 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl z-20">
-                                {activeTicket.status === 'resolved' ? (
+                                {activeTicket.status === 'resolved' && user.role !== 'admin' ? (
                                     <div className="text-center text-sm text-emerald-400 font-bold bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-lg flex items-center justify-center gap-2">
                                         <CheckCircle size={16} aria-hidden="true"/>
                                         {t('ticket_closed_msg') || "This ticket is closed."}
@@ -9674,9 +10424,23 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    const currentTotal = calculateTotalInventory(inventory);
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check for existing log to prevent double deduction
+    const existingLog = logs.find(l => l.date === today);
+    
+    // Calculate current total pills
+    let currentTotal = calculateTotalInventory(inventory);
+    
+    // If we are updating, we must first REFUND the old dose to the inventory
+    if (existingLog) {
+        currentTotal += existingLog.doseTaken;
+    }
+    
+    // Now deduct the new dose
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
+    // Construct new inventory object
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
@@ -9686,15 +10450,19 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    const today = new Date().toISOString().split('T')[0];
+    // Create the new log entry
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
     };
+    
+    // Update logs array (replace if exists, or add new)
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
+    // Update Plan if Algorithm is active
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
+        // Recalculate theoretical start for the algorithm projection
         const theoreticalInitial = newTotal + totalUsed;
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier, userProfile.medForm || 'tablet');
         setPlan(newPlan);
@@ -10098,7 +10866,8 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      allow read, delete: if isAdmin();
+      // Admins can always delete
+      allow delete: if isAdmin();
 
       allow read: if isSignedIn() && (
         // Public rooms
@@ -10113,8 +10882,8 @@ service cloud.firestore {
       allow create: if isApprovedDoctor() && 
                     isValidString(incomingData().name, 3, 50);
       
-      // Creator can update
-      allow update: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      // Creator can update OR DELETE their own room
+      allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
       // Messages Sub-collection
       match /messages/{msgId} {
@@ -10123,6 +10892,12 @@ service cloud.firestore {
         allow create: if isSignedIn() && 
                       isValidString(incomingData().text, 1, 1000) &&
                       incomingData().senderId == request.auth.uid;
+        
+        // FIX: Allow delete if Admin OR if User is the Room Creator (required for cleaning up room)
+        allow delete: if isAdmin() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.createdBy == request.auth.uid
+        );
       }
     }
 
@@ -10159,9 +10934,8 @@ service cloud.firestore {
     // --- 5. Audit Logs ---
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      // System writes logs; users shouldn't write directly usually, 
-      // but if client-side logging is used, verify structure.
-      allow create: if isSignedIn() && 
+      // FIX: Restrict audit log creation to Admins only
+      allow create: if isAdmin() && 
                     incomingData().keys().hasAll(['action', 'timestamp']) &&
                     request.resource.data.timestamp is number;
     }
@@ -10895,5 +11669,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 56
-- Total Characters: 554376
-- Estimated Tokens: ~138.594 (GPT-4 Context)
+- Total Characters: 599134
+- Estimated Tokens: ~149.784 (GPT-4 Context)

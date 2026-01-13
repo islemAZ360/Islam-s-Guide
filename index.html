@@ -3,36 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     
+    <!-- Primary Meta Tags -->
     <title>Islam's Guide - رفيق التعافي الذكي</title>
-    <meta name="description" content="نظام ذكي للتعافي التدريجي الآمن، يجمع بين الخوارزميات والإشراف الطبي.">
-    <meta name="theme-color" content="#020617">
+    <meta name="title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta name="description" content="نظام ذكي ومجاني لدعم التعافي من الأدوية بأسلوب علمي، يجمع بين الخوارزميات الرياضية والإشراف الطبي لضمان الأمان والخصوصية." />
+    <meta name="keywords" content="recovery, tapering, medication, health, algorithm, addiction support, تعافي, صحة, دواء" />
+    <meta name="theme-color" content="#020617" />
 
-    <!-- Fonts -->
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://islam-guide.app/" />
+    <meta property="og:title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta property="og:description" content="ابدأ رحلة التعافي الآمنة اليوم. نظام يولد خطط انسحاب تدريجية بناءً على المخزون والمؤشرات الحيوية." />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://islam-guide.app/" />
+    <meta property="twitter:title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta property="twitter:description" content="نظام ذكي لدعم التعافي من الأدوية بأسلوب علمي وآمن." />
+    <meta property="twitter:image" content="/og-image.png" />
+
+    <!-- Fonts (Optimized Loading) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS (CDN for quick prototyping/fallback, though build uses PostCSS) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-      body {
-        background-color: #020617;
-        color: #e2e8f0;
-        font-family: 'Tajawal', sans-serif;
-        overflow-x: hidden;
-      }
-      /* Custom Scrollbar Globally */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #0f172a; }
-      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    </style>
+    <!-- CSS is handled by Vite import in index.tsx -->
   </head>
-  <body>
+  <body class="bg-[#020617] text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
     <div id="root"></div>
+    
+    <!-- Fallback for no-js -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; color: white; background: #0f172a; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h1 style="font-size: 2rem; margin-bottom: 1rem;">JavaScript Required</h1>
+        <p>عذراً، يتطلب هذا التطبيق تفعيل JavaScript ليعمل بشكل صحيح ويقوم بالحسابات الرياضية.</p>
+        <p>Please enable JavaScript to use this application.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

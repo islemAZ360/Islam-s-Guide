@@ -1,7 +1,7 @@
 export const ar = {
     // Auth
     welcome: "مرحباً بك",
-    subtitle: "نظام التعافي الذكي القائم على علم الأعصاب",
+    subtitle: "نظام دعم التعافي المبني على أسس علمية",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
     login_email: "تسجيل الدخول",
@@ -32,7 +32,7 @@ export const ar = {
     days_left: "أيام متبقية",
     status_stable: "الحالة مستقرة",
     safety_active: "نظام الأمان نشط",
-    safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تفعيل بروتوكول التثبيت مؤقتاً لحمايتك من الأعراض الانسحابية.",
+    safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تثبيت الجرعة المقترحة مؤقتاً. يرجى استشارة طبيبك.",
     freeze_plan_btn: "تجميد الخطة (راحة 3 أيام)",
     target_dose: "الجرعة المستهدفة لليوم",
     documented: "تم التوثيق بنجاح",
@@ -44,8 +44,8 @@ export const ar = {
     step_1: "الجرعة الفعلية",
     step_2: "المؤشرات الحيوية",
     confirm_log: "تأكيد وتحديث المخزون",
-    algo_active: "المحلل الذكي يعمل",
-    algo_desc: "نظام آمن يحسب التخفيض بناءً على الكمية المتوفرة.",
+    algo_active: "المحرك الذكي يعمل",
+    algo_desc: "نظام يولد مسودة خطة بناءً على الحسابات الرياضية للمخزون (للعرض على الطبيب).",
     recovery_path: "مسار التعافي المتوقع",
     sos_button: "طوارئ (SOS)",
     export_report: "تقرير للطبيب",
@@ -54,14 +54,14 @@ export const ar = {
     // Inventory
     inv_status_ok: "المخزون كافٍ",
     inv_status_low: "نقص في المخزون",
-    inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت النهائية. يوصى بتقليل السرعة أو توفير المزيد.",
+    inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت. راجع طبيبك لتعديل الخطة أو توفير الدواء.",
     inventory_title: "جرد المخزون",
     boxes: "عدد العبوات الكاملة",
     pills_per_box: "الكمية داخل العبوة",
     loose_pills: "الكمية المفردة (فراط)",
     total_balance: "الرصيد الكلي",
     current_habit: "جرعتك الحالية",
-    analyze_plan: "تحليل وإنشاء الخطة",
+    analyze_plan: "إنشاء مسودة الخطة",
     guest: "زائر",
 
     // Toasts
@@ -89,7 +89,7 @@ export const ar = {
     // SOS
     sos_title: "بروتوكول الطوارئ",
     sos_phase_1_title: "توقف.",
-    sos_phase_1_text: "أنت بأمان. هذا شعور كيميائي مؤقت سيعبر.",
+    sos_phase_1_text: "أنت بأمان. إذا كانت هذه حالة طوارئ طبية، اتصل بالإسعاف فوراً.",
     sos_btn_ground: "التالي",
     sos_phase_2_title: "الوعي الحسي",
     sos_phase_2_text: "انظر حولك. سمِّ 5 أشياء زرقاء.",
@@ -108,7 +108,7 @@ export const ar = {
     settings_title: "إعدادات النظام",
     settings_subtitle: "التحكم في الخوارزمية",
     pace_control: "وتيرة التعافي",
-    pace_desc: "يمكنك تعديل سرعة الخطة في أي وقت. النظام سيقوم بإعادة توزيع المخزون تلقائياً لضمان عدم انقطاع الدواء.",
+    pace_desc: "تغيير السرعة يؤدي لإعادة حساب استهلاك المخزون. يرجى استشارة الطبيب قبل التعديل.",
     pace_slow: "مريح (تمديد)",
     pace_balanced: "متوازن (قياسي)",
     pace_fast: "سريع (مكثف)",
@@ -122,9 +122,9 @@ export const ar = {
 
     // Onboarding & Roles
     onboard_title: "أهلاً بك في Islam's Guide",
-    onboard_desc: "قبل البدء، يرجى تحديد طبيعة استخدامك للنظام.",
+    onboard_desc: "هذه المنصة هي أداة مساعدة وليست خدمة طبية. يرجى تحديد طبيعة استخدامك.",
     role_patient: "مستخدم / مريض",
-    role_patient_desc: "أريد التعافي من الدواء، سواء بمساعدة الخوارزمية الذكية أو تحت إشراف طبيب مختص.",
+    role_patient_desc: "أتابع خطة علاجي تحت إشراف طبي.",
     role_doctor: "طبيب معالج",
     role_doctor_desc: "أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.",
     
@@ -142,7 +142,7 @@ export const ar = {
     // Path Selection
     path_select_title: "اختر مسار العلاج",
     path_algo: "الخوارزمية الذكية",
-    path_algo_desc: "أريد أن يقوم الموقع بحساب خطة التخفيض تلقائياً بناءً على كمية الدواء المتوفرة لدي.",
+    path_algo_desc: "توليد مسودة جدول زمني بناءً على حسابات المخزون (تتطلب موافقة الطبيب).",
     path_doctor: "متابعة مع طبيب",
     path_doctor_desc: "سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.",
 
@@ -156,9 +156,9 @@ export const ar = {
     med_type_narcotic: "مخدرات (جدول أول)",
     med_type_narcotic_desc: "يتطلب حجز في مصحة",
     med_type_psych: "أدوية نفسية",
-    med_type_psych_desc: "يتطلب إشراف طبي",
+    med_type_psych_desc: "يتطلب إشراف طبي صارم",
     med_type_normal: "أدوية عامة",
-    med_type_normal_desc: "آمن للتخفيض الذاتي",
+    med_type_normal_desc: "يتطلب متابعة سريرية",
     blocked_title: "الدخول محظور",
     warning_title: "تنبيه طبي هام",
     med_form_title: "شكل الدواء",
@@ -255,21 +255,21 @@ export const ar = {
     support_team: "الدعم الفني",
     current_account: "حسابك الحالي",
 
-    // Scientific Modal (New)
-    sci_title: "تم بناء خطتك على أسس علمية",
-    sci_subtitle: "تعتمد هذه الخوارزمية على أحدث البروتوكولات الطبية العالمية لعام 2024.",
+    // Scientific Modal
+    sci_title: "تم بناء هذه الخطة على أسس علمية",
+    sci_subtitle: "هذه الخوارزمية تعتمد على البروتوكولات العالمية. يجب مراجعة الخطة مع طبيبك.",
     sci_principle_1_title: "التخفيض الزائدي (Hyperbolic Tapering)",
-    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ في الجرعات الصغيرة.",
+    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ.",
     sci_principle_2_title: "التكيف العصبي (Neuro-Adaptation)",
-    sci_principle_2_desc: "الخطة ليست ثابتة. النظام يحلل نومك ومزاجك يومياً ويقوم بتعديل سرعة التخفيض تلقائياً لحمايتك من الأعراض الانسحابية.",
+    sci_principle_2_desc: "النظام يتكيف مع مدخلاتك اليومية. إذا كنت تشعر بالتعب، سيقترح النظام تثبيت الجرعة.",
     sci_principle_3_title: "محاكاة المخزون (Inventory Optimization)",
-    sci_principle_3_desc: "تم حساب كل حبة متبقية لديك لضمان عدم انقطاع الدواء فجأة قبل الوصول لخط النهاية الآمن.",
+    sci_principle_3_desc: "حساب المسار الأكثر أماناً لضمان عدم نفاد الدواء قبل الوصول لخط النهاية.",
     sci_sources_title: "المصادر والمراجع العلمية:",
     sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
     sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "هذا النظام مصمم ليكون مساعداً، لكنه لا يستبدل استشارة طبيبك الخاص.",
-    sci_btn_understood: "فهمت، ابدأ الخطة",
+    sci_trust_msg: "هذا النظام هو أداة حسابية مساعدة، ولا يستبدل استشارة طبيبك الخاص.",
+    sci_btn_understood: "فهمت، اعرض المسودة",
 
     // Community & Inventory New Keys
     community_clinic: "عيادة الطبيب",

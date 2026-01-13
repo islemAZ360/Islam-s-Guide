@@ -133,25 +133,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // D. Profile Initialization (The Fix)
-                // Ensure boolean value using null coalescing operator
-                const isAdminEmail = currentUser.email?.toLowerCase().endsWith('@islamguide.com') ?? false;
-                
-                const newProfile: UserProfile = {
+                // New User Skeleton (Doc doesn't exist yet)
+                setUserProfile({
                     uid: currentUser.uid,
                     email: currentUser.email || '',
-                    name: currentUser.displayName || (isAdminEmail ? 'Administrator' : 'New User'),
-                    role: isAdminEmail ? 'admin' : 'normal_user',
-                    setupComplete: isAdminEmail, // Admins skip onboarding
+                    name: currentUser.displayName || 'New User',
+                    role: 'normal_user',
+                    setupComplete: false,
                     durationMonths: 0
-                };
-
-                setUserProfile(newProfile);
-
-                // Persist the new profile immediately so next load finds it
-                setDoc(docRef, newProfile).catch(e => 
-                    console.error("Failed to auto-create profile:", e)
-                );
+                });
             }
             setDataLoading(false);
         }, (error) => {
@@ -234,10 +224,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const resetAllData = async () => {
-      if (!window.confirm(t('delete_confirm_msg'))) {
-          return;
-      }
-
+      // Intent check is now handled by the UI (SettingsView) strict input
+      // We assume if this function is called, the user has already proven intent.
+      
       try {
           setDataLoading(true);
           
@@ -258,7 +247,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
           
       } catch (e) {
           console.error("Error resetting data:", e);
-          alert("Error deleting data. Check connection.");
+          alert("Error deleting data. Check connection."); // Keep alert for actual error
           setDataLoading(false);
       }
   };

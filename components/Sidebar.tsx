@@ -69,18 +69,18 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
 
   return (
     <aside 
-      className="hidden md:flex flex-col w-80 h-screen fixed right-0 top-0 overflow-y-auto z-50 border-l border-white/5 bg-slate-950/80 backdrop-blur-2xl shadow-2xl"
+      className="hidden md:flex flex-col w-80 h-screen sticky top-0 overflow-y-auto z-40 border-l border-white/5 bg-slate-950/80 backdrop-blur-2xl shadow-2xl"
       aria-label={language === 'ar' ? 'القائمة الجانبية' : 'Sidebar Navigation'}
     >
       
       {/* Header */}
       <div className="p-8 pb-4 relative shrink-0">
         {/* Ambient Glow behind Logo */}
-        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full pointer-events-none" aria-hidden="true"></div>
         
         <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10 mb-1">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Activity className="w-6 h-6 text-white" aria-hidden="true" />
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20" aria-hidden="true">
+            <Activity className="w-6 h-6 text-white" />
           </div>
           Islam's Guide
         </h2>
