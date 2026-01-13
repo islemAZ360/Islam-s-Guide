@@ -68,7 +68,31 @@ export const OnboardingView = ({
   // Scientific Modal State
   const [showSciModal, setShowSciModal] = useState(false);
   
-  const totalInventory = calculateTotalInventory(inventory);
+  // -- Local Buffers for Numeric Inputs (Fixes Glitches) --
+  const [localInv, setLocalInv] = useState<{boxes: string, pills: string, loose: string}>({
+      boxes: '0', pills: '0', loose: '0'
+  });
+  const [localDose, setLocalDose] = useState<string>('0');
+
+  // Initialize local buffers when entering inventory step
+  useEffect(() => {
+      if (step === 'ALGO_SETUP_INV') {
+          setLocalInv({
+              boxes: inventory.boxes.toString(),
+              pills: inventory.pillsPerBox.toString(),
+              loose: inventory.loosePills.toString()
+          });
+          setLocalDose(currentDoseHabit > 0 ? currentDoseHabit.toString() : '');
+      }
+  }, [step]); // Only reset on step entry
+
+  // Helper to calculate total from local strings
+  const localTotalInventory = useMemo(() => {
+      const b = parseInt(localInv.boxes) || 0;
+      const p = parseInt(localInv.pills) || 0;
+      const l = parseFloat(localInv.loose) || 0;
+      return (b * p) + l;
+  }, [localInv]);
   
   // -- Load existing data if resubmitting --
   useEffect(() => {
@@ -225,7 +249,19 @@ export const OnboardingView = ({
   };
 
   const generatePreview = () => {
-      const plan = generatePlan(totalInventory, currentDoseHabit, new Date().toISOString(), 1.0, [], medForm || 'tablet');
+      // Sync local state to parent state just before generating
+      const finalInventory = {
+          boxes: parseInt(localInv.boxes) || 0,
+          pillsPerBox: parseInt(localInv.pills) || 0,
+          loosePills: parseFloat(localInv.loose) || 0,
+          totalPills: localTotalInventory
+      };
+      const finalDose = parseFloat(localDose) || 0;
+
+      setInventory(finalInventory);
+      setCurrentDoseHabit(finalDose);
+
+      const plan = generatePlan(localTotalInventory, finalDose, new Date().toISOString(), 1.0, [], medForm || 'tablet');
       setPreviewPlan(plan);
       setStep('ALGO_PREVIEW');
       setShowSciModal(true);
@@ -574,21 +610,46 @@ export const OnboardingView = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="group">
                             <label htmlFor="boxes" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('boxes')} ({formLabel})</label>
-                            <input id="boxes" type="number" min="0" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.boxes || ''} onChange={(e) => setInventory({...inventory, boxes: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="boxes" 
+                                type="number" 
+                                min="0" 
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.boxes} 
+                                onChange={(e) => setLocalInv({...localInv, boxes: e.target.value})} 
+                            />
                         </div>
                         <div className="group">
                             <label htmlFor="pillsPerBox" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('pills_per_box')}</label>
-                            <input id="pillsPerBox" type="number" min="1" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.pillsPerBox || ''} onChange={(e) => setInventory({...inventory, pillsPerBox: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="pillsPerBox" 
+                                type="number" 
+                                min="1" 
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.pills} 
+                                onChange={(e) => setLocalInv({...localInv, pills: e.target.value})} 
+                            />
                         </div>
                         <div className="group">
                             <label htmlFor="loosePills" className="block text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider group-focus-within:text-indigo-400 transition-colors">{t('loose_pills')}</label>
-                            <input id="loosePills" type="number" min="0" className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" placeholder="0" value={inventory.loosePills || ''} onChange={(e) => setInventory({...inventory, loosePills: Math.max(0, parseInt(e.target.value) || 0)})} />
+                            <input 
+                                id="loosePills" 
+                                type="number" 
+                                min="0" 
+                                step="0.5"
+                                className="w-full bg-slate-950/60 p-6 rounded-2xl text-4xl text-white font-mono font-bold border border-white/10 focus:border-indigo-500 outline-none transition-all text-center" 
+                                placeholder="0" 
+                                value={localInv.loose} 
+                                onChange={(e) => setLocalInv({...localInv, loose: e.target.value})} 
+                            />
                         </div>
                     </div>
                     <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center bg-slate-950/30 -mx-8 -mb-8 p-8 rounded-b-[2.5rem]">
                         <span className="text-slate-400 font-bold text-lg">{t('total_balance')}</span>
                         <span className="text-5xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
-                            {calculateTotalInventory(inventory)} <span className="text-lg text-slate-500">{unitLabel}</span>
+                            {localTotalInventory} <span className="text-lg text-slate-500">{unitLabel}</span>
                         </span>
                     </div>
                 </Card>
@@ -599,7 +660,7 @@ export const OnboardingView = ({
                     </h2>
                     <div className="flex flex-wrap gap-3">
                         {[0.5, 1, 2, 5, 10, 20, 50, 100].map(dose => (
-                            <button key={dose} onClick={() => setCurrentDoseHabit(dose)} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${currentDoseHabit === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
+                            <button key={dose} onClick={() => setLocalDose(dose.toString())} className={`h-14 min-w-[4rem] px-4 rounded-xl font-mono font-bold border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${parseFloat(localDose) === dose ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg scale-105' : 'bg-slate-950/50 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'}`}>{dose}</button>
                         ))}
                         <div className="relative flex-1 min-w-[120px]">
                             <label htmlFor="customDose" className="sr-only">Custom Dose</label>
@@ -610,13 +671,14 @@ export const OnboardingView = ({
                                 step="0.1"
                                 placeholder="جرعة أخرى..." 
                                 className="h-14 w-full bg-slate-950/50 rounded-xl border border-white/10 px-6 font-mono font-bold text-white focus:border-indigo-500 outline-none transition-all text-center placeholder-slate-600" 
-                                onChange={(e) => setCurrentDoseHabit(parseFloat(e.target.value))} 
+                                value={localDose}
+                                onChange={(e) => setLocalDose(e.target.value)} 
                             />
                         </div>
                     </div>
                 </Card>
                 
-                <Button className="w-full text-2xl py-6 rounded-3xl shadow-2xl shadow-indigo-500/20 animate-pulse-glow" variant="success" disabled={currentDoseHabit <= 0 || calculateTotalInventory(inventory) <= 0} onClick={generatePreview}>
+                <Button className="w-full text-2xl py-6 rounded-3xl shadow-2xl shadow-indigo-500/20 animate-pulse-glow" variant="success" disabled={parseFloat(localDose) <= 0 || localTotalInventory <= 0} onClick={generatePreview}>
                     {t('analyze_plan')} <BrainCircuit className="ml-3" size={28}/>
                 </Button>
             </div>

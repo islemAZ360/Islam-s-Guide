@@ -30,13 +30,17 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     ].filter(d => d.value > 0), [logs, t]);
 
     // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
-    // نأخذ آخر 14 يوم لضمان وضوح الرسم
-    const recentLogs = useMemo(() => logs.slice(-14), [logs]);
+    // FIX: Sort logs by date first to ensure we get the actual *latest* 14 days, not just the last 14 in the array
+    const recentLogs = useMemo(() => {
+        return [...logs]
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(-14);
+    }, [logs]);
     
     const correlationData = useMemo(() => {
         return recentLogs.map(log => ({
             date: log.date,
-            displayDate: log.date.slice(5),
+            displayDate: log.date.slice(5), // YYYY-MM-DD -> MM-DD
             dose: log.doseTaken,
             sleep: log.sleepHours || 0,
             moodLabel: log.mood
@@ -44,13 +48,14 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     }, [recentLogs]);
 
     // 3. منطق الأوسمة (Gamification)
+    // FIX: Also ensure badges use the sorted recent logs logic where applicable
     const badges = [
         {
             id: 'warrior',
             title: t('badge_7days'),
             icon: Shield,
             color: 'indigo',
-            achieved: logs.length >= 7,
+            achieved: logs.length >= 7, // Basic check on count is fine
             desc: "7 أيام متواصلة"
         },
         {
@@ -58,7 +63,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_halfway'),
             icon: Zap,
             color: 'amber',
-            achieved: logs.length > 0 && plan.length > 0 && logs[logs.length-1].doseTaken <= (plan[0].plannedDose / 2),
+            achieved: logs.length > 0 && plan.length > 0 && recentLogs[recentLogs.length-1]?.doseTaken <= (plan[0].plannedDose / 2),
             desc: "نصف الكمية"
         },
         {
@@ -66,15 +71,15 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
             title: t('badge_sleep'),
             icon: Moon,
             color: 'blue',
-            achieved: logs.length >= 3 && (logs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
-            desc: "نوم مستقر"
+            achieved: recentLogs.length >= 3 && (recentLogs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
+            desc: "نوم منتظم"
         },
         {
             id: 'stable',
             title: t('badge_stable'),
             icon: Smile,
             color: 'emerald',
-            achieved: logs.length >= 3 && logs.slice(-3).every(l => l.mood === 'good'),
+            achieved: recentLogs.length >= 3 && recentLogs.slice(-3).every(l => l.mood === 'good'),
             desc: "مزاج ممتاز"
         }
     ];
@@ -263,9 +268,10 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                            {language === 'ar' ? 'استقرار النوم (آخر 7 أيام)' : 'Sleep Stability (Last 7 Days)'}
                       </h3>
                       <div className="flex-1 mt-4" aria-hidden="true">
-                          {logs.length > 0 ? (
+                          {recentLogs.length > 0 ? (
                               <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={logs.slice(-7)}> 
+                                  {/* Using recentLogs.slice(-7) ensures we use the sorted latest days */}
+                                  <BarChart data={recentLogs.slice(-7)}> 
                                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
                                       <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
                                       <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
@@ -277,7 +283,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                       />
                                       <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
                                       <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
-                                        {logs.slice(-7).map((entry, index) => (
+                                        {recentLogs.slice(-7).map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
                                         ))}
                                       </Bar>
@@ -302,7 +308,7 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
                                   </tr>
                               </thead>
                               <tbody>
-                                  {logs.slice(-7).map((log, i) => (
+                                  {recentLogs.slice(-7).map((log, i) => (
                                       <tr key={i}>
                                           <td>{log.date}</td>
                                           <td>{log.sleepHours || 0} {language === 'ar' ? 'ساعات' : 'hours'}</td>

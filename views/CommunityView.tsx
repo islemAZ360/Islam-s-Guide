@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc 
+    collection, query, orderBy, limit, onSnapshot, addDoc, doc, deleteDoc, getDocs, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, ChatRoom, ChatMessage } from '../types';
 import { 
     Trophy, Users, MessageCircle, Plus, Trash2, Send, Globe, Crown, 
-    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles, ArrowDown
+    ShieldCheck, Pill, FlaskConical, Zap, Stethoscope, Lock, ChevronLeft, Medal, Sparkles, ArrowDown, AlertTriangle, Loader2
 } from 'lucide-react';
 
 // المكونات
@@ -22,7 +22,7 @@ interface CommunityViewProps {
 }
 
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
-    const { t, dir } = useLanguage();
+    const { t, dir, language } = useLanguage();
     
     // -- State --
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
@@ -33,8 +33,11 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
     const [showScrollButton, setShowScrollButton] = useState(false);
     
-    // Create Room State
+    // Create/Delete Room State
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [roomToDelete, setRoomToDelete] = useState<ChatRoom | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [newRoomName, setNewRoomName] = useState("");
 
     // Refs
@@ -114,31 +117,65 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     // --- Actions ---
     const createRoom = async () => {
         if (!newRoomName.trim() || !currentUser.uid) return;
+        setIsProcessing(true);
         const isDoctor = currentUser.role === 'doctor';
-        await addDoc(collection(db, "rooms"), {
-            name: newRoomName.trim().slice(0, 30), // Validated length
-            createdBy: currentUser.uid,
-            creatorName: currentUser.name || "Unknown",
-            language: 'mixed',
-            createdAt: Date.now(),
-            isDoctorRoom: isDoctor,
-            doctorId: isDoctor ? currentUser.uid : null
-        });
-        setNewRoomName("");
-        setShowCreateModal(false);
+        try {
+            await addDoc(collection(db, "rooms"), {
+                name: newRoomName.trim().slice(0, 30),
+                createdBy: currentUser.uid,
+                creatorName: currentUser.name || "Unknown",
+                language: 'mixed',
+                createdAt: Date.now(),
+                isDoctorRoom: isDoctor,
+                doctorId: isDoctor ? currentUser.uid : null
+            });
+            setNewRoomName("");
+            setShowCreateModal(false);
+        } catch (e) {
+            console.error("Failed to create room", e);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
-    const deleteRoom = async (roomId: string) => {
-        if (confirm("Are you sure you want to delete this room?")) {
-            await deleteDoc(doc(db, "rooms", roomId));
-            if (activeRoom?.id === roomId) setActiveRoom(null);
+    const confirmDeleteRoom = (room: ChatRoom) => {
+        setRoomToDelete(room);
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteRoom = async () => {
+        if (!roomToDelete) return;
+        setIsProcessing(true);
+        try {
+            // 1. Delete Messages Subcollection (Batch)
+            const msgsRef = collection(db, "rooms", roomToDelete.id, "messages");
+            const msgsSnapshot = await getDocs(msgsRef);
+            
+            const batch = writeBatch(db);
+            msgsSnapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            // Commit message deletion
+            await batch.commit();
+
+            // 2. Delete Room Document
+            await deleteDoc(doc(db, "rooms", roomToDelete.id));
+            
+            if (activeRoom?.id === roomToDelete.id) setActiveRoom(null);
+            setShowDeleteModal(false);
+            setRoomToDelete(null);
+        } catch (e) {
+            console.error("Error deleting room:", e);
+            alert(language === 'ar' ? "حدث خطأ أثناء الحذف." : "Error deleting room.");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
-        const cleanMessage = newMessage.trim().slice(0, 300); // Input sanitization/limit
+        const cleanMessage = newMessage.trim().slice(0, 300);
         
         await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
             text: cleanMessage,
@@ -290,9 +327,10 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         
                                         {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
+                                                onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
                                                 aria-label="Delete Room"
+                                                title="Delete Room"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -326,6 +364,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     maxLength={30}
                                     onChange={(e) => setNewRoomName(e.target.value)}
                                     autoFocus
+                                    disabled={isProcessing}
                                 />
                                 {currentUser.role === 'doctor' ? (
                                     <p className="text-xs text-indigo-300 mb-6 bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20">
@@ -337,8 +376,39 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                     </p>
                                 )}
                                 <div className="flex gap-3 justify-end">
-                                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('close')}</Button>
-                                    <Button variant="primary" onClick={createRoom} disabled={!newRoomName.trim()}>{t('create_room')}</Button>
+                                    <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={isProcessing}>{t('close')}</Button>
+                                    <Button variant="primary" onClick={createRoom} disabled={!newRoomName.trim() || isProcessing}>
+                                        {isProcessing ? <Loader2 size={16} className="animate-spin" /> : t('create_room')}
+                                    </Button>
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* Delete Confirmation Modal */}
+                    {showDeleteModal && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-in fade-in" role="dialog" aria-modal="true">
+                            <Card className="w-full max-w-sm bg-slate-900 border-rose-500/30 shadow-2xl relative border-2">
+                                <div className="flex flex-col items-center text-center p-4">
+                                    <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 border border-rose-500/20">
+                                        <AlertTriangle size={32} className="text-rose-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-2">
+                                        {language === 'ar' ? 'حذف الغرفة؟' : 'Delete Room?'}
+                                    </h3>
+                                    <p className="text-slate-400 text-sm mb-6">
+                                        {language === 'ar' 
+                                            ? 'سيتم حذف هذه الغرفة وجميع الرسائل بداخلها نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                                            : 'This will permanently delete the room and all its messages. This action cannot be undone.'}
+                                    </p>
+                                    <div className="flex gap-3 w-full">
+                                        <Button variant="secondary" onClick={() => setShowDeleteModal(false)} className="flex-1" disabled={isProcessing}>
+                                            {t('cancel_btn')}
+                                        </Button>
+                                        <Button variant="danger" onClick={handleDeleteRoom} className="flex-1 shadow-lg shadow-rose-900/20" disabled={isProcessing}>
+                                            {isProcessing ? <Loader2 size={16} className="animate-spin" /> : (language === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete')}
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card>
                         </div>

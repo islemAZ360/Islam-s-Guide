@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Activity, Chrome, LogIn, UserPlus, User, Mail, Lock, Ruler, Weight, Calendar, CheckSquare, Square, KeyRound, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
@@ -20,11 +21,14 @@ export const LoginView = ({
   handleLogin, handleGoogleLogin, email, setEmail, password, setPassword, loginError, setDemoCreds 
 }: LoginViewProps) => {
   const { t, dir, language } = useLanguage();
+  const { signupWithEmail, resetPassword } = useAuth();
   
-  // Local state for Signup Mode
+  // Local state
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
+  const [resetStatus, setResetStatus] = useState<{type: 'success'|'error', msg: string} | null>(null);
 
   // Additional Signup Data
   const [name, setName] = useState('');
@@ -32,20 +36,25 @@ export const LoginView = ({
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
 
-  // Use Auth Context directly here to avoid prop drilling for signup if possible, 
-  // but following existing pattern we use the props or import hook if needed. 
-  // For consistency with previous file, we import the hook to access signup function.
-  // Note: The previous file passed `signupWithEmail` implicitly via props or context? 
-  // The original App.tsx didn't pass `signupWithEmail` to LoginView props in the interface, 
-  // but LoginView imported `useAuth`. Let's stick to using `useAuth` hook inside.
-  const { signupWithEmail } = require('../contexts/AuthContext').useAuth(); 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setResetStatus(null);
 
     try {
-        if (isSignUp) {
+        if (isResetMode) {
+            if (!email) {
+                setResetStatus({ type: 'error', msg: language === 'ar' ? 'البريد الإلكتروني مطلوب' : 'Email is required' });
+                setIsLoading(false);
+                return;
+            }
+            await resetPassword(email);
+            setResetStatus({ type: 'success', msg: language === 'ar' ? 'تم إرسال رابط التعيين. تفقد بريدك.' : 'Reset link sent. Check your email.' });
+            setTimeout(() => {
+                setIsResetMode(false);
+                setResetStatus(null);
+            }, 3000);
+        } else if (isSignUp) {
             if (!hasConsented) {
                 alert(language === 'ar' ? "يجب الموافقة على الشروط والتنبيه الطبي للمتابعة." : "You must agree to the terms and medical disclaimer.");
                 setIsLoading(false);
@@ -56,7 +65,7 @@ export const LoginView = ({
                 setIsLoading(false);
                 return;
             }
-            // Use the hook function directly
+            
             await signupWithEmail(email, password, name, {
                 age: parseInt(age),
                 weight: parseFloat(weight),
@@ -65,8 +74,11 @@ export const LoginView = ({
         } else {
             await handleLogin(e);
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error("Auth Error", err);
+        if (isResetMode) {
+            setResetStatus({ type: 'error', msg: err.message || 'Failed to send reset email.' });
+        }
     } finally {
         setIsLoading(false);
     }
@@ -85,22 +97,23 @@ export const LoginView = ({
             {/* Logo & Header */}
             <div className="text-center mb-8">
                 <div className="inline-flex p-4 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4 ring-1 ring-white/10">
-                    <Activity className="w-10 h-10 text-white" />
+                    {isResetMode ? <KeyRound className="w-10 h-10 text-white" /> : <Activity className="w-10 h-10 text-white" />}
                 </div>
                 <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
-                    {isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
+                    {isResetMode ? (language === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password') : 
+                     isSignUp ? (language === 'ar' ? 'إنشاء حساب جديد' : 'Create Account') : "Islam's Guide"}
                 </h1>
                 <p className="text-slate-400 font-medium text-sm leading-relaxed max-w-xs mx-auto">
-                    {isSignUp 
-                        ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') 
-                        : t('subtitle')}
+                    {isResetMode ? (language === 'ar' ? 'أدخل بريدك لاستلام رابط التعيين' : 'Enter email to receive reset link') :
+                     isSignUp ? (language === 'ar' ? 'ابدأ رحلة التعافي الآمنة اليوم' : 'Start your safe recovery journey today') : 
+                     t('subtitle')}
                 </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 
                 {/* Signup Fields */}
-                {isSignUp && (
+                {isSignUp && !isResetMode && (
                     <div className="space-y-4 animate-in slide-in-from-bottom-4">
                         <div className="relative group">
                             <label htmlFor="fullname" className="sr-only">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
@@ -155,26 +168,41 @@ export const LoginView = ({
                             required
                         />
                     </div>
-                    <div className="relative group">
-                        <label htmlFor="password" className="sr-only">{t('password')}</label>
-                        <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
-                        <input 
-                            id="password"
-                            type="password" 
-                            name="password"
-                            autoComplete={isSignUp ? "new-password" : "current-password"}
-                            placeholder={t('password')}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
-                            required
-                            minLength={6}
-                        />
-                    </div>
+                    {!isResetMode && (
+                        <div className="relative group animate-in slide-in-from-bottom-2">
+                            <label htmlFor="password" className="sr-only">{t('password')}</label>
+                            <Lock className="absolute top-3.5 left-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none" size={20} />
+                            <input 
+                                id="password"
+                                type="password" 
+                                name="password"
+                                autoComplete={isSignUp ? "new-password" : "current-password"}
+                                placeholder={t('password')}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 text-white outline-none transition-all placeholder-slate-600"
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                    )}
                 </div>
 
+                {/* Forgot Password Link */}
+                {!isSignUp && !isResetMode && (
+                    <div className="flex justify-end -mt-1">
+                        <button 
+                            type="button"
+                            onClick={() => { setIsResetMode(true); setResetStatus(null); }}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                            {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
+                        </button>
+                    </div>
+                )}
+
                 {/* Privacy Consent Checkbox (Only for Signup) */}
-                {isSignUp && (
+                {isSignUp && !isResetMode && (
                     <div className="flex items-start gap-3 p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 animate-in slide-in-from-bottom-2 cursor-pointer" onClick={() => setHasConsented(!hasConsented)}>
                         <div className={`mt-0.5 shrink-0 transition-colors ${hasConsented ? 'text-indigo-400' : 'text-slate-500'}`}>
                             {hasConsented ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -187,61 +215,83 @@ export const LoginView = ({
                     </div>
                 )}
                 
-                {/* Error Messages */}
-                {loginError && (
-                    <div className="text-rose-400 text-xs bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 flex items-center gap-2 animate-in slide-in-from-top-2 font-bold" role="alert">
-                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></div> {loginError}
+                {/* Error/Status Messages */}
+                {(loginError || resetStatus) && (
+                    <div className={`text-xs p-3 rounded-xl border flex items-center gap-2 animate-in slide-in-from-top-2 font-bold ${resetStatus?.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`} role="alert">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${resetStatus?.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div> 
+                        {resetStatus ? resetStatus.msg : loginError}
                     </div>
                 )}
                 
                 {/* Submit Button */}
-                <Button 
-                    className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20 mt-2" 
-                    type="submit" 
-                    isLoading={isLoading}
-                    disabled={isSignUp && !hasConsented}
-                >
-                    {isSignUp 
-                        ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
-                        : t('login_email')} 
-                    {!isLoading && (isSignUp ? <UserPlus size={18} className="ml-2"/> : <LogIn size={18} className="ml-2"/>)}
-                </Button>
+                <div className="flex gap-3 mt-2">
+                    {isResetMode && (
+                        <Button 
+                            variant="secondary"
+                            onClick={() => { setIsResetMode(false); setResetStatus(null); }}
+                            className="px-4"
+                            disabled={isLoading}
+                        >
+                            {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+                        </Button>
+                    )}
+                    <Button 
+                        className="flex-1 py-4 text-lg shadow-lg shadow-indigo-500/20" 
+                        type="submit" 
+                        isLoading={isLoading}
+                        disabled={isSignUp && !hasConsented}
+                    >
+                        {isResetMode 
+                            ? (language === 'ar' ? 'إرسال الرابط' : 'Send Link')
+                            : isSignUp 
+                                ? (language === 'ar' ? 'إنشاء الحساب' : 'Create Account') 
+                                : t('login_email')} 
+                        {!isLoading && !isResetMode && (isSignUp ? <UserPlus size={18} className="ml-2"/> : <LogIn size={18} className="ml-2"/>)}
+                    </Button>
+                </div>
             </form>
 
-            {/* Separator & Social Login */}
-            <div className="my-6 flex items-center gap-4 text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">
-                <div className="h-px bg-slate-800 flex-1"></div>
-                {t('or')}
-                <div className="h-px bg-slate-800 flex-1"></div>
-            </div>
+            {/* Separator & Social Login (Hide in Reset Mode) */}
+            {!isResetMode && (
+                <>
+                    <div className="my-6 flex items-center gap-4 text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">
+                        <div className="h-px bg-slate-800 flex-1"></div>
+                        {t('or')}
+                        <div className="h-px bg-slate-800 flex-1"></div>
+                    </div>
 
-            <Button 
-                onClick={handleGoogleLogin}
-                variant="secondary"
-                className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 flex items-center justify-center gap-2 font-bold"
-            >
-                <Chrome className="w-5 h-5 text-slate-900" />
-                <span>{t('login_google')}</span>
-            </Button>
+                    <Button 
+                        onClick={handleGoogleLogin}
+                        variant="secondary"
+                        className="w-full py-3 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-950 border-0 flex items-center justify-center gap-2 font-bold"
+                    >
+                        <Chrome className="w-5 h-5 text-slate-900" />
+                        <span>{t('login_google')}</span>
+                    </Button>
+                </>
+            )}
 
             {/* Toggle Mode */}
-            <div className="mt-8 text-center">
-                <p className="text-slate-400 text-sm">
-                    {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
-                    <button 
-                        onClick={() => {
-                            setIsSignUp(!isSignUp);
-                            setHasConsented(false); // Reset consent on toggle
-                        }}
-                        className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
-                    >
-                        {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
-                    </button>
-                </p>
-            </div>
+            {!isResetMode && (
+                <div className="mt-8 text-center">
+                    <p className="text-slate-400 text-sm">
+                        {isSignUp ? (language === 'ar' ? 'لديك حساب بالفعل؟' : 'Already have an account?') : (language === 'ar' ? 'لا تملك حساباً؟' : "Don't have an account?")}
+                        <button 
+                            onClick={() => {
+                                setIsSignUp(!isSignUp);
+                                setHasConsented(false); 
+                                setResetStatus(null);
+                            }}
+                            className="text-indigo-400 font-bold hover:text-indigo-300 ml-2 transition-colors underline decoration-indigo-500/30 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
+                        >
+                            {isSignUp ? (language === 'ar' ? 'تسجيل الدخول' : 'Sign In') : (language === 'ar' ? 'انضم إلينا' : 'Sign Up')}
+                        </button>
+                    </p>
+                </div>
+            )}
 
             {/* Demo Button */}
-            {!isSignUp && (
+            {!isSignUp && !isResetMode && (
                 <div className="mt-6 pt-6 border-t border-white/5 text-center">
                     <button 
                         onClick={setDemoCreds}

@@ -98,7 +98,8 @@ service cloud.firestore {
 
     // --- 2. Chat Rooms ---
     match /rooms/{roomId} {
-      allow read, delete: if isAdmin();
+      // Admins can always delete
+      allow delete: if isAdmin();
 
       allow read: if isSignedIn() && (
         // Public rooms
@@ -113,8 +114,8 @@ service cloud.firestore {
       allow create: if isApprovedDoctor() && 
                     isValidString(incomingData().name, 3, 50);
       
-      // Creator can update
-      allow update: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      // Creator can update OR DELETE their own room
+      allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
       // Messages Sub-collection
       match /messages/{msgId} {

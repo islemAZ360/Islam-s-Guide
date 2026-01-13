@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Info
+    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -31,6 +31,9 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     // Delete Confirmation State
     const [deleteInput, setDeleteInput] = useState('');
     const deleteKeyword = language === 'ar' ? 'حذف' : 'DELETE';
+
+    // File Import Ref
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // -- Doctor Form State --
     const [formData, setFormData] = useState({
@@ -62,10 +65,12 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         }
     }, [userProfile]);
 
-    // Sync Inventory
+    // Sync Inventory (Initialize only)
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
+                // Only sync if we haven't touched it yet (all zeros) or if it's a fresh load
+                // This prevents the "jumping" issue while typing
                 const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
                 if (isPrevEmpty) return inventory;
                 return prev;
@@ -100,18 +105,19 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     const handleUpdateInventory = () => {
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
-        setInventory(updatedInv);
-        setLocalInventory(updatedInv); 
+        setInventory(updatedInv); // Update Context
+        setLocalInventory(updatedInv); // Sync Local
         showStatus('success', language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
     const handleExportData = () => {
         const dataToExport = {
-            profile: userProfile,
+            profile: { ...userProfile, uid: undefined }, // Exclude UID for privacy in raw file
             inventory: inventory,
             plan: plan,
             logs: logs,
-            exportedAt: new Date().toISOString()
+            exportedAt: new Date().toISOString(),
+            version: '2.0'
         };
         
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
@@ -123,6 +129,53 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         downloadAnchorNode.remove();
         
         showStatus('success', language === 'ar' ? 'تم تحميل بياناتك بنجاح.' : 'Data exported successfully.');
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !userProfile.uid) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const json = JSON.parse(e.target?.result as string);
+                
+                // Validate Basic Structure
+                if (!json.inventory || !Array.isArray(json.plan) || !Array.isArray(json.logs)) {
+                    throw new Error("Invalid file format");
+                }
+
+                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية (السجلات، الخطة، المخزون). هل أنت متأكد؟' : 'Warning: Importing will overwrite current logs, plan, and inventory. Continue?')) {
+                    return;
+                }
+
+                setLoading(true);
+                
+                const dataToRestore = {
+                    inventory: json.inventory,
+                    plan: json.plan,
+                    logs: json.logs,
+                    speedModifier: json.profile?.speedModifier || 1.0,
+                    // We don't overwrite name/email/role here to prevent account lockout/corruption
+                };
+
+                await updateDoc(doc(db, "users", userProfile.uid!), dataToRestore);
+                
+                // Manually trigger context update if needed, but onSnapshot in DataContext should catch it
+                showStatus('success', language === 'ar' ? 'تم استعادة البيانات بنجاح.' : 'Data restored successfully.');
+            } catch (err) {
+                console.error("Import Error:", err);
+                showStatus('error', language === 'ar' ? 'ملف غير صالح أو تالف.' : 'Invalid or corrupt backup file.');
+            } finally {
+                setLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+            }
+        };
+        reader.readAsText(file);
     };
 
     return (
@@ -321,7 +374,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invBoxes"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.boxes || ''} 
+                                            value={localInventory.boxes}
                                             onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -337,7 +390,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invPills"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.pillsPerBox || ''}
+                                            value={localInventory.pillsPerBox}
                                             onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -353,7 +406,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                             id="invLoose"
                                             type="number" 
                                             className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.loosePills || ''}
+                                            value={localInventory.loosePills}
                                             onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
                                             placeholder="0"
                                             min="0"
@@ -386,12 +439,27 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                     </h2>
                     <p className="text-indigo-200/60 text-sm mb-6 max-w-xl">
                         {language === 'ar' 
-                            ? 'يمكنك تحميل نسخة من بياناتك الطبية وسجلاتك كملف JSON للاحتفاظ بها أو مشاركتها مع طبيبك.' 
-                            : 'You can download a copy of your medical data and logs as a JSON file for your records.'}
+                            ? 'يمكنك تحميل نسخة احتياطية (تصدير) أو استعادة بياناتك السابقة (استيراد).' 
+                            : 'You can backup (Export) or restore previous data (Import).'}
                     </p>
-                    <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
-                        <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير بياناتي' : 'Export My Data'}
-                    </Button>
+                    
+                    <div className="flex gap-4 flex-wrap">
+                        <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
+                            <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير' : 'Export Data'}
+                        </Button>
+                        
+                        <Button onClick={handleImportClick} variant="secondary" className="border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400">
+                            <Upload size={18} className="mr-2" /> {language === 'ar' ? 'استيراد' : 'Import Data'}
+                        </Button>
+                        {/* Hidden Input for File Upload */}
+                        <input 
+                            type="file" 
+                            accept=".json"
+                            ref={fileInputRef} 
+                            style={{ display: 'none' }} 
+                            onChange={handleFileChange}
+                        />
+                    </div>
                 </section>
             </Card>
 

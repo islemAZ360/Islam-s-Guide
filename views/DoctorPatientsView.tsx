@@ -70,6 +70,11 @@ export const DoctorPatientsView = () => {
         return myPatients.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [myPatients, searchTerm]);
 
+    // -- Memoized & Sorted Logs for Chart --
+    const sortedPatientLogs = useMemo(() => {
+        return [...patientLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [patientLogs]);
+
     // -- Actions --
 
     const handleAcceptRequest = async (patient: UserProfile) => {
@@ -387,9 +392,9 @@ export const DoctorPatientsView = () => {
                                         Adherence & Dosage
                                     </h3>
                                     <div className="flex-1 w-full" role="img" aria-label="Adherence Chart">
-                                        {patientLogs.length > 0 ? (
+                                        {sortedPatientLogs.length > 0 ? (
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={patientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                <AreaChart data={sortedPatientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
                                                     <defs>
                                                         <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
                                                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
@@ -450,7 +455,8 @@ export const DoctorPatientsView = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                            {patientLogs.slice().reverse().map((log, i) => (
+                                            {/* Using sortedPatientLogs for consistency in the list too, but reversing for latest first */}
+                                            {[...sortedPatientLogs].reverse().map((log, i) => (
                                                 <tr key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors mb-2">
                                                     <td className="text-slate-400 font-mono">{log.date}</td>
                                                     <td className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></td>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope, Shield } from 'lucide-react';
+import { AlertTriangle, HeartPulse, FileText, PauseCircle, Stethoscope, Shield, Package, Info } from 'lucide-react';
 
 // المكونات الأساسية
 import { Button } from '../components/ui/Button';
@@ -19,6 +19,8 @@ import { DashboardCharts } from './dashboard/DashboardCharts';
 
 import { UserProfile, PlanDay, DailyLog } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext';
+import { calculateTotalInventory } from '../services/taperingEngine';
 
 interface DashboardViewProps {
   userProfile: UserProfile | null;
@@ -45,6 +47,7 @@ export const DashboardView = ({
   handleFreezePlan
 }: DashboardViewProps) => {
   const { t, language } = useLanguage();
+  const { inventory } = useData(); // Get inventory directly from context
   const [isSosOpen, setIsSosOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   
@@ -52,6 +55,13 @@ export const DashboardView = ({
   const isPatient = userProfile?.role === 'patient';
   const isManualPlan = userProfile?.planType === 'manual';
   const doctorName = userProfile?.patientData?.assignedDoctorName;
+
+  // Inventory Calculation
+  const totalStock = calculateTotalInventory(inventory);
+  const currentDailyDose = todayPlan?.plannedDose || 0;
+  // Estimate days left (safeguard against divide by zero)
+  const daysSupply = currentDailyDose > 0 ? totalStock / currentDailyDose : 999;
+  const isLowStock = daysSupply < 7 && totalStock > 0;
 
   return (
     <LayoutContainer>
@@ -97,10 +107,10 @@ export const DashboardView = ({
 
         {/* 1. لافتة المريض (تظهر فقط للمرضى المرتبطين بأطباء) */}
         {isPatient && (
-            <div className="relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-indigo-500/20 p-5 rounded-3xl flex items-center justify-between mb-8 backdrop-blur-xl shadow-lg animate-in slide-in-from-top-2 group">
+            <div className="relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-indigo-500/20 p-5 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-xl shadow-lg animate-in slide-in-from-top-2 group">
                 <div className="absolute inset-0 bg-indigo-500/5 blur-xl group-hover:bg-indigo-500/10 transition-colors duration-500 pointer-events-none"></div>
                 <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0">
                         <Stethoscope size={28} aria-hidden="true" />
                     </div>
                     <div>
@@ -118,35 +128,64 @@ export const DashboardView = ({
             </div>
         )}
 
-        {/* 2. تحذير الأمان (Safety Guard) - Accessible Alert */}
-        {showDoctorWarning && !isManualPlan && (
-          <div 
-            className="relative overflow-hidden bg-rose-950/60 border border-rose-500/50 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-500 mb-8 ring-1 ring-rose-500/50"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
-            <div className="flex items-center gap-5 relative z-10">
-              <div className="bg-rose-500/20 p-4 rounded-2xl border border-rose-500/30 shadow-inner">
-                  <AlertTriangle className="text-rose-400 w-8 h-8" aria-hidden="true" />
+        {/* 2. تحذيرات النظام (Doctor Notes & Safety Guard & Inventory) */}
+        <div className="space-y-4">
+            
+            {/* أ. ملاحظات الطبيب */}
+            {userProfile?.doctorNotes && (
+                <div className="bg-indigo-950/40 border border-indigo-500/30 p-5 rounded-3xl animate-in slide-in-from-top-2 flex gap-4 items-start">
+                    <div className="p-2 bg-indigo-500/20 rounded-xl shrink-0 text-indigo-400 mt-1">
+                        <Info size={20} />
+                    </div>
+                    <div>
+                        <h4 className="text-indigo-300 font-bold text-sm mb-1">{language === 'ar' ? 'ملاحظات الطبيب' : 'Doctor\'s Instructions'}</h4>
+                        <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{userProfile.doctorNotes}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* ب. تحذير الأمان (Safety Guard) */}
+            {showDoctorWarning && !isManualPlan && (
+              <div 
+                className="relative overflow-hidden bg-rose-950/60 border border-rose-500/50 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-500 ring-1 ring-rose-500/50"
+                role="alert"
+                aria-live="assertive"
+              >
+                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
+                <div className="flex items-center gap-5 relative z-10">
+                  <div className="bg-rose-500/20 p-4 rounded-2xl border border-rose-500/30 shadow-inner">
+                      <AlertTriangle className="text-rose-400 w-8 h-8" aria-hidden="true" />
+                  </div>
+                  <div>
+                      <h3 className="font-bold text-white text-xl mb-1 flex items-center gap-2">
+                          {t('safety_active')} <Shield size={18} className="text-rose-400" aria-hidden="true"/>
+                      </h3>
+                      <p className="text-rose-100 text-sm max-w-lg leading-relaxed font-medium">{t('safety_desc')}</p>
+                  </div>
+                </div>
+                <Button 
+                    onClick={handleFreezePlan} 
+                    variant="danger" 
+                    className="w-full md:w-auto !py-3 !px-6 relative z-10 shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40 focus:ring-rose-400"
+                    aria-label={t('freeze_plan_btn')}
+                >
+                   <PauseCircle size={20} className="mr-2" aria-hidden="true" /> {t('freeze_plan_btn')}
+                </Button>
               </div>
-              <div>
-                  <h3 className="font-bold text-white text-xl mb-1 flex items-center gap-2">
-                      {t('safety_active')} <Shield size={18} className="text-rose-400" aria-hidden="true"/>
-                  </h3>
-                  <p className="text-rose-100 text-sm max-w-lg leading-relaxed font-medium">{t('safety_desc')}</p>
-              </div>
-            </div>
-            <Button 
-                onClick={handleFreezePlan} 
-                variant="danger" 
-                className="w-full md:w-auto !py-3 !px-6 relative z-10 shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40 focus:ring-rose-400"
-                aria-label={t('freeze_plan_btn')}
-            >
-               <PauseCircle size={20} className="mr-2" aria-hidden="true" /> {t('freeze_plan_btn')}
-            </Button>
-          </div>
-        )}
+            )}
+
+            {/* ج. تحذير انخفاض المخزون */}
+            {isLowStock && (
+                <div className="bg-amber-950/40 border border-amber-500/30 p-4 rounded-2xl animate-in slide-in-from-bottom-2 flex items-center gap-3 text-sm">
+                    <Package size={20} className="text-amber-500 shrink-0 animate-bounce" />
+                    <span className="text-amber-200">
+                        {language === 'ar' 
+                            ? `تنبيه: المخزون المتبقي يكفي لـ ${Math.round(daysSupply)} أيام فقط. يرجى توفير الدواء لضمان استمرار الخطة.`
+                            : `Warning: Remaining stock lasts for ~${Math.round(daysSupply)} days. Please restock to maintain the plan.`}
+                    </span>
+                </div>
+            )}
+        </div>
 
         {/* 3. الشبكة الرئيسية (Main Grid) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">

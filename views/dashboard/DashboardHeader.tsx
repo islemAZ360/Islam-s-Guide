@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShieldCheck, CheckCircle, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, CheckCircle, Activity, Edit3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { ProgressRing } from '../../components/ui/ProgressRing';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -27,6 +27,9 @@ export const DashboardHeader = ({
     const { t, language } = useLanguage();
     const unitLabel = userProfile?.medUnit || 'mg';
     const doseValue = todayPlan ? todayPlan.plannedDose : 0;
+    
+    // Local state to toggle between "Success Banner" and "Edit Form"
+    const [isEditing, setIsEditing] = useState(false);
 
     return (
         // تم نقل role و aria-label و col-span إلى عنصر section قياسي لتجنب أخطاء TypeScript
@@ -84,7 +87,7 @@ export const DashboardHeader = ({
 
                     {/* القسم السفلي: إما رسالة النجاح أو نموذج التسجيل */}
                     <div aria-live="polite" className="mt-8">
-                        {todayLog ? (
+                        {todayLog && !isEditing ? (
                             // حالة النجاح (تم التوثيق) - بطاقة زجاجية خضراء
                             <div 
                                 className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-3xl flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-4 shadow-lg shadow-emerald-900/10"
@@ -109,13 +112,29 @@ export const DashboardHeader = ({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
-                                    <CheckCircle className="text-emerald-500 w-8 h-8" aria-hidden="true" />
+                                <div className="flex flex-col gap-2 items-end">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
+                                        <CheckCircle className="text-emerald-500 w-8 h-8" aria-hidden="true" />
+                                    </div>
+                                    <button 
+                                        onClick={() => setIsEditing(true)}
+                                        className="text-xs text-emerald-400/60 hover:text-emerald-300 flex items-center gap-1 transition-colors mt-1 hover:underline"
+                                    >
+                                        <Edit3 size={12} /> {language === 'ar' ? 'تعديل' : 'Edit'}
+                                    </button>
                                 </div>
                             </div>
                         ) : (
                             // نموذج التسجيل (يتم تمريره كـ children)
-                            <div className="animate-in slide-in-from-bottom-2">
+                            <div className="animate-in slide-in-from-bottom-2 relative">
+                                {isEditing && (
+                                    <button 
+                                        onClick={() => setIsEditing(false)}
+                                        className="absolute -top-10 right-0 text-slate-500 text-xs hover:text-white transition-colors"
+                                    >
+                                        {language === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
+                                    </button>
+                                )}
                                 {children}
                             </div>
                         )}

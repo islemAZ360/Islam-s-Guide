@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
     collection, query, where, getDocs, updateDoc, doc, getDoc 
 } from 'firebase/firestore';
@@ -6,10 +6,10 @@ import { db, auth } from '../services/firebase';
 import { UserProfile, ManualPhase } from '../types';
 import { 
     Users, Clock, CheckCircle, Activity, Plus, X, Trash2, 
-    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser, Stethoscope, LineChart, Info, Check, AlertTriangle
+    ChevronRight, Save, AlertCircle, Copy, Repeat, Eraser, Stethoscope, LineChart, Info, Check, AlertTriangle, Eye
 } from 'lucide-react';
 import { 
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid 
 } from 'recharts';
 import { generateManualPlan } from '../services/taperingEngine';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -91,6 +91,17 @@ export const DoctorDashboardView = () => {
         }
     }, [selectedPatient]);
 
+    // -- Preview Data Generation --
+    const previewData = useMemo(() => {
+        if (phases.length === 0) return [];
+        // Use a dummy start date to generate the sequence
+        const dummyPlan = generateManualPlan(phases, new Date().toISOString());
+        return dummyPlan.map((p, i) => ({
+            day: i + 1,
+            dose: p.plannedDose
+        }));
+    }, [phases]);
+
     // -- Helpers --
     const showStatus = (type: 'success' | 'error', text: string) => {
         setStatusMsg({ type, text });
@@ -116,7 +127,6 @@ export const DoctorDashboardView = () => {
     };
 
     const handleApplyPattern = () => {
-        // Safe parsing: split by comma, filter non-numbers and negatives
         const sequence = patternSeq
             .split(',')
             .map(s => parseFloat(s.trim()))
@@ -155,7 +165,6 @@ export const DoctorDashboardView = () => {
     const saveTreatmentPlan = async () => {
         if (!selectedPatient?.uid || phases.length === 0) return;
         
-        // Final confirmation logic implies clinical responsibility
         if (!window.confirm("Confirm: This will overwrite any existing plan and notify the patient immediately.")) return;
 
         const fullPlan = generateManualPlan(phases, new Date().toISOString());
@@ -482,6 +491,41 @@ export const DoctorDashboardView = () => {
                                     <Button onClick={handleAddPhase} variant="secondary" className="w-full !py-3 !text-xs">Add Single Phase</Button>
                                 </section>
                             </div>
+
+                            {/* Plan Visual Preview */}
+                            <section className="bg-slate-950/80 p-6 rounded-3xl border border-white/5" aria-labelledby="preview-heading">
+                                <h3 id="preview-heading" className="text-white font-bold mb-4 flex items-center gap-2 text-lg">
+                                    <Eye size={20} className="text-sky-400" /> Plan Visual Preview
+                                </h3>
+                                <div className="h-64 w-full">
+                                    {previewData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={previewData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorDosePreview" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4}/>
+                                                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                                <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} tickFormatter={(val) => `Day ${val}`} />
+                                                <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
+                                                <Tooltip 
+                                                    contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                                    itemStyle={{color: '#fff', fontSize: '12px'}}
+                                                    formatter={(value) => [`${value} ${selectedPatient?.medUnit}`, 'Dose']}
+                                                />
+                                                <Area type="stepAfter" dataKey="dose" stroke="#38bdf8" strokeWidth={3} fill="url(#colorDosePreview)" animationDuration={1000} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-2xl">
+                                            <Activity size={40} className="mb-2 opacity-20" />
+                                            <p>Add phases to see the projection curve</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
 
                             {/* Phases List - Live Region */}
                             <section className="bg-slate-950/80 p-6 rounded-3xl border border-white/5" aria-labelledby="phases-heading">

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, where, orderBy, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Sparkles, Clock, CheckCircle, Trash2 } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -48,7 +48,6 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
     // Focus Management Refs
     const modalRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLButtonElement | null>(null); // To return focus after closing modal
 
     // -- Helpers --
     const calculateReadingTime = (text: string) => {
@@ -86,7 +85,6 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
-            // Return focus to the card that opened it (if tracked, simplified here)
         }
         return () => { document.body.style.overflow = 'unset'; };
     }, [readingArticle]);
@@ -117,6 +115,26 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         } catch (e) {
             console.error("Error publishing article:", e);
             alert("Error publishing article.");
+        }
+    };
+
+    // -- Delete Action --
+    const handleDelete = async (e: React.MouseEvent, article: Article) => {
+        e.stopPropagation(); // Prevent opening the article
+        if (!article.id) return;
+        
+        const confirmMsg = language === 'ar' 
+            ? "هل أنت متأكد من حذف هذا المقال؟" 
+            : "Are you sure you want to delete this article?";
+
+        if (window.confirm(confirmMsg)) {
+            try {
+                await deleteDoc(doc(db, "articles", article.id));
+                setArticles(prev => prev.filter(a => a.id !== article.id));
+            } catch (err) {
+                console.error("Failed to delete article", err);
+                alert("Error deleting article");
+            }
         }
     };
 
@@ -201,51 +219,67 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                         <p className="text-slate-500">{language === 'ar' ? 'لا توجد مقالات في هذا القسم حالياً.' : 'No articles found in this category.'}</p>
                     </div>
                 ) : (
-                    filteredArticles.map(article => (
-                        <article 
-                            key={article.id}
-                            className={`group rounded-[2rem] p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border bg-gradient-to-br ${getCategoryGradient(article.category)}`}
-                        >
-                            <button 
-                                onClick={() => setReadingArticle(article)}
-                                className="absolute inset-0 z-10 w-full h-full focus:outline-none focus:ring-4 focus:ring-indigo-500/50 rounded-[2rem]"
-                                aria-label={`Read article: ${article.title}`}
-                            ></button>
+                    filteredArticles.map(article => {
+                        const canDelete = userProfile?.role === 'admin' || (userProfile?.uid && userProfile.uid === article.authorId);
+                        
+                        return (
+                            <article 
+                                key={article.id}
+                                className={`group rounded-[2rem] p-6 flex flex-col h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-2 border bg-gradient-to-br ${getCategoryGradient(article.category)}`}
+                            >
+                                <button 
+                                    onClick={() => setReadingArticle(article)}
+                                    className="absolute inset-0 z-10 w-full h-full focus:outline-none focus:ring-4 focus:ring-indigo-500/50 rounded-[2rem]"
+                                    aria-label={`Read article: ${article.title}`}
+                                ></button>
 
-                            <div className="mb-4 relative z-0 pointer-events-none">
-                                <div className="flex justify-between items-start mb-4">
-                                    <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
-                                        {getCategoryIcon(article.category)} {article.category.toUpperCase()}
-                                    </Badge>
-                                    <span className="text-[10px] font-bold text-white/40 flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full">
-                                        <Clock size={10} /> {calculateReadingTime(article.content)} min
-                                    </span>
+                                <div className="mb-4 relative z-20 pointer-events-none">
+                                    <div className="flex justify-between items-start mb-4 pointer-events-auto">
+                                        <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
+                                            {getCategoryIcon(article.category)} {article.category.toUpperCase()}
+                                        </Badge>
+                                        
+                                        <div className="flex gap-2">
+                                            <span className="text-[10px] font-bold text-white/40 flex items-center gap-1 bg-black/20 px-2 py-1 rounded-full">
+                                                <Clock size={10} /> {calculateReadingTime(article.content)} min
+                                            </span>
+                                            {canDelete && (
+                                                <button 
+                                                    onClick={(e) => handleDelete(e, article)}
+                                                    className="bg-black/20 hover:bg-rose-500 text-white/60 hover:text-white p-1.5 rounded-full transition-all"
+                                                    aria-label="Delete Article"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
+                                        {article.title}
+                                    </h3>
                                 </div>
-                                <h3 className="text-xl font-bold text-white leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
-                                    {article.title}
-                                </h3>
-                            </div>
-                            
-                            <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed relative z-0 pointer-events-none">
-                                {article.content}
-                            </p>
-                            
-                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-0 pointer-events-none">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider flex items-center gap-1">
-                                        {article.authorRole === 'doctor' && <CheckCircle size={10} className="text-blue-400" />}
-                                        {article.authorName}
-                                    </span>
-                                    <span className="text-[10px] text-white/40 font-mono">
-                                        {new Date(article.createdAt).toLocaleDateString()}
-                                    </span>
+                                
+                                <p className="text-white/60 text-sm line-clamp-3 mb-6 flex-1 font-medium leading-relaxed relative z-0 pointer-events-none">
+                                    {article.content}
+                                </p>
+                                
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-0 pointer-events-none">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider flex items-center gap-1">
+                                            {article.authorRole === 'doctor' && <CheckCircle size={10} className="text-blue-400" />}
+                                            {article.authorName}
+                                        </span>
+                                        <span className="text-[10px] text-white/40 font-mono">
+                                            {new Date(article.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
+                                        <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''}/>
+                                    </div>
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all">
-                                    <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''}/>
-                                </div>
-                            </div>
-                        </article>
-                    ))
+                            </article>
+                        );
+                    })
                 )}
             </div>
 

@@ -175,9 +175,23 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    const currentTotal = calculateTotalInventory(inventory);
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check for existing log to prevent double deduction
+    const existingLog = logs.find(l => l.date === today);
+    
+    // Calculate current total pills
+    let currentTotal = calculateTotalInventory(inventory);
+    
+    // If we are updating, we must first REFUND the old dose to the inventory
+    if (existingLog) {
+        currentTotal += existingLog.doseTaken;
+    }
+    
+    // Now deduct the new dose
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
+    // Construct new inventory object
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
@@ -187,15 +201,19 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    const today = new Date().toISOString().split('T')[0];
+    // Create the new log entry
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
     };
+    
+    // Update logs array (replace if exists, or add new)
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
+    // Update Plan if Algorithm is active
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
+        // Recalculate theoretical start for the algorithm projection
         const theoreticalInitial = newTotal + totalUsed;
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier, userProfile.medForm || 'tablet');
         setPlan(newPlan);

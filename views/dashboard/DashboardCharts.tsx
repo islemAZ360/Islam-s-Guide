@@ -20,12 +20,16 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
     const unitLabel = userProfile?.medUnit || 'mg';
 
     // Prepare chart data (First 30 days)
+    // FIX: Sort plan by date to prevent "zigzag" lines if plan array is unsorted
     const chartData = useMemo(() => {
-        return plan.slice(0, 30).map(p => ({
-            fullDate: p.date,
-            displayDate: p.date.slice(5), // MM-DD
-            dose: p.plannedDose
-        }));
+        return [...plan]
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 30)
+            .map(p => ({
+                fullDate: p.date,
+                displayDate: p.date.slice(5), // MM-DD
+                dose: p.plannedDose
+            }));
     }, [plan]);
 
     return (
