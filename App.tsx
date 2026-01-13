@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone, Activity } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone } from 'lucide-react';
 
 // Contexts
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -11,13 +11,12 @@ import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { AppView, Inventory, DailyLog, PlanDay, UserProfile } from './types';
 
 // Components (Eager Load Core UI)
-import { Button } from './components/ui/Button';
+import { Button } from './components/ui/Button'; // Fixed Import
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav'; 
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy Load Views (Performance Optimization)
-// This splits the code into smaller chunks, so Admin code isn't loaded for normal users, etc.
 const LoginView = React.lazy(() => import('./views/LoginView').then(m => ({ default: m.LoginView })));
 const OnboardingView = React.lazy(() => import('./views/OnboardingView').then(m => ({ default: m.OnboardingView })));
 const DashboardView = React.lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
@@ -37,17 +36,6 @@ const addDaysSafe = (dateStr: string, days: number): string => {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().split('T')[0];
 };
-
-// --- Loading Fallback Component ---
-const PageLoader = () => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-indigo-400 animate-in fade-in duration-300">
-    <div className="relative">
-      <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full animate-pulse"></div>
-      <Loader2 size={40} className="animate-spin relative z-10" />
-    </div>
-    <span className="mt-4 text-sm font-bold tracking-widest opacity-70">LOADING...</span>
-  </div>
-);
 
 // --- Medical Disclaimer Component ---
 const MedicalSafetyBanner = () => {
@@ -74,6 +62,14 @@ const MedicalSafetyBanner = () => {
     </div>
   );
 };
+
+// --- Loader Component ---
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-indigo-400 gap-4">
+    <Loader2 size={48} className="animate-spin" />
+    <span className="font-bold tracking-widest text-sm animate-pulse">LOADING...</span>
+  </div>
+);
 
 function AppContent() {
   // -- Context Hooks --
@@ -111,15 +107,25 @@ function AppContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // 🛡️ ADMIN BYPASS CHECK
+  const isAdminEmail = currentUser?.email?.toLowerCase() === 'admin@islamguide.com';
+
   // -- Routing Logic --
   useEffect(() => {
+    // 0. ADMIN FORCE REDIRECT
+    if (isAdminEmail) {
+        if (currentView !== AppView.ADMIN) {
+            setCurrentView(AppView.ADMIN);
+        }
+        return;
+    }
+
     if (userProfile) {
-        // 1. Admin Logic
+        // 1. Role-Based Redirects
         if (userProfile.role === 'admin' && currentView === AppView.DASHBOARD) {
             setCurrentView(AppView.ADMIN);
         } 
         
-        // 2. Doctor Logic
         else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
             const allowedDoctorViews = [
                 AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, 
@@ -130,7 +136,7 @@ function AppContent() {
             }
         }
         
-        // 3. Reset Resubmit State
+        // 2. Reset Resubmit State
         if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending') {
             setIsResubmitting(false);
         }
@@ -138,7 +144,7 @@ function AppContent() {
             setIsResubmitting(false);
         }
     }
-  }, [userProfile, currentView]);
+  }, [userProfile, currentView, isAdminEmail]);
 
   // -- Navigation Handlers --
   const navigateTo = (view: AppView) => {
@@ -153,8 +159,9 @@ function AppContent() {
       setViewHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
     } else {
-      const defaultView = userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : 
-                          userProfile?.role === 'admin' ? AppView.ADMIN : AppView.DASHBOARD;
+      // Default fallback
+      const defaultView = isAdminEmail ? AppView.ADMIN : 
+                          userProfile?.role === 'doctor' ? AppView.DOCTOR_DASHBOARD : AppView.DASHBOARD;
       setCurrentView(defaultView);
     }
   };
@@ -309,7 +316,10 @@ function AppContent() {
   }
 
   // 2. ONBOARDING & RESUBMISSION
-  if ((userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || isResubmitting) {
+  if (!isAdminEmail && (
+      (userProfile && !userProfile.setupComplete && !userProfile.role?.includes('admin')) || 
+      isResubmitting
+     )) {
     return (
         <div className="min-h-screen bg-[#020617] flex flex-col">
             <MedicalSafetyBanner />
@@ -403,96 +413,99 @@ function AppContent() {
               <MobileNav currentView={currentView} setCurrentView={navigateTo} userProfile={userProfile} />
               
               <div className="flex-1 md:mr-80 p-4 md:p-12 pb-24 md:pb-12 transition-all duration-500 relative z-10">
-                
-                {/* PENDING SCREENS */}
-                {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Clock size={48} className="text-amber-500 animate-pulse" />
+                 {/* Suspense Wrapper for Lazy Views */}
+                 <Suspense fallback={<PageLoader />}>
+                    
+                    {/* PENDING SCREENS */}
+                    {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending' ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Clock size={48} className="text-amber-500 animate-pulse" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                طلبك قيد المراجعة من الإدارة. سيتم توجيهك تلقائياً فور الاعتماد.
+                            </p>
+                            <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">الحساب قيد المراجعة</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            طلبك قيد المراجعة من الإدارة. سيتم توجيهك تلقائياً فور الاعتماد.
-                        </p>
-                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
-                    </div>
-                ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Clock size={48} className="text-blue-500 animate-pulse" />
+                    ) : userProfile?.role === 'patient' && userProfile.patientData?.requestStatus === 'pending' ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Clock size={48} className="text-blue-500 animate-pulse" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                طلبك للانضمام قيد المراجعة من قبل الطبيب.
+                            </p>
+                            <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">{t('req_sent_msg')}</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            طلبك للانضمام قيد المراجعة من قبل الطبيب.
-                        </p>
-                        <Button variant="secondary" onClick={() => logout()} className="!px-6">تسجيل خروج</Button>
-                    </div>
-                ) : userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
-                    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
-                        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                            <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                    ) : userProfile?.role === 'patient' && !userProfile.patientData?.isPlanAssigned ? (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
+                            <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                                <Loader2 size={48} className="text-indigo-500 animate-spin" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
+                            <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
+                                وافق الطبيب على انضمامك. يرجى الانتظار حتى يقوم بوضع الجدول العلاجي.
+                            </p>
+                            <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
+                                دخول المجتمع مؤقتاً
+                            </Button>
                         </div>
-                        <h1 className="text-3xl font-bold text-white mb-2">تم القبول، بانتظار الخطة</h1>
-                        <p className="text-slate-400 max-w-lg leading-relaxed mb-6">
-                            وافق الطبيب على انضمامك. يرجى الانتظار حتى يقوم بوضع الجدول العلاجي.
-                        </p>
-                        <Button onClick={() => setCurrentView(AppView.COMMUNITY)} variant="secondary">
-                            دخول المجتمع مؤقتاً
-                        </Button>
-                    </div>
-                ) : (
-                    /* ACTIVE VIEWS - Main Routing with Suspense */
-                    <Suspense fallback={<PageLoader />}>
-                        {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
-                            <>
-                                {currentView === AppView.DASHBOARD && (
-                                    <DashboardView 
-                                        userProfile={userProfile}
-                                        plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
-                                        progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
-                                        showDoctorWarning={showDoctorWarning}
-                                        selectedDose={selectedDose} setSelectedDose={setSelectedDose}
-                                        selectedMood={selectedMood} setSelectedMood={setSelectedMood}
-                                        submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
-                                    />
-                                )}
-                                {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
-                                {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
-                            </>
-                        )}
+                    ) : (
+                        /* ACTIVE VIEWS */
+                        <>
+                            {(userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned))) && (
+                                <>
+                                    {currentView === AppView.DASHBOARD && (
+                                        <DashboardView 
+                                            userProfile={userProfile}
+                                            plan={plan} logs={logs} todayPlan={todayPlan} todayLog={todayLog}
+                                            progressPercentage={progressPercentage} totalDays={totalDays} daysCompleted={daysCompleted}
+                                            showDoctorWarning={showDoctorWarning}
+                                            selectedDose={selectedDose} setSelectedDose={setSelectedDose}
+                                            selectedMood={selectedMood} setSelectedMood={setSelectedMood}
+                                            submitDailyLog={submitDailyLog} handleFreezePlan={handleFreezePlan}
+                                        />
+                                    )}
+                                    {currentView === AppView.CALENDAR && <CalendarView plan={plan} logs={logs} todayDate={todayDate} userProfile={userProfile} />}
+                                    {currentView === AppView.STATS && <StatsView logs={logs} plan={plan} userProfile={userProfile} />} 
+                                </>
+                            )}
 
-                        {userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved' && (
-                            <>
-                                {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
-                                {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
-                            </>
-                        )}
+                            {(userProfile?.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') && (
+                                <>
+                                    {currentView === AppView.DOCTOR_DASHBOARD && <DoctorDashboardView />}
+                                    {currentView === AppView.DOCTOR_PATIENTS && <DoctorPatientsView />}
+                                </>
+                            )}
 
-                        {currentView === AppView.COMMUNITY && (
-                            <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
-                        )}
+                            {currentView === AppView.COMMUNITY && (
+                                <CommunityView currentUser={{...userProfile!, uid: currentUser?.uid}} />
+                            )}
 
-                        {currentView === AppView.SUPPORT && (
-                            <SupportView user={{...userProfile!, uid: currentUser?.uid || ''}} />
-                        )}
+                            {currentView === AppView.SUPPORT && (
+                                <SupportView user={{...userProfile!, uid: currentUser?.uid || ''}} />
+                            )}
 
-                        {currentView === AppView.ARTICLES && (
-                            <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
-                        )}
-                        
-                        {currentView === AppView.ADMIN && userProfile?.role === 'admin' && (
-                            <AdminView />
-                        )}
-                        
-                        {currentView === AppView.SETTINGS && userProfile && (
-                            <SettingsView 
-                                userProfile={userProfile} 
-                                resetAllData={resetAllData} 
-                                updateSpeedSettings={updateSpeedSettings} 
-                            />
-                        )}
-                    </Suspense>
-                )}
+                            {currentView === AppView.ARTICLES && (
+                                <ArticlesView userProfile={userProfile ? { ...userProfile, uid: currentUser?.uid } : null} />
+                            )}
+                            
+                            {currentView === AppView.ADMIN && (userProfile?.role === 'admin' || isAdminEmail) && (
+                                <AdminView />
+                            )}
+                            
+                            {currentView === AppView.SETTINGS && userProfile && (
+                                <SettingsView 
+                                    userProfile={userProfile} 
+                                    resetAllData={resetAllData} 
+                                    updateSpeedSettings={updateSpeedSettings} 
+                                />
+                            )}
+                        </>
+                    )}
+                 </Suspense>
               </div>
           </div>
       )}
