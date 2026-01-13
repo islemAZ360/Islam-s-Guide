@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone } from 'lucide-react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Check, ArrowRight, ArrowLeft, Loader2, XCircle, Clock, AlertTriangle, Phone, Activity } from 'lucide-react';
 
 // Contexts
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -10,22 +10,26 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { calculateTotalInventory, adjustPlan } from './services/taperingEngine';
 import { AppView, Inventory, DailyLog, PlanDay, UserProfile } from './types';
 
-// Components & Views
+// Components (Eager Load Core UI)
 import { Button } from './components/ui/Button';
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav'; 
-import { LoginView } from './views/LoginView';
-import { OnboardingView } from './views/OnboardingView';
-import { DashboardView } from './views/DashboardView';
-import { CalendarView } from './views/CalendarView';
-import { StatsView } from './views/StatsView';
-import { AdminView } from './views/AdminView';
-import { CommunityView } from './views/CommunityView';
-import { SupportView } from './views/SupportView';
-import { ArticlesView } from './views/ArticlesView';
-import { DoctorDashboardView } from './views/DoctorDashboardView'; 
-import { DoctorPatientsView } from './views/DoctorPatientsView';
-import { SettingsView } from './views/SettingsView';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
+// Lazy Load Views (Performance Optimization)
+// This splits the code into smaller chunks, so Admin code isn't loaded for normal users, etc.
+const LoginView = React.lazy(() => import('./views/LoginView').then(m => ({ default: m.LoginView })));
+const OnboardingView = React.lazy(() => import('./views/OnboardingView').then(m => ({ default: m.OnboardingView })));
+const DashboardView = React.lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
+const CalendarView = React.lazy(() => import('./views/CalendarView').then(m => ({ default: m.CalendarView })));
+const StatsView = React.lazy(() => import('./views/StatsView').then(m => ({ default: m.StatsView })));
+const AdminView = React.lazy(() => import('./views/AdminView').then(m => ({ default: m.AdminView })));
+const CommunityView = React.lazy(() => import('./views/CommunityView').then(m => ({ default: m.CommunityView })));
+const SupportView = React.lazy(() => import('./views/SupportView').then(m => ({ default: m.SupportView })));
+const ArticlesView = React.lazy(() => import('./views/ArticlesView').then(m => ({ default: m.ArticlesView })));
+const DoctorDashboardView = React.lazy(() => import('./views/DoctorDashboardView').then(m => ({ default: m.DoctorDashboardView })));
+const DoctorPatientsView = React.lazy(() => import('./views/DoctorPatientsView').then(m => ({ default: m.DoctorPatientsView })));
+const SettingsView = React.lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })));
 
 // Helper to add days safely
 const addDaysSafe = (dateStr: string, days: number): string => {
@@ -34,7 +38,18 @@ const addDaysSafe = (dateStr: string, days: number): string => {
   return date.toISOString().split('T')[0];
 };
 
-// --- New Medical Disclaimer Component (Internal) ---
+// --- Loading Fallback Component ---
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-indigo-400 animate-in fade-in duration-300">
+    <div className="relative">
+      <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full animate-pulse"></div>
+      <Loader2 size={40} className="animate-spin relative z-10" />
+    </div>
+    <span className="mt-4 text-sm font-bold tracking-widest opacity-70">LOADING...</span>
+  </div>
+);
+
+// --- Medical Disclaimer Component ---
 const MedicalSafetyBanner = () => {
   const { language } = useLanguage();
   const isAr = language === 'ar';
@@ -99,12 +114,12 @@ function AppContent() {
   // -- Routing Logic --
   useEffect(() => {
     if (userProfile) {
-        // 1. منطق الأدمن
+        // 1. Admin Logic
         if (userProfile.role === 'admin' && currentView === AppView.DASHBOARD) {
             setCurrentView(AppView.ADMIN);
         } 
         
-        // 2. منطق الطبيب
+        // 2. Doctor Logic
         else if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'approved') {
             const allowedDoctorViews = [
                 AppView.DOCTOR_DASHBOARD, AppView.DOCTOR_PATIENTS, 
@@ -115,7 +130,7 @@ function AppContent() {
             }
         }
         
-        // 3. إعادة تعيين حالة إعادة الإرسال
+        // 3. Reset Resubmit State
         if (userProfile.role === 'doctor' && userProfile.doctorData?.accountStatus === 'pending') {
             setIsResubmitting(false);
         }
@@ -145,7 +160,6 @@ function AppContent() {
   };
 
   // -- Logic Handlers --
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       clearError();
@@ -175,23 +189,9 @@ function AppContent() {
   const submitDailyLog = (sleepHours: number, symptoms: string[]) => {
     if (selectedDose === null || selectedMood === null) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Check for existing log to prevent double deduction
-    const existingLog = logs.find(l => l.date === today);
-    
-    // Calculate current total pills
-    let currentTotal = calculateTotalInventory(inventory);
-    
-    // If we are updating, we must first REFUND the old dose to the inventory
-    if (existingLog) {
-        currentTotal += existingLog.doseTaken;
-    }
-    
-    // Now deduct the new dose
+    const currentTotal = calculateTotalInventory(inventory);
     const newTotal = Math.max(0, Math.round((currentTotal - selectedDose) * 100) / 100);
     
-    // Construct new inventory object
     const newInventory: Inventory = { ...inventory, totalPills: newTotal };
     if (inventory.pillsPerBox > 0) {
         newInventory.boxes = Math.floor(newTotal / inventory.pillsPerBox);
@@ -201,19 +201,15 @@ function AppContent() {
     }
     setInventory(newInventory);
 
-    // Create the new log entry
+    const today = new Date().toISOString().split('T')[0];
     const newLog: DailyLog = { 
         date: today, doseTaken: selectedDose, mood: selectedMood, sleepHours, symptoms 
     };
-    
-    // Update logs array (replace if exists, or add new)
     const newLogs = [...logs.filter(l => l.date !== today), newLog];
     setLogs(newLogs);
 
-    // Update Plan if Algorithm is active
     if (userProfile?.planType === 'algorithm') {
         const totalUsed = newLogs.reduce((acc, l) => acc + l.doseTaken, 0);
-        // Recalculate theoretical start for the algorithm projection
         const theoreticalInitial = newTotal + totalUsed;
         const newPlan = adjustPlan(plan, newLogs, theoreticalInitial, speedModifier, userProfile.medForm || 'tablet');
         setPlan(newPlan);
@@ -297,14 +293,16 @@ function AppContent() {
         <div className="min-h-screen bg-[#020617] flex flex-col">
             <MedicalSafetyBanner />
             <div className="flex-1 flex items-center justify-center">
-                <LoginView 
-                    handleLogin={handleLoginSubmit} 
-                    handleGoogleLogin={loginWithGoogle} 
-                    email={email} setEmail={setEmail} 
-                    password={password} setPassword={setPassword} 
-                    loginError={loginError || ''} 
-                    setDemoCreds={enableDemoMode} 
-                />
+                <Suspense fallback={<PageLoader />}>
+                    <LoginView 
+                        handleLogin={handleLoginSubmit} 
+                        handleGoogleLogin={loginWithGoogle} 
+                        email={email} setEmail={setEmail} 
+                        password={password} setPassword={setPassword} 
+                        loginError={loginError || ''} 
+                        setDemoCreds={enableDemoMode} 
+                    />
+                </Suspense>
             </div>
         </div>
     );
@@ -316,17 +314,19 @@ function AppContent() {
         <div className="min-h-screen bg-[#020617] flex flex-col">
             <MedicalSafetyBanner />
             <div className="flex-1">
-                <OnboardingView 
-                    userProfile={userProfile!} 
-                    setUserProfile={setUserProfile} 
-                    inventory={inventory} 
-                    setInventory={setInventory} 
-                    currentDoseHabit={currentDoseHabit} 
-                    setCurrentDoseHabit={setCurrentDoseHabit} 
-                    startPlan={startPlan} 
-                    email={currentUser?.email || email} 
-                    handleLogout={logout} 
-                />
+                <Suspense fallback={<PageLoader />}>
+                    <OnboardingView 
+                        userProfile={userProfile!} 
+                        setUserProfile={setUserProfile} 
+                        inventory={inventory} 
+                        setInventory={setInventory} 
+                        currentDoseHabit={currentDoseHabit} 
+                        setCurrentDoseHabit={setCurrentDoseHabit} 
+                        startPlan={startPlan} 
+                        email={currentUser?.email || email} 
+                        handleLogout={logout} 
+                    />
+                </Suspense>
             </div>
         </div>
     );
@@ -336,10 +336,9 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30 flex flex-col" dir={dir}>
       
-      {/* Medical Banner - Always visible at top */}
       <MedicalSafetyBanner />
 
-      {/* --- Ambient Background Effects (The New Magic) --- */}
+      {/* --- Ambient Background Effects --- */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-float opacity-50"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[150px] animate-float opacity-40 delay-1000"></div>
@@ -393,7 +392,7 @@ function AppContent() {
       {/* NORMAL APP FLOW */}
       {!(userProfile?.doctorData?.accountStatus === 'rejected' || userProfile?.patientData?.requestStatus === 'rejected') && (
           <div className="flex-1 flex flex-col md:flex-row h-full">
-              {/* Mobile Back Nav - Moved Top */}
+              {/* Mobile Back Nav */}
               {(viewHistory.length > 0 || currentView !== AppView.DASHBOARD) && (
                   <button onClick={goBack} className="fixed top-24 left-4 z-[60] p-3 rounded-full bg-slate-800/80 backdrop-blur-md text-white shadow-lg border border-white/10 hover:bg-indigo-600 transition-colors md:hidden">
                       {dir === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
@@ -442,8 +441,8 @@ function AppContent() {
                         </Button>
                     </div>
                 ) : (
-                    /* ACTIVE VIEWS - Main Routing */
-                    <>
+                    /* ACTIVE VIEWS - Main Routing with Suspense */
+                    <Suspense fallback={<PageLoader />}>
                         {userProfile && (userProfile.role === 'normal_user' || (userProfile.role === 'patient' && userProfile.patientData?.isPlanAssigned)) && (
                             <>
                                 {currentView === AppView.DASHBOARD && (
@@ -492,7 +491,7 @@ function AppContent() {
                                 updateSpeedSettings={updateSpeedSettings} 
                             />
                         )}
-                    </>
+                    </Suspense>
                 )}
               </div>
           </div>
@@ -506,7 +505,9 @@ export default function App() {
     <LanguageProvider>
       <AuthProvider>
         <DataProvider>
-          <AppContent />
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
         </DataProvider>
       </AuthProvider>
     </LanguageProvider>

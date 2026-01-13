@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 13/1/2026, 04:52:21
+Generated: 13/1/2026, 18:18:35
 
 ## 🌳 Project Structure
 ```text
@@ -14,6 +14,7 @@ Generated: 13/1/2026, 04:52:21
     ├── Badge.tsx
     ├── Button.tsx
     ├── Card.tsx
+    ├── ErrorBoundary.tsx
     ├── LanguageSwitcher.tsx
     ├── LayoutContainer.tsx
     ├── PageHeader.tsx
@@ -692,15 +693,27 @@ export const ScientificPlanModal = ({ isOpen, onClose, onConfirm }: ScientificPl
 ```tsx
 import React from 'react';
 
+type BadgeColor = 'indigo' | 'green' | 'emerald' | 'red' | 'rose' | 'amber' | 'blue' | 'slate';
+type BadgeSize = 'sm' | 'md' | 'lg';
+
 interface BadgeProps {
   children: React.ReactNode;
-  color?: 'indigo' | 'green' | 'emerald' | 'red' | 'rose' | 'amber' | 'blue';
+  color?: BadgeColor;
+  size?: BadgeSize;
   className?: string;
+  'aria-label'?: string;
 }
 
-export const Badge = ({ children, color = 'indigo', className = '' }: BadgeProps) => {
-  // تعريف الألوان مع تأثيرات الظل والإطار المتوهج
-  const colors: Record<string, string> = {
+export const Badge = ({ 
+  children, 
+  color = 'indigo', 
+  size = 'md',
+  className = '',
+  'aria-label': ariaLabel
+}: BadgeProps) => {
+  
+  // Color Variants with high contrast for dark mode
+  const colorStyles: Record<BadgeColor, string> = {
     indigo: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.15)]',
     green: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
     emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]',
@@ -708,19 +721,29 @@ export const Badge = ({ children, color = 'indigo', className = '' }: BadgeProps
     rose: 'bg-rose-500/10 text-rose-300 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.15)]',
     amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.15)]',
     blue: 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.15)]',
+    slate: 'bg-slate-700/30 text-slate-300 border-slate-600/30',
   };
 
-  const selectedColor = colors[color] || colors.indigo;
+  const sizeStyles: Record<BadgeSize, string> = {
+    sm: 'text-[9px] px-1.5 py-0.5',
+    md: 'text-[10px] md:text-xs px-2.5 py-0.5',
+    lg: 'text-sm px-3 py-1',
+  };
+
+  const selectedColor = colorStyles[color] || colorStyles.indigo;
+  const selectedSize = sizeStyles[size] || sizeStyles.md;
 
   return (
-    <span className={`
-      inline-flex items-center justify-center gap-1.5 
-      px-2.5 py-0.5 rounded-full 
-      text-[10px] md:text-xs font-bold uppercase tracking-wider 
-      border backdrop-blur-md 
-      transition-all duration-300 hover:brightness-125
-      ${selectedColor} ${className}
-    `}>
+    <span 
+      className={`
+        inline-flex items-center justify-center gap-1.5 
+        rounded-full font-bold uppercase tracking-wider 
+        border backdrop-blur-md 
+        transition-all duration-300 hover:brightness-110
+        ${selectedColor} ${selectedSize} ${className}
+      `}
+      aria-label={ariaLabel}
+    >
       {children}
     </span>
   );
@@ -857,6 +880,83 @@ export const Card = ({
 ```
 ---
 
+### File: `components\ui\ErrorBoundary.tsx`
+```tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
+
+  public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    // Here you would typically log to a service like Sentry or LogRocket
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div 
+          className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-slate-200 p-6 text-center" 
+          role="alert"
+          aria-live="assertive"
+        >
+          {/* Visual Indicator */}
+          <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 border border-rose-500/20 shadow-2xl shadow-rose-900/20 animate-in zoom-in duration-300">
+            <AlertTriangle className="w-12 h-12 text-rose-500" aria-hidden="true" />
+          </div>
+
+          {/* Bilingual Heading */}
+          <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Something went wrong</h1>
+          <h2 className="text-xl font-bold text-rose-400 mb-6 font-tajawal" dir="rtl">حدث خطأ غير متوقع في النظام</h2>
+          
+          <p className="text-slate-400 max-w-md mb-8 leading-relaxed">
+            We apologize for the inconvenience. Please try reloading the page.
+            <br />
+            نعتذر عن الإزعاج. يرجى محاولة إعادة تحميل الصفحة.
+          </p>
+
+          {/* Technical Details (Helpful for support screenshots) */}
+          <div className="max-w-lg w-full bg-slate-950/50 p-4 rounded-xl border border-white/10 mb-8 font-mono text-xs text-rose-300/70 text-left overflow-auto max-h-32 select-all">
+            {this.state.error?.message || "Unknown Error"}
+          </div>
+
+          {/* Recovery Action */}
+          <button 
+            onClick={() => window.location.reload()} 
+            className="flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 active:scale-95"
+            aria-label="Reload Page"
+          >
+            <RefreshCw size={20} aria-hidden="true" />
+            <span>Reload / إعادة تحميل</span>
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+---
+
 ### File: `components\ui\LanguageSwitcher.tsx`
 ```tsx
 import React from 'react';
@@ -943,17 +1043,34 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
-  <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 pb-6 md:pb-8 relative">
-    <div className="relative z-10 w-full lg:w-auto">
-      <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight drop-shadow-lg">{title}</h1>
-      {subtitle && <p className="text-slate-400 font-medium text-sm md:text-lg max-w-2xl leading-relaxed">{subtitle}</p>}
+  <header 
+    className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 pb-8 md:pb-10 relative"
+    aria-label={title}
+  >
+    {/* Text Content */}
+    <div className="relative z-10 w-full lg:w-auto max-w-3xl">
+      <h1 className="text-3xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-sm leading-tight">
+        {title}
+      </h1>
+      {subtitle && (
+        <p className="text-slate-400 font-medium text-sm md:text-lg leading-relaxed max-w-2xl text-balance">
+          {subtitle}
+        </p>
+      )}
     </div>
+
+    {/* Actions Area */}
     {action && (
       <div className="flex flex-wrap gap-3 md:gap-4 relative z-10 w-full lg:w-auto justify-start lg:justify-end">
         {action}
       </div>
     )}
-    <div className="absolute left-0 top-0 w-64 h-64 bg-indigo-500/10 blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen"></div>
+
+    {/* Decorative Glow */}
+    <div 
+      className="absolute left-0 top-0 w-64 h-64 bg-indigo-500/10 blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen" 
+      aria-hidden="true"
+    ></div>
   </header>
 );
 ```
@@ -1269,18 +1386,18 @@ export const Sidebar = ({ currentView, setCurrentView, handleLogout, userProfile
 
   return (
     <aside 
-      className="hidden md:flex flex-col w-80 h-screen fixed right-0 top-0 overflow-y-auto z-50 border-l border-white/5 bg-slate-950/80 backdrop-blur-2xl shadow-2xl"
+      className="hidden md:flex flex-col w-80 h-screen sticky top-0 overflow-y-auto z-40 border-l border-white/5 bg-slate-950/80 backdrop-blur-2xl shadow-2xl"
       aria-label={language === 'ar' ? 'القائمة الجانبية' : 'Sidebar Navigation'}
     >
       
       {/* Header */}
       <div className="p-8 pb-4 relative shrink-0">
         {/* Ambient Glow behind Logo */}
-        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-[60px] rounded-full pointer-events-none" aria-hidden="true"></div>
         
         <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3 relative z-10 mb-1">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Activity className="w-6 h-6 text-white" aria-hidden="true" />
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20" aria-hidden="true">
+            <Activity className="w-6 h-6 text-white" />
           </div>
           Islam's Guide
         </h2>
@@ -1766,25 +1883,15 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // D. Profile Initialization (The Fix)
-                // Ensure boolean value using null coalescing operator
-                const isAdminEmail = currentUser.email?.toLowerCase().endsWith('@islamguide.com') ?? false;
-                
-                const newProfile: UserProfile = {
+                // New User Skeleton (Doc doesn't exist yet)
+                setUserProfile({
                     uid: currentUser.uid,
                     email: currentUser.email || '',
-                    name: currentUser.displayName || (isAdminEmail ? 'Administrator' : 'New User'),
-                    role: isAdminEmail ? 'admin' : 'normal_user',
-                    setupComplete: isAdminEmail, // Admins skip onboarding
+                    name: currentUser.displayName || 'New User',
+                    role: 'normal_user',
+                    setupComplete: false,
                     durationMonths: 0
-                };
-
-                setUserProfile(newProfile);
-
-                // Persist the new profile immediately so next load finds it
-                setDoc(docRef, newProfile).catch(e => 
-                    console.error("Failed to auto-create profile:", e)
-                );
+                });
             }
             setDataLoading(false);
         }, (error) => {
@@ -1867,10 +1974,9 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const resetAllData = async () => {
-      if (!window.confirm(t('delete_confirm_msg'))) {
-          return;
-      }
-
+      // Intent check is now handled by the UI (SettingsView) strict input
+      // We assume if this function is called, the user has already proven intent.
+      
       try {
           setDataLoading(true);
           
@@ -1891,7 +1997,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
           
       } catch (e) {
           console.error("Error resetting data:", e);
-          alert("Error deleting data. Check connection.");
+          alert("Error deleting data. Check connection."); // Keep alert for actual error
           setDataLoading(false);
       }
   };
@@ -2002,7 +2108,7 @@ export const useLanguage = () => {
 export const ar = {
     // Auth
     welcome: "مرحباً بك",
-    subtitle: "نظام التعافي الذكي القائم على علم الأعصاب",
+    subtitle: "نظام دعم التعافي المبني على أسس علمية",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
     login_email: "تسجيل الدخول",
@@ -2033,7 +2139,7 @@ export const ar = {
     days_left: "أيام متبقية",
     status_stable: "الحالة مستقرة",
     safety_active: "نظام الأمان نشط",
-    safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تفعيل بروتوكول التثبيت مؤقتاً لحمايتك من الأعراض الانسحابية.",
+    safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تثبيت الجرعة المقترحة مؤقتاً. يرجى استشارة طبيبك.",
     freeze_plan_btn: "تجميد الخطة (راحة 3 أيام)",
     target_dose: "الجرعة المستهدفة لليوم",
     documented: "تم التوثيق بنجاح",
@@ -2045,8 +2151,8 @@ export const ar = {
     step_1: "الجرعة الفعلية",
     step_2: "المؤشرات الحيوية",
     confirm_log: "تأكيد وتحديث المخزون",
-    algo_active: "المحلل الذكي يعمل",
-    algo_desc: "نظام آمن يحسب التخفيض بناءً على الكمية المتوفرة.",
+    algo_active: "المحرك الذكي يعمل",
+    algo_desc: "نظام يولد مسودة خطة بناءً على الحسابات الرياضية للمخزون (للعرض على الطبيب).",
     recovery_path: "مسار التعافي المتوقع",
     sos_button: "طوارئ (SOS)",
     export_report: "تقرير للطبيب",
@@ -2055,14 +2161,14 @@ export const ar = {
     // Inventory
     inv_status_ok: "المخزون كافٍ",
     inv_status_low: "نقص في المخزون",
-    inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت النهائية. يوصى بتقليل السرعة أو توفير المزيد.",
+    inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت. راجع طبيبك لتعديل الخطة أو توفير الدواء.",
     inventory_title: "جرد المخزون",
     boxes: "عدد العبوات الكاملة",
     pills_per_box: "الكمية داخل العبوة",
     loose_pills: "الكمية المفردة (فراط)",
     total_balance: "الرصيد الكلي",
     current_habit: "جرعتك الحالية",
-    analyze_plan: "تحليل وإنشاء الخطة",
+    analyze_plan: "إنشاء مسودة الخطة",
     guest: "زائر",
 
     // Toasts
@@ -2090,7 +2196,7 @@ export const ar = {
     // SOS
     sos_title: "بروتوكول الطوارئ",
     sos_phase_1_title: "توقف.",
-    sos_phase_1_text: "أنت بأمان. هذا شعور كيميائي مؤقت سيعبر.",
+    sos_phase_1_text: "أنت بأمان. إذا كانت هذه حالة طوارئ طبية، اتصل بالإسعاف فوراً.",
     sos_btn_ground: "التالي",
     sos_phase_2_title: "الوعي الحسي",
     sos_phase_2_text: "انظر حولك. سمِّ 5 أشياء زرقاء.",
@@ -2109,7 +2215,7 @@ export const ar = {
     settings_title: "إعدادات النظام",
     settings_subtitle: "التحكم في الخوارزمية",
     pace_control: "وتيرة التعافي",
-    pace_desc: "يمكنك تعديل سرعة الخطة في أي وقت. النظام سيقوم بإعادة توزيع المخزون تلقائياً لضمان عدم انقطاع الدواء.",
+    pace_desc: "تغيير السرعة يؤدي لإعادة حساب استهلاك المخزون. يرجى استشارة الطبيب قبل التعديل.",
     pace_slow: "مريح (تمديد)",
     pace_balanced: "متوازن (قياسي)",
     pace_fast: "سريع (مكثف)",
@@ -2123,9 +2229,9 @@ export const ar = {
 
     // Onboarding & Roles
     onboard_title: "أهلاً بك في Islam's Guide",
-    onboard_desc: "قبل البدء، يرجى تحديد طبيعة استخدامك للنظام.",
+    onboard_desc: "هذه المنصة هي أداة مساعدة وليست خدمة طبية. يرجى تحديد طبيعة استخدامك.",
     role_patient: "مستخدم / مريض",
-    role_patient_desc: "أريد التعافي من الدواء، سواء بمساعدة الخوارزمية الذكية أو تحت إشراف طبيب مختص.",
+    role_patient_desc: "أتابع خطة علاجي تحت إشراف طبي.",
     role_doctor: "طبيب معالج",
     role_doctor_desc: "أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.",
     
@@ -2143,7 +2249,7 @@ export const ar = {
     // Path Selection
     path_select_title: "اختر مسار العلاج",
     path_algo: "الخوارزمية الذكية",
-    path_algo_desc: "أريد أن يقوم الموقع بحساب خطة التخفيض تلقائياً بناءً على كمية الدواء المتوفرة لدي.",
+    path_algo_desc: "توليد مسودة جدول زمني بناءً على حسابات المخزون (تتطلب موافقة الطبيب).",
     path_doctor: "متابعة مع طبيب",
     path_doctor_desc: "سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.",
 
@@ -2157,9 +2263,9 @@ export const ar = {
     med_type_narcotic: "مخدرات (جدول أول)",
     med_type_narcotic_desc: "يتطلب حجز في مصحة",
     med_type_psych: "أدوية نفسية",
-    med_type_psych_desc: "يتطلب إشراف طبي",
+    med_type_psych_desc: "يتطلب إشراف طبي صارم",
     med_type_normal: "أدوية عامة",
-    med_type_normal_desc: "آمن للتخفيض الذاتي",
+    med_type_normal_desc: "يتطلب متابعة سريرية",
     blocked_title: "الدخول محظور",
     warning_title: "تنبيه طبي هام",
     med_form_title: "شكل الدواء",
@@ -2256,21 +2362,21 @@ export const ar = {
     support_team: "الدعم الفني",
     current_account: "حسابك الحالي",
 
-    // Scientific Modal (New)
-    sci_title: "تم بناء خطتك على أسس علمية",
-    sci_subtitle: "تعتمد هذه الخوارزمية على أحدث البروتوكولات الطبية العالمية لعام 2024.",
+    // Scientific Modal
+    sci_title: "تم بناء هذه الخطة على أسس علمية",
+    sci_subtitle: "هذه الخوارزمية تعتمد على البروتوكولات العالمية. يجب مراجعة الخطة مع طبيبك.",
     sci_principle_1_title: "التخفيض الزائدي (Hyperbolic Tapering)",
-    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ في الجرعات الصغيرة.",
+    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ.",
     sci_principle_2_title: "التكيف العصبي (Neuro-Adaptation)",
-    sci_principle_2_desc: "الخطة ليست ثابتة. النظام يحلل نومك ومزاجك يومياً ويقوم بتعديل سرعة التخفيض تلقائياً لحمايتك من الأعراض الانسحابية.",
+    sci_principle_2_desc: "النظام يتكيف مع مدخلاتك اليومية. إذا كنت تشعر بالتعب، سيقترح النظام تثبيت الجرعة.",
     sci_principle_3_title: "محاكاة المخزون (Inventory Optimization)",
-    sci_principle_3_desc: "تم حساب كل حبة متبقية لديك لضمان عدم انقطاع الدواء فجأة قبل الوصول لخط النهاية الآمن.",
+    sci_principle_3_desc: "حساب المسار الأكثر أماناً لضمان عدم نفاد الدواء قبل الوصول لخط النهاية.",
     sci_sources_title: "المصادر والمراجع العلمية:",
     sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
     sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "هذا النظام مصمم ليكون مساعداً، لكنه لا يستبدل استشارة طبيبك الخاص.",
-    sci_btn_understood: "فهمت، ابدأ الخطة",
+    sci_trust_msg: "هذا النظام هو أداة حسابية مساعدة، ولا يستبدل استشارة طبيبك الخاص.",
+    sci_btn_understood: "فهمت، اعرض المسودة",
 
     // Community & Inventory New Keys
     community_clinic: "عيادة الطبيب",
@@ -2538,7 +2644,7 @@ export const en = {
 export const ru = {
     // Auth
     welcome: "Добро пожаловать",
-    subtitle: "Нейро-научная система восстановления",
+    subtitle: "Научно-обоснованная поддержка восстановления",
     email: "Эл. почта",
     password: "Пароль",
     login_email: "Войти",
@@ -2546,7 +2652,7 @@ export const ru = {
     demo_account: "Демо-доступ",
     error_prefix: "Ошибка: ",
     or: "ИЛИ",
-    banned_msg: "Ваш аккаунт заблокирован. Свяжитесь с поддержкой.",
+    banned_msg: "Ваш аккаунт приостановлен. Свяжитесь с поддержкой.",
     
     // Sidebar & Nav
     nav_dashboard: "Главная",
@@ -2569,7 +2675,7 @@ export const ru = {
     days_left: "Дней осталось",
     status_stable: "Стабильно",
     safety_active: "Защита активна",
-    safety_desc: "Обнаружена нестабильность биометрии. Доза временно зафиксирована.",
+    safety_desc: "Обнаружена нестабильность биометрии. Доза временно зафиксирована. Пожалуйста, проконсультируйтесь с врачом.",
     freeze_plan_btn: "Заморозить (3 дня отдыха)",
     target_dose: "Целевая доза",
     documented: "Записано успешно",
@@ -2581,8 +2687,8 @@ export const ru = {
     step_1: "Фактическая доза",
     step_2: "Показатели",
     confirm_log: "Подтвердить и обновить",
-    algo_active: "Смарт-алгоритм активен",
-    algo_desc: "Система безопасного снижения на основе запасов.",
+    algo_active: "Смарт-движок активен",
+    algo_desc: "Система генерации черновика плана на основе безопасности.",
     recovery_path: "Прогноз восстановления",
     sos_button: "SOS",
     export_report: "Отчет для врача",
@@ -2591,14 +2697,14 @@ export const ru = {
     // Inventory
     inv_status_ok: "Запас достаточен",
     inv_status_low: "Низкий запас",
-    inv_alert_desc: "Текущий темп может истощить запасы до окончания курса. Рекомендуется замедлиться.",
+    inv_alert_desc: "Текущий темп может истощить запасы до окончания курса. Проконсультируйтесь с врачом.",
     inventory_title: "Инвентарь",
     boxes: "Полные упаковки",
     pills_per_box: "Шт. в упаковке",
     loose_pills: "Остаток (шт)",
     total_balance: "Общий баланс",
     current_habit: "Текущая доза",
-    analyze_plan: "Создать план",
+    analyze_plan: "Создать черновик плана",
     guest: "Гость",
 
     // Toasts
@@ -2626,13 +2732,13 @@ export const ru = {
     // SOS
     sos_title: "Протокол экстренной помощи",
     sos_phase_1_title: "СТОП.",
-    sos_phase_1_text: "Вы в безопасности. Это просто химия, это пройдет.",
+    sos_phase_1_text: "Вы в безопасности. Если это экстренная медицинская ситуация, звоните 112.",
     sos_btn_ground: "Далее",
     sos_phase_2_title: "Заземление",
     sos_phase_2_text: "Назовите 5 синих предметов вокруг.",
     sos_btn_next: "Готово",
     sos_phase_3_title: "Термический шок",
-    sos_phase_3_text: "Умойтесь очень холодной водой.",
+    sos_phase_3_text: "Умойтесь очень холодной водой для перезагрузки блуждающего нерва.",
     sos_btn_breathe: "Дыхание",
     sos_phase_4_title: "Дышите",
     sos_phase_4_subtitle: "Глубокий вдох... медленный выдох.",
@@ -2645,7 +2751,7 @@ export const ru = {
     settings_title: "Настройки системы",
     settings_subtitle: "Управление алгоритмом",
     pace_control: "Темп снижения",
-    pace_desc: "Вы можете изменить скорость в любой момент. Система пересчитает остатки.",
+    pace_desc: "Изменение скорости пересчитает потребность в запасах. Обсудите это с врачом.",
     pace_slow: "Медленно (Растянуть)",
     pace_balanced: "Сбалансированно",
     pace_fast: "Быстро (Интенсивно)",
@@ -2659,11 +2765,11 @@ export const ru = {
 
     // Onboarding & Roles
     onboard_title: "Добро пожаловать в Islam's Guide",
-    onboard_desc: "Пожалуйста, выберите цель использования системы.",
+    onboard_desc: "Эта платформа — инструмент поддержки, а не медицинская услуга. Выберите роль.",
     role_patient: "Пользователь / Пациент",
-    role_patient_desc: "Я хочу снизить дозу лекарств (с алгоритмом или врачом).",
+    role_patient_desc: "Я прохожу лечение под наблюдением врача.",
     role_doctor: "Врач / Терапевт",
-    role_doctor_desc: "Я хочу присоединиться как врач для наблюдения за пациентами.",
+    role_doctor_desc: "Я хочу присоединиться как врач для наблюдения за пациентами и создания планов.",
     
     // Doctor Registration
     doc_req_title: "Заявка на аккредитацию врача",
@@ -2679,7 +2785,7 @@ export const ru = {
     // Path Selection
     path_select_title: "Выберите путь лечения",
     path_algo: "Умный алгоритм",
-    path_algo_desc: "Я хочу, чтобы система автоматически рассчитала план на основе моих запасов.",
+    path_algo_desc: "Создать черновик графика на основе математического расчета запасов (требует одобрения врача).",
     path_doctor: "Наблюдение у врача",
     path_doctor_desc: "Я выберу врача на платформе и буду ждать назначения плана.",
 
@@ -2693,9 +2799,9 @@ export const ru = {
     med_type_narcotic: "Наркотические (Список I)",
     med_type_narcotic_desc: "Требуется стационар",
     med_type_psych: "Психиатрические",
-    med_type_psych_desc: "Требуется наблюдение врача",
+    med_type_psych_desc: "Строгий врачебный контроль",
     med_type_normal: "Общие препараты",
-    med_type_normal_desc: "Безопасно для самоснижения",
+    med_type_normal_desc: "Требуется клиническое наблюдение",
     blocked_title: "Доступ запрещен",
     warning_title: "Важное медицинское предупреждение",
     med_form_title: "Форма выпуска",
@@ -2792,21 +2898,21 @@ export const ru = {
     support_team: "Поддержка",
     current_account: "Текущий аккаунт",
 
-    // Scientific Modal (New)
+    // Scientific Modal
     sci_title: "Ваш план научно обоснован",
-    sci_subtitle: "Этот алгоритм основан на последних мировых медицинских протоколах 2024 года.",
+    sci_subtitle: "Этот алгоритм основан на глобальных медицинских протоколах. Проверьте его с врачом.",
     sci_principle_1_title: "Гиперболическое снижение",
-    sci_principle_1_desc: "Система снижает процент сокращения дозы по мере ее уменьшения. Это предотвращает «шок рецепторов», возникающий при резкой отмене малых доз.",
+    sci_principle_1_desc: "Система снижает процент сокращения дозы по мере ее уменьшения, предотвращая шок рецепторов.",
     sci_principle_2_title: "Нейроадаптация",
-    sci_principle_2_desc: "План не статичен. Система ежедневно анализирует ваш сон и настроение, автоматически регулируя скорость снижения для защиты от синдрома отмены.",
+    sci_principle_2_desc: "План адаптируется к вашим отчетам. Если вы чувствуете себя плохо, система предложит стабилизацию.",
     sci_principle_3_title: "Оптимизация запасов",
-    sci_principle_3_desc: "Каждая оставшаяся таблетка была учтена, чтобы гарантировать, что лекарство не закончится внезапно до достижения безопасного финиша.",
+    sci_principle_3_desc: "Рассчитывает наиболее безопасный путь, гарантируя, что лекарство не закончится внезапно.",
     sci_sources_title: "Научные источники и ссылки:",
     sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
     sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
     sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "Эта система разработана как помощник, но она не заменяет консультацию вашего лечащего врача.",
-    sci_btn_understood: "Понятно, начать план",
+    sci_trust_msg: "Эта система — вспомогательный инструмент расчета, она НЕ заменяет консультацию вашего врача.",
+    sci_btn_understood: "Я понимаю, перейти к черновику",
 
     // Community & Inventory New Keys
     community_clinic: "Клиника врача",
@@ -11175,36 +11281,48 @@ service cloud.firestore {
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     
+    <!-- Primary Meta Tags -->
     <title>Islam's Guide - رفيق التعافي الذكي</title>
-    <meta name="description" content="نظام ذكي للتعافي التدريجي الآمن، يجمع بين الخوارزميات والإشراف الطبي.">
-    <meta name="theme-color" content="#020617">
+    <meta name="title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta name="description" content="نظام ذكي ومجاني لدعم التعافي من الأدوية بأسلوب علمي، يجمع بين الخوارزميات الرياضية والإشراف الطبي لضمان الأمان والخصوصية." />
+    <meta name="keywords" content="recovery, tapering, medication, health, algorithm, addiction support, تعافي, صحة, دواء" />
+    <meta name="theme-color" content="#020617" />
 
-    <!-- Fonts -->
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://islam-guide.app/" />
+    <meta property="og:title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta property="og:description" content="ابدأ رحلة التعافي الآمنة اليوم. نظام يولد خطط انسحاب تدريجية بناءً على المخزون والمؤشرات الحيوية." />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://islam-guide.app/" />
+    <meta property="twitter:title" content="Islam's Guide - رفيق التعافي الذكي" />
+    <meta property="twitter:description" content="نظام ذكي لدعم التعافي من الأدوية بأسلوب علمي وآمن." />
+    <meta property="twitter:image" content="/og-image.png" />
+
+    <!-- Fonts (Optimized Loading) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS (CDN for quick prototyping/fallback, though build uses PostCSS) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-      body {
-        background-color: #020617;
-        color: #e2e8f0;
-        font-family: 'Tajawal', sans-serif;
-        overflow-x: hidden;
-      }
-      /* Custom Scrollbar Globally */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #0f172a; }
-      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    </style>
+    <!-- CSS is handled by Vite import in index.tsx -->
   </head>
-  <body>
+  <body class="bg-[#020617] text-slate-200 antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
     <div id="root"></div>
+    
+    <!-- Fallback for no-js -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; color: white; background: #0f172a; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h1 style="font-size: 2rem; margin-bottom: 1rem;">JavaScript Required</h1>
+        <p>عذراً، يتطلب هذا التطبيق تفعيل JavaScript ليعمل بشكل صحيح ويقوم بالحسابات الرياضية.</p>
+        <p>Please enable JavaScript to use this application.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
@@ -11216,6 +11334,7 @@ service cloud.firestore {
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import './index.css'; // استيراد ملف التصميم الذي يحتوي على Tailwind و Animations
 
 const rootElement = document.getElementById('root');
@@ -11226,7 +11345,9 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
 ```
@@ -11668,6 +11789,6 @@ export default defineConfig({
 ---
 
 ## 📊 Stats
-- Total Files: 56
-- Total Characters: 599134
-- Estimated Tokens: ~149.784 (GPT-4 Context)
+- Total Files: 57
+- Total Characters: 603715
+- Estimated Tokens: ~150.929 (GPT-4 Context)
