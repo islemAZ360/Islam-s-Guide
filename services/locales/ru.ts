@@ -234,6 +234,8 @@ export const ru = {
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
     cat_tip: "Советы",
+    cat_news: "Новости", // Added
+    cat_announcement: "Объявления", // Added
     cat_all: "Все",
     cancel_btn: "Отмена",
     read_more: "Читать далее",

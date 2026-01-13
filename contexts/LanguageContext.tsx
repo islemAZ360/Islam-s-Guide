@@ -42,8 +42,10 @@ export const LanguageProvider = ({ children }: { children?: React.ReactNode }) =
 
   // The translation function
   const t = (key: keyof typeof translations['en']) => {
-    // Fallback to English if key missing in current lang, then fallback to key string
-    return translations[language][key] || translations['en'][key] || key;
+    // FIX: Cast to 'any' to avoid TS7053 error when a key exists in 'en' but is missing in other languages (like 'ru')
+    // This allows the fallback mechanism to work correctly without blocking the build
+    const currentLangData = translations[language] as any;
+    return currentLangData[key] || translations['en'][key] || key;
   };
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
