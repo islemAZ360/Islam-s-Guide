@@ -68,7 +68,6 @@ service cloud.firestore {
         (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
       
-      // ✅ FIX: Explicitly allow owner to delete their doc
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
@@ -76,13 +75,14 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow delete: if isAdmin();
 
+      // ✅ FIX: Explicitly allow Admin to read ALL rooms
       allow read: if isSignedIn() && (
+        isAdmin() || 
         resource.data.isDoctorRoom == false ||
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
         (resource.data.isDoctorRoom == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      // ✅ FIX: Allow ANY signed-in user to create a room (was isApprovedDoctor only)
       allow create: if isSignedIn() && 
                     isValidString(incomingData().name, 3, 50);
       
@@ -90,7 +90,9 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
       match /messages/{msgId} {
+        // ✅ FIX: Admin can read messages in any room they can access
         allow read: if isSignedIn();
+        
         allow create: if isSignedIn() && 
                       isValidString(incomingData().text, 1, 1000) &&
                       incomingData().senderId == request.auth.uid;
@@ -106,13 +108,10 @@ service cloud.firestore {
     match /articles/{articleId} {
       allow read, write, delete: if isAdmin();
       
-      // Anyone can read published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
       
-      // Doctors can create
       allow create: if isApprovedDoctor();
                     
-      // Doctors can edit/delete THEIR OWN articles
       allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
     }
 
@@ -120,6 +119,7 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow read, write, delete: if isAdmin();
       
+      // User can read/update their own tickets
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow create: if isSignedIn() && 

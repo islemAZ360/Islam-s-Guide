@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    collection, addDoc, query, where, orderBy, onSnapshot, updateDoc, doc, deleteDoc 
+    collection, addDoc, query, where, orderBy, onSnapshot, updateDoc, doc, deleteDoc, arrayUnion 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
 import { 
     LifeBuoy, Send, CheckCircle, Lock, User, 
-    ChevronRight, Loader2, Mail, MessageSquareWarning, Plus, X, Inbox, Trash2, ShieldAlert
+    ChevronRight, Loader2, MessageSquareWarning, Inbox, Trash2, ShieldAlert, X
 } from 'lucide-react';
 
 // المكونات
@@ -38,16 +38,14 @@ export const SupportView = ({ user }: SupportViewProps) => {
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // -- 1. Fetch Data --
+    // -- 1. Fetch Tickets List (Sidebar) --
     useEffect(() => {
         if (!user.uid) return;
         
         let q;
         if (isAdmin) {
-            // Admin sees ALL tickets
             q = query(collection(db, "tickets"), orderBy("lastUpdate", "desc"));
         } else {
-            // User sees OWN tickets
             q = query(collection(db, "tickets"), where("userId", "==", user.uid), orderBy("lastUpdate", "desc"));
         }
         
@@ -57,16 +55,28 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 ...doc.data()
             } as Ticket));
             setTickets(fetchedTickets);
-            
-            // Sync active ticket if open
-            if (activeTicket) {
-                const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
-                if (updatedActive) setActiveTicket(updatedActive);
-            }
         });
         
         return () => unsubscribe();
-    }, [user.uid, isAdmin, activeTicket?.id]);
+    }, [user.uid, isAdmin]);
+
+    // -- 2. Fetch Active Ticket Details (Real-time Chat) --
+    // ✅ FIX: Dedicated listener for the active ticket ensures immediate updates when Admin replies
+    useEffect(() => {
+        if (!activeTicket?.id) return;
+
+        const ticketRef = doc(db, "tickets", activeTicket.id);
+        const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setActiveTicket({ id: docSnap.id, ...docSnap.data() } as Ticket);
+            } else {
+                // Ticket deleted
+                setActiveTicket(null);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [activeTicket?.id]);
 
     // Auto-scroll
     useEffect(() => {
@@ -77,7 +87,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     }, [activeTicket?.messages]);
 
-    // -- 2. Actions --
+    // -- 3. Actions --
     
     const sendComplaint = async () => {
         if (!user.uid) return;
@@ -105,7 +115,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             setShowCreateModal(false);
             setNewSubject("");
             setNewMessage("");
-            alert(language === 'ar' ? "تم إرسال الشكوى بنجاح." : "Complaint sent successfully.");
+            alert(language === 'ar' ? "تم إرسال شكواك بنجاح." : "Complaint sent successfully.");
         } catch (e) {
             console.error("Error creating ticket:", e);
             alert("Failed to send complaint.");
@@ -129,22 +139,23 @@ export const SupportView = ({ user }: SupportViewProps) => {
 
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
-            const currentMessages = activeTicket.messages || [];
             
             await updateDoc(ticketRef, {
-                messages: [...currentMessages, newMsg],
+                messages: arrayUnion(newMsg),
                 lastUpdate: Date.now(),
                 status: 'open' 
             });
             setNewMessage("");
         } catch (e) {
             console.error("Error sending reply:", e);
+            alert("Failed to send reply. Check connection.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const toggleResolve = async () => {
+        if (!isAdmin) return; 
         if (!activeTicket || !activeTicket.id) return;
         const newStatus = activeTicket.status === 'resolved' ? 'open' : 'resolved';
         try {
@@ -152,9 +163,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
         } catch(e) { console.error(e); }
     };
 
-    // --- NEW: Delete Ticket (Admin) ---
     const handleDeleteTicket = async (ticketId: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent opening the ticket
+        e.stopPropagation(); 
         if (!window.confirm(language === 'ar' ? "حذف هذه التذكرة نهائياً؟" : "Delete this ticket permanently?")) return;
         
         try {
@@ -166,7 +176,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     };
 
-    // --- NEW: Delete User (Admin) ---
     const handleDeleteSender = async () => {
         if (!activeTicket || !activeTicket.userId) return;
         const confirmMsg = language === 'ar' 
@@ -175,9 +184,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             
         if (window.confirm(confirmMsg)) {
             try {
-                // Delete the user document
                 await deleteDoc(doc(db, "users", activeTicket.userId));
-                // Optionally delete the ticket too or mark it
                 alert(language === 'ar' ? "تم حذف المستخدم." : "User deleted.");
                 setActiveTicket(null);
             } catch (e) {
@@ -241,7 +248,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                                         activeTicket?.id === ticket.id 
                                         ? 'bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-900/20' 
-                                        : 'bg-slate-950/30 border-transparent hover:bg-slate-800 hover:border-white/5'
+                                        : 'bg-slate-900/30 border-transparent hover:bg-slate-800 hover:border-white/5'
                                     }`}
                                 >
                                     <div className="flex justify-between items-start mb-3">
@@ -265,7 +272,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     </div>
                                 </button>
                                 
-                                {/* ADMIN DELETE TICKET BUTTON */}
                                 {isAdmin && ticket.id && (
                                     <button 
                                         onClick={(e) => handleDeleteTicket(ticket.id!, e)}
@@ -309,7 +315,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         <div className="flex items-center gap-2 mt-1">
                                             <p className="text-xs text-slate-400">{activeTicket.userEmail}</p>
                                             <span className="text-slate-600">|</span>
-                                            {/* DELETE USER BUTTON */}
                                             <button 
                                                 onClick={handleDeleteSender}
                                                 className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
@@ -320,10 +325,17 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     )}
                                 </div>
                                 <div>
-                                    <button onClick={toggleResolve} className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 transition-colors ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white'}`}>
-                                        {activeTicket.status === 'resolved' ? <CheckCircle size={14}/> : null}
-                                        {activeTicket.status === 'resolved' ? (language === 'ar' ? 'تم الحل' : 'Resolved') : (language === 'ar' ? 'تحديد كمحلول' : 'Mark Resolved')}
-                                    </button>
+                                    {isAdmin ? (
+                                        <button onClick={toggleResolve} className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 transition-colors ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white'}`}>
+                                            {activeTicket.status === 'resolved' ? <CheckCircle size={14}/> : null}
+                                            {activeTicket.status === 'resolved' ? (language === 'ar' ? 'تم الحل' : 'Resolved') : (language === 'ar' ? 'تحديد كمحلول' : 'Mark Resolved')}
+                                        </button>
+                                    ) : (
+                                        <div className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800/50 border-white/5 text-slate-500'}`}>
+                                            {activeTicket.status === 'resolved' && <CheckCircle size={14}/>}
+                                            {getStatusLabel(activeTicket.status)}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -334,7 +346,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                 aria-live="polite"
                             >
                                 {activeTicket.messages?.map((msg, idx) => {
-                                    // Logic: "Me" is always on the right side.
                                     const isMe = (isAdmin && msg.isAdmin) || (!isAdmin && !msg.isAdmin);
                                     
                                     const senderLabel = msg.isAdmin 
@@ -368,11 +379,11 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         value={newMessage}
                                         onChange={e => setNewMessage(e.target.value)}
                                         onKeyDown={e => e.key === 'Enter' && !isSubmitting && sendReply()}
-                                        disabled={isSubmitting || activeTicket.status === 'resolved'}
+                                        disabled={isSubmitting || (activeTicket.status === 'resolved' && !isAdmin)}
                                     />
                                     <button 
                                         onClick={sendReply} 
-                                        disabled={!newMessage.trim() || isSubmitting || activeTicket.status === 'resolved'}
+                                        disabled={!newMessage.trim() || isSubmitting || (activeTicket.status === 'resolved' && !isAdmin)}
                                         className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     >
                                         {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}

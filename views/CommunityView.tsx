@@ -24,6 +24,9 @@ interface CommunityViewProps {
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const { t, dir, language } = useLanguage();
     
+    // Check for Admin (Role OR Email Fallback)
+    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'admin@islamguide.com';
+
     // -- State --
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
     const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -44,27 +47,53 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    // 1. Fetch Rooms
+    // 1. Fetch Rooms (Improved Logic)
     useEffect(() => {
         if (!currentUser.uid) return;
-        const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
+        
+        // FIX: Removed 'orderBy' from the Firestore query to avoid "Missing Index" errors which hide data.
+        // We will sort client-side instead. This ensures all data arrives first.
+        const q = collection(db, "rooms");
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const allRooms: ChatRoom[] = [];
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
+            // Client-side Sort (Newest First)
+            allRooms.sort((a, b) => b.createdAt - a.createdAt);
+            
             const filteredRooms = allRooms.filter(room => {
-                // ADMIN SEES ALL ROOMS
-                if (currentUser.role === 'admin') return true;
+                // 1. ADMIN SEES EVERYTHING (Absolute Bypass)
+                if (isAdmin) return true;
                 
-                if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
-                if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
-                if (currentUser.role === 'normal_user') return !room.isDoctorRoom;
-                return false;
+                // 2. Patient Logic: Sees assigned doctor room OR public rooms (optional choice, usually restricted)
+                if (currentUser.role === 'patient') {
+                    // Patients specifically see their doctor's room
+                    if (room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId) return true;
+                    // AND Public rooms? (Depending on business logic. Assuming blocked for focus, but let's allow public if user created it?)
+                    // For now, strict: Only Doctor Room. 
+                    // EDIT: Users complained they want to see rooms. Let's allow Public rooms for everyone? 
+                    // Let's stick to the previous strict logic but ensure it works.
+                    return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
+                }
+                
+                // 3. Doctor Logic: Sees their own room
+                if (currentUser.role === 'doctor') {
+                    return room.doctorId === currentUser.uid;
+                }
+                
+                // 4. Normal User Logic: Sees Public Rooms (isDoctorRoom == false/undefined)
+                if (currentUser.role === 'normal_user') {
+                    return !room.isDoctorRoom;
+                }
+                
+                // Fallback: If it's a public room, show it.
+                return !room.isDoctorRoom;
             });
             setRooms(filteredRooms);
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, isAdmin]);
 
     // 2. Fetch Leaderboard
     useEffect(() => {
@@ -132,7 +161,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 creatorName: currentUser.name || (language === 'ar' ? "مجهول" : "Unknown"),
                 language: language,
                 createdAt: Date.now(),
-                isDoctorRoom: isDoctor,
+                // FIX: Ensure this is boolean false for users, not undefined
+                isDoctorRoom: isDoctor ? true : false, 
                 doctorId: isDoctor ? currentUser.uid : null
             });
             setNewRoomName("");
@@ -193,16 +223,16 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
 
     // Admin: Delete User from Leaderboard
     const handleAdminDeleteUser = async (targetUid: string, targetName: string) => {
-        if (currentUser.role !== 'admin') return;
+        if (!isAdmin) return;
         
         const confirmMsg = language === 'ar' 
-            ? `تحذير: هل أنت متأكد من حذف المستخدم "${targetName}" نهائياً من قاعدة البيانات؟ سيختفي من لوحة المتصدرين فوراً.` 
+            ? `تحذير: هل أنت متأكد من حذف المستخدم "${targetName}" نهائياً؟ سيختفي من لوحة المتصدرين فوراً.` 
             : `Warning: Are you sure you want to permanently delete user "${targetName}"? They will be removed from the leaderboard immediately.`;
 
         if (window.confirm(confirmMsg)) {
             try {
                 await deleteDoc(doc(db, "users", targetUid));
-                // Leaderboard will update automatically via onSnapshot
+                alert(language === 'ar' ? "تم الحذف." : "Deleted.");
             } catch (e) {
                 console.error("Error deleting user:", e);
                 alert(language === 'ar' ? "حدث خطأ أثناء الحذف." : "Error deleting user.");
@@ -223,7 +253,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 timestamp: Date.now(),
                 role: currentUser.role,
                 isDoctor: currentUser.role === 'doctor',
-                isAdmin: currentUser.role === 'admin'
+                isAdmin: isAdmin
             });
             setNewMessage("");
             scrollToBottom();
@@ -324,18 +354,17 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
                                     </div>
                                     
-                                    {/* 🛡️ ADMIN DELETE BUTTON - VISIBLE & FUNCTIONAL */}
-                                    {currentUser.role === 'admin' && (
+                                    {/* 🛡️ ADMIN DELETE BUTTON - EXTREMELY VISIBLE & GUARANTEED */}
+                                    {isAdmin && (
                                         <button 
                                             onClick={(e) => {
-                                                e.stopPropagation(); // Prevent any parent clicks
+                                                e.stopPropagation(); 
                                                 if (user.uid) handleAdminDeleteUser(user.uid, user.name);
                                             }}
-                                            className="z-50 p-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg shadow-rose-900/40 border border-rose-500 transition-transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-rose-500 ml-2"
-                                            title={language === 'ar' ? 'حذف هذا المستخدم' : 'Delete this user'}
-                                            aria-label={language === 'ar' ? 'حذف المستخدم' : 'Delete User'}
+                                            className="relative z-50 ml-4 p-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg border border-rose-400/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
+                                            title={language === 'ar' ? 'حذف هذا المستخدم' : 'Delete User'}
                                         >
-                                            <Trash2 size={18} strokeWidth={2.5} />
+                                            <Trash2 size={20} strokeWidth={2.5} />
                                         </button>
                                     )}
                                 </div>
@@ -387,7 +416,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {room.isDoctorRoom ? <Stethoscope size={24} /> : <MessageCircle size={24} />}
                                         </div>
                                         
-                                        {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
+                                        {(currentUser.uid === room.createdBy || isAdmin) && (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -539,7 +568,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {msg.text}
                                             
                                             {/* ADMIN DELETE BUTTON */}
-                                            {currentUser.role === 'admin' && (
+                                            {isAdmin && (
                                                 <button 
                                                     onClick={() => msg.id && handleDeleteMessage(msg.id)}
                                                     className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 scale-75 hover:scale-90"

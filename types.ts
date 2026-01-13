@@ -20,7 +20,7 @@ export interface DoctorProfileData {
   clinicLocation?: string;  
   phoneNumber: string;      
   bio: string;              
-  photoUrl?: string | null;        
+  photoUrl?: string | null; // Kept for backward compatibility or specific doctor branding
   accountStatus: DoctorAccountStatus; 
   
   // Rejection & Resubmission Logic
@@ -49,6 +49,7 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
+  photoUrl?: string | null; // Added for all users
   
   // Physical Stats (New for Safety Algo)
   age?: number;
@@ -70,7 +71,8 @@ export interface UserProfile {
   speedModifier?: number; 
   
   isBanned?: boolean;
-  lastActive?: string; 
+  lastActive?: string;
+  createdAt?: string; 
   progress?: number;   
   streak?: number;     
   

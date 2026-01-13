@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
-  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity, Info
+  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity, Info, Ruler, Weight, Calendar
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
@@ -30,6 +30,7 @@ interface OnboardingViewProps {
 }
 
 type OnboardingStep = 
+  | 'MISSING_DATA' 
   | 'ROLE_SELECT' 
   | 'DOCTOR_FORM' 
   | 'USER_PATH_SELECT' 
@@ -72,6 +73,13 @@ export const OnboardingView = ({
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
   const [loading, setLoading] = useState(false);
   
+  // Data Completion State
+  const [missingData, setMissingData] = useState({
+      age: userProfile.age?.toString() || '',
+      weight: userProfile.weight?.toString() || '',
+      height: userProfile.height?.toString() || ''
+  });
+
   // Doctor States
   const [doctorName, setDoctorName] = useState(userProfile.name || '');
   const [doctorForm, setDoctorForm] = useState<Partial<DoctorProfileData>>({
@@ -108,9 +116,13 @@ export const OnboardingView = ({
       return (b * p) + l;
   }, [localInv]);
 
-  // Load existing data if resubmitting
+  // Check for missing data on initial load
   useEffect(() => {
-      if (userProfile.role === 'doctor' && userProfile.doctorData) {
+      // If user comes from Google, they might not have age/weight/height
+      if (!userProfile.age || !userProfile.weight || !userProfile.height) {
+          setStep('MISSING_DATA');
+      } else if (userProfile.role === 'doctor' && userProfile.doctorData) {
+          // If returning doctor, pre-fill and go to form
           setDoctorName(userProfile.name);
           setDoctorForm({
               specialty: userProfile.doctorData.specialty,
@@ -121,7 +133,7 @@ export const OnboardingView = ({
           });
           setStep('DOCTOR_FORM');
       }
-  }, [userProfile]);
+  }, []); // Run once on mount
 
   // Sync Inventory to Local State ONLY when entering the step
   useEffect(() => {
@@ -136,6 +148,34 @@ export const OnboardingView = ({
   }, [step]); 
 
   // --- Actions ---
+
+  const handleSaveMissingData = async () => {
+      const age = parseInt(missingData.age);
+      const weight = parseFloat(missingData.weight);
+      const height = parseFloat(missingData.height);
+
+      if (!age || !weight || !height) {
+          alert(language === 'ar' ? "يرجى تعبئة جميع البيانات الصحية" : "Please fill all health data");
+          return;
+      }
+
+      setLoading(true);
+      try {
+          const updatedProfile = { ...userProfile, age, weight, height };
+          // Save to Firestore
+          // FIX: Add check for auth existence
+          if (auth && auth.currentUser) {
+              await setDoc(doc(db, "users", auth.currentUser.uid), updatedProfile, { merge: true });
+          }
+          // Update local state context
+          setUserProfile(updatedProfile);
+          setStep('ROLE_SELECT');
+      } catch (e) {
+          console.error("Error saving missing data:", e);
+          alert("Error saving data. Check connection.");
+      }
+      setLoading(false);
+  };
 
   const handleDoctorSubmit = async () => {
       if (!auth || !auth.currentUser) return;
@@ -303,11 +343,82 @@ export const OnboardingView = ({
 
   // --- RENDERS ---
 
+  if (step === 'MISSING_DATA') {
+      return (
+          <OnboardingWrapper dir={dir}>
+              {handleLogout && <NavBackBtn onClick={handleLogout} dir={dir} />}
+              <div className="max-w-lg w-full animate-in zoom-in relative z-10 pt-20 text-center">
+                  <h1 className="text-3xl font-black text-white mb-4">
+                      {language === 'ar' ? 'إكمال البيانات' : 'Complete Profile'}
+                  </h1>
+                  <p className="text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
+                      {language === 'ar' 
+                          ? 'يرجى إدخال بياناتك الصحية لنتمكن من تخصيص خطة التعافي بدقة وضمان سلامتك.'
+                          : 'Please enter your health metrics to personalize your recovery plan safely.'}
+                  </p>
+
+                  <Card className="!bg-slate-900/80 border-white/10 shadow-2xl backdrop-blur-xl space-y-6 text-left">
+                      <div className="space-y-5">
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'العمر' : 'Age'}</label>
+                              <div className="relative">
+                                  <Calendar className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                  <input 
+                                      type="number"
+                                      min="18"
+                                      max="99"
+                                      className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                      placeholder="0"
+                                      value={missingData.age}
+                                      onChange={e => setMissingData({...missingData, age: e.target.value})}
+                                  />
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="group">
+                                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'الوزن (kg)' : 'Weight'}</label>
+                                  <div className="relative">
+                                      <Weight className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                      <input 
+                                          type="number"
+                                          min="30"
+                                          className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                          placeholder="0"
+                                          value={missingData.weight}
+                                          onChange={e => setMissingData({...missingData, weight: e.target.value})}
+                                      />
+                                  </div>
+                              </div>
+                              <div className="group">
+                                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'الطول (cm)' : 'Height'}</label>
+                                  <div className="relative">
+                                      <Ruler className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                      <input 
+                                          type="number"
+                                          min="100"
+                                          className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                          placeholder="0"
+                                          value={missingData.height}
+                                          onChange={e => setMissingData({...missingData, height: e.target.value})}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <Button onClick={handleSaveMissingData} variant="primary" className="w-full py-4 text-lg" disabled={loading}>
+                          {loading ? '...' : (language === 'ar' ? 'حفظ ومتابعة' : 'Save & Continue')}
+                      </Button>
+                  </Card>
+              </div>
+          </OnboardingWrapper>
+      );
+  }
+
   if (step === 'ROLE_SELECT') {
       return (
         <OnboardingWrapper dir={dir}>
              {handleLogout && <NavBackBtn onClick={handleLogout} dir={dir} />}
-             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10">
+             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10 pt-10">
                 <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('onboard_title')}</h1>
                 <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
              </header>

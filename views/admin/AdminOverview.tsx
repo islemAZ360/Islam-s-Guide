@@ -1,47 +1,101 @@
-import React, { useMemo } from 'react';
-import { Lock, CheckCircle, Users, Activity, AlertCircle, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Lock, CheckCircle, Users, Activity, Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { collection, query, where, getCountFromServer, getDocs, limit, orderBy } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { UserProfile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AdminOverviewProps {
-    users: UserProfile[];
     setActiveTab: (tab: any) => void;
 }
 
-export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
+export const AdminOverview = ({ setActiveTab }: AdminOverviewProps) => {
     const { t, language } = useLanguage();
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        approvedDocs: 0,
+        recovered: 0,
+        pendingDocs: 0
+    });
+    const [pendingDocsList, setPendingDocsList] = useState<UserProfile[]>([]);
 
-    const doctorsList = users.filter(u => u.role === 'doctor');
-    const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
-    const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
-    const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
-    const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                // 1. Parallel Count Fetching (Very Fast)
+                const usersColl = collection(db, 'users');
+                
+                const [usersSnap, doctorsSnap, recoveredSnap, pendingSnap] = await Promise.all([
+                    // Total Patients
+                    getCountFromServer(query(usersColl, where('role', 'in', ['normal_user', 'patient']))),
+                    // Approved Doctors
+                    getCountFromServer(query(usersColl, where('role', '==', 'doctor'), where('doctorData.accountStatus', '==', 'approved'))),
+                    // Recovered Patients
+                    getCountFromServer(query(usersColl, where('patientData.isRecovered', '==', true))),
+                    // Pending Doctors (Count)
+                    getCountFromServer(query(usersColl, where('role', '==', 'doctor'), where('doctorData.accountStatus', '==', 'pending')))
+                ]);
 
-    const stats = useMemo(() => {
-        return [
-            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1', icon: Users },
-            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981', icon: CheckCircle },
-            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b', icon: Activity },
-            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e', icon: Lock },
-        ];
-    }, [users, t, normalUsers.length, approvedDoctors.length, recoveredUsers.length, pendingDoctors.length]);
+                // 2. Fetch small list of pending doctors for UI (Limit 5)
+                const pendingDocsQuery = query(
+                    usersColl, 
+                    where('role', '==', 'doctor'), 
+                    where('doctorData.accountStatus', '==', 'pending'),
+                    limit(5)
+                );
+                const pendingDocsSnapshot = await getDocs(pendingDocsQuery);
+                const pendingDocsData = pendingDocsSnapshot.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
 
-    const pieData = [
-        { name: 'Active', value: Math.max(0, normalUsers.length - recoveredUsers.length), color: '#6366f1' },
-        { name: 'Recovered', value: recoveredUsers.length, color: '#10b981' },
+                setStats({
+                    totalUsers: usersSnap.data().count,
+                    approvedDocs: doctorsSnap.data().count,
+                    recovered: recoveredSnap.data().count,
+                    pendingDocs: pendingSnap.data().count
+                });
+                setPendingDocsList(pendingDocsData);
+
+            } catch (error) {
+                console.error("Error fetching admin stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    const statItems = [
+        { name: t('stat_total_patients'), value: stats.totalUsers, color: '#6366f1', icon: Users },
+        { name: t('stat_approved_docs'), value: stats.approvedDocs, color: '#10b981', icon: CheckCircle },
+        { name: t('stat_recovered'), value: stats.recovered, color: '#f59e0b', icon: Activity },
+        { name: t('pending_approvals'), value: stats.pendingDocs, color: '#f43f5e', icon: Lock },
     ];
 
-    const recoveryRate = normalUsers.length > 0 ? Math.round((recoveredUsers.length / normalUsers.length) * 100) : 0;
+    const pieData = [
+        { name: 'Active', value: Math.max(0, stats.totalUsers - stats.recovered), color: '#6366f1' },
+        { name: 'Recovered', value: stats.recovered, color: '#10b981' },
+    ];
+
+    const recoveryRate = stats.totalUsers > 0 ? Math.round((stats.recovered / stats.totalUsers) * 100) : 0;
+
+    if (loading) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Stats Grid */}
             <section aria-label={language === 'ar' ? 'الإحصائيات العامة' : 'General Statistics'}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {stats.map((stat, idx) => (
+                    {statItems.map((stat, idx) => (
                         <div key={idx} className="relative group">
                             <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl blur-xl opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                             <Card className="relative bg-slate-900/80 border-white/5 p-6 flex flex-col justify-between h-32 overflow-hidden group-hover:border-white/10 transition-all">
@@ -54,7 +108,7 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                         {stat.value}
                                     </div>
                                 </div>
-                                <div className="h-1 w-full bg-slate-800 rounded-full mt-4 overflow-hidden" role="progressbar" aria-valuenow={70} aria-valuemin={0} aria-valuemax={100} aria-label="Indicator">
+                                <div className="h-1 w-full bg-slate-800 rounded-full mt-4 overflow-hidden">
                                     <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: '70%', backgroundColor: stat.color }}></div>
                                 </div>
                             </Card>
@@ -74,9 +128,9 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                         
                         <div className="flex-1 w-full min-h-[250px] z-10" aria-hidden="true">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <BarChart data={statItems} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                     <defs>
-                                        {stats.map((entry, index) => (
+                                        {statItems.map((entry, index) => (
                                             <linearGradient key={`grad-${index}`} id={`color-${index}`} x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor={entry.color} stopOpacity={0.8}/>
                                                 <stop offset="95%" stopColor={entry.color} stopOpacity={0.1}/>
@@ -90,33 +144,12 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                         itemStyle={{color: '#fff', fontWeight: 'bold'}}
                                     />
                                     <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={50} animationDuration={1500}>
-                                        {stats.map((entry, index) => (
+                                        {statItems.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={`url(#color-${index})`} />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
-                        </div>
-
-                        {/* Hidden Table for Screen Readers */}
-                        <div className="sr-only">
-                            <table>
-                                <caption>{language === 'ar' ? 'جدول نظرة عامة على الإحصائيات' : 'Overview Statistics Table'}</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{language === 'ar' ? 'الفئة' : 'Category'}</th>
-                                        <th scope="col">{language === 'ar' ? 'العدد' : 'Count'}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.map((stat, i) => (
-                                        <tr key={i}>
-                                            <td>{stat.name}</td>
-                                            <td>{stat.value}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
                         </div>
                     </Card>
                 </section>
@@ -128,14 +161,14 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                             <h3 id="pending-title" className="text-white font-bold mb-4 flex items-center gap-2">
                                 <Lock size={18} className="text-amber-500" aria-hidden="true"/> {t('pending_approvals')}
                             </h3>
-                            {pendingDoctors.length === 0 ? (
+                            {pendingDocsList.length === 0 ? (
                                 <div className="text-center text-slate-500 py-8 flex flex-col items-center justify-center h-full flex-1">
                                     <CheckCircle size={40} className="mb-3 text-emerald-500/20" aria-hidden="true"/>
                                     <p className="text-sm">All clear! No pending requests.</p>
                                 </div>
                             ) : (
                                 <ul className="space-y-3 flex-1">
-                                    {pendingDoctors.slice(0, 3).map(doc => (
+                                    {pendingDocsList.map(doc => (
                                         <li key={doc.uid} className="flex justify-between items-center bg-slate-950/50 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-all group">
                                             <div>
                                                 <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">{doc.name}</div>
@@ -151,13 +184,13 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                             </Button>
                                         </li>
                                     ))}
-                                    {pendingDoctors.length > 3 && (
+                                    {stats.pendingDocs > 5 && (
                                         <li className="text-center pt-2">
                                             <button 
                                                 onClick={() => setActiveTab('doctors')} 
                                                 className="text-xs text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto"
                                             >
-                                                + {pendingDoctors.length - 3} more <ArrowRight size={12} />
+                                                + {stats.pendingDocs - 5} more <ArrowRight size={12} />
                                             </button>
                                         </li>
                                     )}
@@ -196,11 +229,6 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <span className="text-2xl font-black text-white">{recoveryRate}%</span>
                                 <span className="text-[9px] text-slate-500 uppercase tracking-widest">Recovery Rate</span>
-                             </div>
-
-                             {/* Hidden Description for Recovery Rate */}
-                             <div className="sr-only">
-                                 {language === 'ar' ? `معدل التعافي: ${recoveryRate} بالمائة.` : `Recovery Rate: ${recoveryRate} percent.`}
                              </div>
                         </Card>
                     </section>

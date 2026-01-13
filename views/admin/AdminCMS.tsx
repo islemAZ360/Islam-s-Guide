@@ -1,19 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, FileText, Image, X, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, FileText, Image, X, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { publishArticleService } from '../../services/adminServices';
 import { Article, ArticleCategory } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useData } from '../../contexts/DataContext';
 
-interface AdminCMSProps {
-    articles: Article[];
-    publishArticle: (article: any) => void;
-    deleteArticle: (id: string) => void;
-}
-
-export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSProps) => {
+export const AdminCMS = () => {
     const { t, language } = useLanguage();
+    const { userProfile } = useData(); // Get admin profile for publishing
+    
+    // -- Data State --
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // -- Modal State --
     const [showArticleModal, setShowArticleModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -22,6 +27,25 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
     const modalRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
+    // -- Fetch Data (Server-Side) --
+    const fetchArticles = async () => {
+        setLoading(true);
+        try {
+            const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+            const snapshot = await getDocs(q);
+            const fetchedData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+            setArticles(fetchedData);
+        } catch (e) {
+            console.error("Error fetching articles:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchArticles();
+    }, []);
+
     useEffect(() => {
         if (showArticleModal) {
             setTimeout(() => titleInputRef.current?.focus(), 100);
@@ -29,7 +53,10 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
         setErrorMsg(null);
     }, [showArticleModal]);
 
-    const handlePublish = () => {
+    // -- Actions --
+    const handlePublish = async () => {
+        if (!userProfile) return;
+
         if (!newArticle.title.trim() || newArticle.title.length < 5) {
             setErrorMsg(language === 'ar' ? "العنوان قصير جداً (5 أحرف على الأقل)." : "Title too short (min 5 chars).");
             return;
@@ -39,9 +66,31 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             return;
         }
 
-        publishArticle(newArticle);
-        setShowArticleModal(false);
-        setNewArticle({ title: '', content: '', category: 'tip' });
+        // FIX: Add isPublished: true to satisfy the type definition
+        const result = await publishArticleService(userProfile, {
+            ...newArticle,
+            isPublished: true
+        });
+
+        if (result.success) {
+            setShowArticleModal(false);
+            setNewArticle({ title: '', content: '', category: 'tip' as ArticleCategory });
+            fetchArticles(); // Refresh list
+        } else {
+            setErrorMsg(result.error || "Failed to publish");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذا المقال؟" : "Are you sure you want to delete this article?")) return;
+        
+        try {
+            await deleteDoc(doc(db, "articles", id));
+            setArticles(prev => prev.filter(a => a.id !== id));
+        } catch (e) {
+            console.error("Delete error", e);
+            alert("Failed to delete article");
+        }
     };
 
     const getCategoryColor = (cat: string) => {
@@ -56,6 +105,14 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
     };
 
     const categories: ArticleCategory[] = ['medical', 'motivation', 'tip', 'news', 'announcement'];
+
+    if (loading) {
+        return (
+            <div className="flex h-64 items-center justify-center text-indigo-400">
+                <Loader2 size={32} className="animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <section aria-labelledby="cms-heading" className="animate-in fade-in space-y-8">
@@ -80,7 +137,6 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                     aria-modal="true"
                     aria-labelledby="modal-title"
                  >
-                     {/* Wrapper div for ref to avoid functional component issue */}
                      <div className="w-full max-w-2xl relative outline-none" tabIndex={-1} ref={modalRef}>
                          <Card className="!bg-slate-900 border-white/10 shadow-2xl rounded-[2rem] overflow-hidden">
                              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -135,7 +191,6 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                                         : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'
                                                     }`}
                                                  >
-                                                     {/* Using translation keys if available or fallback to uppercase */}
                                                      {t(`cat_${cat}` as any) || cat.toUpperCase()}
                                                  </button>
                                              ))}
@@ -177,7 +232,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             ) : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
                     {articles.map(art => (
-                        <li key={art.id} className="group relative bg-slate-900/60 backdrop-blur-md border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-indigo-500/10 flex flex-col h-full focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-slate-950">
+                        <li key={art.id} className="group relative bg-slate-900/60 backdrop-blur-md border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-indigo-500/10 flex flex-col h-full">
                             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] pointer-events-none"></div>
                             
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -185,7 +240,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                     {t(`cat_${art.category}` as any) || art.category.toUpperCase()}
                                 </Badge>
                                 <button 
-                                    onClick={() => art.id && deleteArticle(art.id)}
+                                    onClick={() => art.id && handleDelete(art.id)}
                                     className="text-slate-600 hover:text-rose-500 p-2 hover:bg-rose-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 outline-none focus:ring-2 focus:ring-rose-500"
                                     title="Delete Article"
                                     aria-label={`Delete article: ${art.title}`}

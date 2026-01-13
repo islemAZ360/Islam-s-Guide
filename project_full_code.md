@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 13/1/2026, 22:10:38
+Generated: 14/1/2026, 01:11:05
 
 ## 🌳 Project Structure
 ```text
@@ -1805,7 +1805,7 @@ const DEMO_LOGS: DailyLog[] = Array.from({ length: 5 }).map((_, i) => ({
 
 export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, isDemoMode, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // -- Data State --
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -1833,7 +1833,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     // B. Handle Demo Mode (Local Data Only)
     if (isDemoMode) {
         setDataLoading(true);
-        // Simulate network delay for realism
         setTimeout(() => {
             setUserProfile(DEMO_PROFILE);
             setInventory(DEMO_INVENTORY);
@@ -1847,7 +1846,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
     // C. Handle Authenticated User (Firestore Sync)
     if (currentUser) {
-        // Load pending syncs from local storage in case of previous crash
         const savedLogs = localStorage.getItem('pending_sync_logs');
         if (savedLogs) {
             try {
@@ -1864,13 +1862,10 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 const fetchedProfile = { ...data, uid: currentUser.uid } as UserProfile;
-                
-                // Merge nested profile data if structured that way
                 if (data.userProfile) Object.assign(fetchedProfile, data.userProfile);
 
                 setUserProfile(fetchedProfile);
 
-                // Only update local state from cloud if we are not currently "dirty" (editing)
                 if (!isDirty.current) {
                     if (data.plan) setPlan(data.plan);
                     if (data.logs) setLogs(data.logs);
@@ -1883,7 +1878,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                    logout();
                 }
             } else {
-                // New User Skeleton (Doc doesn't exist yet)
                 setUserProfile({
                     uid: currentUser.uid,
                     email: currentUser.email || '',
@@ -1896,7 +1890,6 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
             setDataLoading(false);
         }, (error) => {
             console.error("Error fetching user data:", error);
-            // Don't block UI on error, just stop loading
             setDataLoading(false);
         });
 
@@ -1906,19 +1899,14 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 2. Sync Logic (Debounced Write)
   useEffect(() => {
-    // Mark as dirty when data changes locally
     if (userProfile?.setupComplete) {
         isDirty.current = true;
     }
 
-    // Local Storage Backup (Always active)
     if (userProfile) localStorage.setItem('taper_profile', JSON.stringify(userProfile));
     if (plan.length > 0) localStorage.setItem('taper_plan', JSON.stringify(plan));
     
-    // Cloud Sync (Only for real users)
     if (currentUser && !isDemoMode && userProfile?.setupComplete) {
-        
-        // Skip sync for doctors who don't have doctor data set up yet
         if (userProfile.role === 'doctor' && !userProfile.doctorData) return;
 
         const timeoutId = setTimeout(async () => {
@@ -1945,15 +1933,13 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 await setDoc(doc(db, "users", currentUser.uid), updateData, { merge: true });
-                
                 isDirty.current = false;
 
             } catch(e) {
-                console.error("Cloud sync failed (offline or permission)", e);
+                console.error("Cloud sync failed", e);
             }
-        }, 3000); // 3 seconds debounce
+        }, 3000);
 
-        // Safety net for closing tab
         const handleBeforeUnload = () => {
             if (isDirty.current) {
                 localStorage.setItem('pending_sync_logs', JSON.stringify(logs));
@@ -1974,30 +1960,43 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const resetAllData = async () => {
-      // Intent check is now handled by the UI (SettingsView) strict input
-      // We assume if this function is called, the user has already proven intent.
-      
       try {
           setDataLoading(true);
           
           if (currentUser && !isDemoMode) {
-              // Delete from Firestore
+              // 1. Delete from Firestore (Data Removal)
+              // This is critical: Removing this doc removes them from Leaderboard/Search instantly.
               await deleteDoc(doc(db, "users", currentUser.uid));
+              
+              // 2. Delete Authentication Account (Login Removal)
+              // This removes them from the Firebase Auth list.
+              try {
+                  await currentUser.delete();
+              } catch (authError: any) {
+                  console.error("Auth deletion error:", authError);
+                  // If 'requires-recent-login' error occurs, we must force re-login.
+                  // We still log them out so they can't access the app with deleted data.
+                  if (authError.code === 'auth/requires-recent-login') {
+                      alert(language === 'ar' 
+                          ? "تم حذف بياناتك بنجاح. لحذف الحساب نهائياً من القائمة، يرجى تسجيل الدخول مرة أخرى ثم المحاولة فوراً (إجراء أمني من جوجل)." 
+                          : "Data deleted. To permanently remove account from Auth list, please login again and retry immediately (Security Requirement).");
+                  }
+              }
           }
           
-          // Clear Local Storage
+          // Clear Local Storage & Context
           localStorage.clear();
           setUserProfile(null);
           setPlan([]);
           setLogs([]);
           setInventory({ boxes: 0, pillsPerBox: 0, loosePills: 0, totalPills: 0 });
           
-          // Logout
+          // Force Logout
           await logout();
           
       } catch (e) {
           console.error("Error resetting data:", e);
-          alert("Error deleting data. Check connection."); // Keep alert for actual error
+          alert("Error deleting data. Check connection.");
           setDataLoading(false);
       }
   };
@@ -2105,288 +2104,290 @@ export const useLanguage = () => {
 
 ### File: `services\locales\ar.ts`
 ```ts
+// FILE: services/locales/ar.ts
 export const ar = {
-    // Auth
-    welcome: "مرحباً بك",
-    subtitle: "نظام دعم التعافي المبني على أسس علمية",
-    email: "البريد الإلكتروني",
-    password: "كلمة المرور",
-    login_email: "تسجيل الدخول",
-    login_google: "دخول عبر Google",
-    demo_account: "حساب تجريبي",
-    error_prefix: "تنبيه: ",
-    or: "أو",
-    banned_msg: "تم تعليق حسابك. يرجى مراجعة الدعم الفني.",
-    
-    // Sidebar & Nav
-    nav_dashboard: "الرئيسية",
-    nav_calendar: "الجدول الزمني",
-    nav_stats: "التحليلات",
-    nav_settings: "الإعدادات",
-    nav_community: "المجتمع",
-    nav_admin: "الإدارة",
-    nav_support: "الدعم الفني",
-    nav_articles: "المعرفة",
-    logout: "تسجيل خروج",
-    create_room: "إنشاء غرفة",
-    room_name: "اسم الغرفة",
-    type_msg: "اكتب رسالتك...",
-    comm_rooms: "غرف الدردشة",
-    comm_leaderboard: "لوحة المتصدرين",
+// Auth
+welcome: "مرحباً بك",
+subtitle: "نظام دعم التعافي المبني على أسس علمية",
+email: "البريد الإلكتروني",
+password: "كلمة المرور",
+login_email: "تسجيل الدخول",
+login_google: "دخول عبر Google",
+demo_account: "حساب تجريبي",
+error_prefix: "تنبيه: ",
+or: "أو",
+banned_msg: "تم تعليق حسابك. يرجى مراجعة الدعم الفني.",
+   // Sidebar & Nav
+nav_dashboard: "الرئيسية",
+nav_calendar: "الجدول الزمني",
+nav_stats: "التحليلات",
+nav_settings: "الإعدادات",
+nav_community: "المجتمع",
+nav_admin: "الإدارة",
+nav_support: "الدعم الفني",
+nav_articles: "المعرفة",
+logout: "تسجيل خروج",
+create_room: "إنشاء غرفة",
+room_name: "اسم الغرفة",
+type_msg: "اكتب رسالتك...",
+comm_rooms: "غرف الدردشة",
+comm_leaderboard: "لوحة المتصدرين",
 
-    // Dashboard
-    daily_report: "المتابعة اليومية",
-    days_left: "أيام متبقية",
-    status_stable: "الحالة مستقرة",
-    safety_active: "نظام الأمان نشط",
-    safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تثبيت الجرعة المقترحة مؤقتاً. يرجى استشارة طبيبك.",
-    freeze_plan_btn: "تجميد الخطة (راحة 3 أيام)",
-    target_dose: "الجرعة المستهدفة لليوم",
-    documented: "تم التوثيق بنجاح",
-    dose: "الجرعة",
-    mood: "المزاج",
-    excellent: "ممتاز",
-    stable: "جيد",
-    bad: "متعب",
-    step_1: "الجرعة الفعلية",
-    step_2: "المؤشرات الحيوية",
-    confirm_log: "تأكيد وتحديث المخزون",
-    algo_active: "المحرك الذكي يعمل",
-    algo_desc: "نظام يولد مسودة خطة بناءً على الحسابات الرياضية للمخزون (للعرض على الطبيب).",
-    recovery_path: "مسار التعافي المتوقع",
-    sos_button: "طوارئ (SOS)",
-    export_report: "تقرير للطبيب",
-    print: "طباعة التقرير", 
-    
-    // Inventory
-    inv_status_ok: "المخزون كافٍ",
-    inv_status_low: "نقص في المخزون",
-    inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت. راجع طبيبك لتعديل الخطة أو توفير الدواء.",
-    inventory_title: "جرد المخزون",
-    boxes: "عدد العبوات الكاملة",
-    pills_per_box: "الكمية داخل العبوة",
-    loose_pills: "الكمية المفردة (فراط)",
-    total_balance: "الرصيد الكلي",
-    current_habit: "جرعتك الحالية",
-    analyze_plan: "إنشاء مسودة الخطة",
-    guest: "زائر",
+// Dashboard
+daily_report: "المتابعة اليومية",
+days_left: "أيام متبقية",
+status_stable: "الحالة مستقرة",
+safety_active: "نظام الأمان نشط",
+safety_desc: "رصدت الخوارزمية تذبذباً في مؤشراتك الحيوية. تم تثبيت الجرعة المقترحة مؤقتاً. يرجى استشارة طبيبك.",
+freeze_plan_btn: "تجميد الخطة (راحة 3 أيام)",
+target_dose: "الجرعة المستهدفة لليوم",
+documented: "تم التوثيق بنجاح",
+dose: "الجرعة",
+mood: "المزاج",
+excellent: "ممتاز",
+stable: "جيد",
+bad: "متعب",
+step_1: "الجرعة الفعلية",
+step_2: "المؤشرات الحيوية",
+confirm_log: "تأكيد وتحديث المخزون",
+algo_active: "المحرك الذكي يعمل",
+algo_desc: "نظام يولد مسودة خطة بناءً على الحسابات الرياضية للمخزون (للعرض على الطبيب).",
+recovery_path: "مسار التعافي المتوقع",
+sos_button: "طوارئ (SOS)",
+export_report: "تقرير للطبيب",
+print: "طباعة التقرير", 
 
-    // Toasts
-    toast_log_success: "تم حفظ البيانات وإعادة حساب المتبقي",
-    toast_freeze_success: "تم تفعيل وضع الراحة لمدة 3 أيام",
-    toast_speed_updated: "تم تعديل وتيرة الخطة العلاجية بنجاح",
+// Inventory
+inv_status_ok: "المخزون كافٍ",
+inv_status_low: "نقص في المخزون",
+inv_alert_desc: "بناءً على وتيرتك الحالية، قد ينفد المخزون قبل انتهاء فترة التثبيت. راجع طبيبك لتعديل الخطة أو توفير الدواء.",
+inventory_title: "جرد المخزون",
+boxes: "عدد العبوات الكاملة",
+pills_per_box: "الكمية داخل العبوة",
+loose_pills: "الكمية المفردة (فراط)",
+total_balance: "الرصيد الكلي",
+current_habit: "جرعتك الحالية",
+analyze_plan: "إنشاء مسودة الخطة",
+guest: "زائر",
 
-    // Features
-    sleep_label: "ساعات النوم",
-    symptoms_label: "هل تشعر بأي مما يلي؟",
-    sym_insomnia: "أرق",
-    sym_anxiety: "قلق",
-    sym_sweating: "تعرق",
-    sym_shake: "رجفة",
-    sym_nausea: "غثيان",
-    sym_headache: "صداع",
-    
-    // Badges
-    badges_title: "الإنجازات",
-    badge_7days: "محارب الأسبوع",
-    badge_halfway: "منتصف الطريق",
-    badge_sleep: "نوم منتظم",
-    badge_stable: "ثبات انفعالي",
+// Toasts
+toast_log_success: "تم حفظ البيانات وإعادة حساب المتبقي",
+toast_freeze_success: "تم تفعيل وضع الراحة لمدة 3 أيام",
+toast_speed_updated: "تم تعديل وتيرة الخطة العلاجية بنجاح",
 
-    // SOS
-    sos_title: "بروتوكول الطوارئ",
-    sos_phase_1_title: "توقف.",
-    sos_phase_1_text: "أنت بأمان. إذا كانت هذه حالة طوارئ طبية، اتصل بالإسعاف فوراً.",
-    sos_btn_ground: "التالي",
-    sos_phase_2_title: "الوعي الحسي",
-    sos_phase_2_text: "انظر حولك. سمِّ 5 أشياء زرقاء.",
-    sos_btn_next: "تم",
-    sos_phase_3_title: "صدمة حرارية",
-    sos_phase_3_text: "اغسل وجهك بماء بارد جداً لتفعيل العصب الحائر.",
-    sos_btn_breathe: "تمارين التنفس",
-    sos_phase_4_title: "تنفس",
-    sos_phase_4_subtitle: "شهيق عميق... زفير بطيء.",
-    breathe_in: "شهيق",
-    breathe_hold: "إمساك",
-    breathe_out: "زفير",
-    close: "إنهاء",
+// Features
+sleep_label: "ساعات النوم",
+symptoms_label: "هل تشعر بأي مما يلي؟",
+sym_insomnia: "أرق",
+sym_anxiety: "قلق",
+sym_sweating: "تعرق",
+sym_shake: "رجفة",
+sym_nausea: "غثيان",
+sym_headache: "صداع",
 
-    // Settings & Profile
-    settings_title: "إعدادات النظام",
-    settings_subtitle: "التحكم في الخوارزمية",
-    pace_control: "وتيرة التعافي",
-    pace_desc: "تغيير السرعة يؤدي لإعادة حساب استهلاك المخزون. يرجى استشارة الطبيب قبل التعديل.",
-    pace_slow: "مريح (تمديد)",
-    pace_balanced: "متوازن (قياسي)",
-    pace_fast: "سريع (مكثف)",
-    danger_zone: "منطقة الخطر",
-    factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
-    profile_title: "الملف الشخصي",
-    photo_url_label: "رابط الصورة الشخصية",
-    save_changes: "حفظ التغييرات",
-    rank_label: "التصنيف العالمي",
-    edit_profile: "تعديل الملف",
-    new_user: "مستخدم جديد",
+// Badges
+badges_title: "الإنجازات",
+badge_7days: "محارب الأسبوع",
+badge_halfway: "منتصف الطريق",
+badge_sleep: "نوم منتظم",
+badge_stable: "ثبات انفعالي",
 
-    // Onboarding & Roles
-    onboard_title: "أهلاً بك في Islam's Guide",
-    onboard_desc: "هذه المنصة هي أداة مساعدة وليست خدمة طبية. يرجى تحديد طبيعة استخدامك.",
-    role_patient: "مستخدم / مريض",
-    role_patient_desc: "أتابع خطة علاجي تحت إشراف طبي.",
-    role_doctor: "طبيب معالج",
-    role_doctor_desc: "أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.",
-    
-    // Doctor Registration
-    doc_req_title: "طلب اعتماد طبيب",
-    doc_req_desc: "ستتم مراجعة بياناتك من قبل الإدارة قبل تفعيل حسابك.",
-    doc_fullname: "الاسم الكامل (كما سيظهر للمرضى)",
-    doc_specialty: "التخصص الطبي",
-    doc_license: "رقم الترخيص المهني",
-    doc_location: "مقر العيادة / المستشفى",
-    doc_phone: "رقم هاتف للتواصل (للإدارة)",
-    doc_bio: "نبذة تعريفية (تظهر للمرضى)",
-    doc_submit: "إرسال طلب الاعتماد",
+// SOS
+sos_title: "بروتوكول الطوارئ",
+sos_phase_1_title: "توقف.",
+sos_phase_1_text: "أنت بأمان. إذا كانت هذه حالة طوارئ طبية، اتصل بالإسعاف فوراً.",
+sos_btn_ground: "التالي",
+sos_phase_2_title: "الوعي الحسي",
+sos_phase_2_text: "انظر حولك. سمِّ 5 أشياء زرقاء.",
+sos_btn_next: "تم",
+sos_phase_3_title: "صدمة حرارية",
+sos_phase_3_text: "اغسل وجهك بماء بارد جداً لتفعيل العصب الحائر.",
+sos_btn_breathe: "تمارين التنفس",
+sos_phase_4_title: "تنفس",
+sos_phase_4_subtitle: "شهيق عميق... زفير بطيء.",
+breathe_in: "شهيق",
+breathe_hold: "إمساك",
+breathe_out: "زفير",
+close: "إنهاء",
 
-    // Path Selection
-    path_select_title: "اختر مسار العلاج",
-    path_algo: "الخوارزمية الذكية",
-    path_algo_desc: "توليد مسودة جدول زمني بناءً على حسابات المخزون (تتطلب موافقة الطبيب).",
-    path_doctor: "متابعة مع طبيب",
-    path_doctor_desc: "سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.",
+// Settings & Profile
+settings_title: "إعدادات النظام",
+settings_subtitle: "التحكم في الخوارزمية",
+pace_control: "وتيرة التعافي",
+pace_desc: "تغيير السرعة يؤدي لإعادة حساب استهلاك المخزون. يرجى استشارة الطبيب قبل التعديل.",
+pace_slow: "مريح (تمديد)",
+pace_balanced: "متوازن (قياسي)",
+pace_fast: "سريع (مكثف)",
+danger_zone: "منطقة الخطر",
+factory_reset_btn: "إعادة ضبط المصنع (حذف البيانات)",
+profile_title: "الملف الشخصي",
+photo_url_label: "رابط الصورة الشخصية",
+save_changes: "حفظ التغييرات",
+rank_label: "التصنيف العالمي",
+edit_profile: "تعديل الملف",
+new_user: "مستخدم جديد",
 
-    // Doctor Selection
-    doc_select_title: "اختر طبيبك المعالج",
-    doc_search_placeholder: "بحث باسم الطبيب...",
-    doc_select_btn: "إرسال طلب انضمام", 
+// Onboarding & Roles
+onboard_title: "أهلاً بك في Islam's Guide",
+onboard_desc: "هذه المنصة هي أداة مساعدة وليست خدمة طبية. يرجى تحديد طبيعة استخدامك.",
+role_patient: "مستخدم / مريض",
+role_patient_desc: "أتابع خطة علاجي تحت إشراف طبي.",
+role_doctor: "طبيب معالج",
+role_doctor_desc: "أرغب في الانضمام للكادر الطبي لمتابعة المرضى وإنشاء الخطط العلاجية لهم.",
 
-    // Algorithm Setup
-    med_type_title: "نوع الدواء",
-    med_type_narcotic: "مخدرات (جدول أول)",
-    med_type_narcotic_desc: "يتطلب حجز في مصحة",
-    med_type_psych: "أدوية نفسية",
-    med_type_psych_desc: "يتطلب إشراف طبي صارم",
-    med_type_normal: "أدوية عامة",
-    med_type_normal_desc: "يتطلب متابعة سريرية",
-    blocked_title: "الدخول محظور",
-    warning_title: "تنبيه طبي هام",
-    med_form_title: "شكل الدواء",
-    form_tablet: "أقراص / حبوب",
-    form_liquid: "سائل / قطرات",
-    unit_title: "وحدة القياس",
+// Doctor Registration
+doc_req_title: "طلب اعتماد طبيب",
+doc_req_desc: "ستتم مراجعة بياناتك من قبل الإدارة قبل تفعيل حسابك.",
+doc_fullname: "الاسم الكامل (كما سيظهر للمرضى)",
+doc_specialty: "التخصص الطبي",
+doc_license: "رقم الترخيص المهني",
+doc_location: "مقر العيادة / المستشفى",
+doc_phone: "رقم هاتف للتواصل (للإدارة)",
+doc_bio: "نبذة تعريفية (تظهر للمرضى)",
+doc_submit: "إرسال طلب الاعتماد",
 
-    // Doctor Dashboard & Plan Builder (NEW)
-    stat_total_patients: "إجمالي المرضى",
-    stat_new_requests: "طلبات جديدة",
-    stat_recovered: "حالات التعافي",
-    stat_overview: "نظرة عامة",
-    create_plan_btn: "إنشاء الخطة العلاجية",
-    plan_notes: "ملاحظات للمريض",
-    plan_phases: "مراحل التخفيض",
-    duration_days: "المدة (أيام)",
-    submit_plan: "اعتماد وإرسال",
-    
-    // NEW KEYS FOR PLAN BUILDER
-    pattern_builder: "منشئ الأنماط",
-    pattern_sequence: "النمط (مثال: 0.5, 0, 0.5, 0)",
-    repeat_count: "عدد التكرار",
-    days_per_dose: "أيام لكل جرعة",
-    apply_pattern: "تطبيق النمط",
-    clear_phases: "مسح الكل",
-    
-    // NEW KEYS FOR PATIENT REQUESTS
-    patient_requests_title: "طلبات المرضى الجدد",
-    accept_patient: "قبول",
-    reject_patient: "رفض",
-    no_requests: "لا توجد طلبات معلقة",
-    req_sent_msg: "تم إرسال طلبك للطبيب. يرجى الانتظار لحين الموافقة.",
+// Path Selection
+path_select_title: "اختر مسار العلاج",
+path_algo: "الخوارزمية الذكية",
+path_algo_desc: "توليد مسودة جدول زمني بناءً على حسابات المخزون (تتطلب موافقة الطبيب).",
+path_doctor: "متابعة مع طبيب",
+path_doctor_desc: "سأقوم باختيار طبيب من المنصة، وانتظر حتى يقوم هو بوضع الجدول العلاجي المناسب لي.",
 
-    // Admin & Management
-    admin_title: "غرفة التحكم المركزية",
-    admin_subtitle: "نظام الإدارة المتكامل",
-    tab_overview: "نظرة عامة",
-    tab_doctors: "إدارة الأطباء",
-    tab_users: "المستخدمين",
-    tab_cms: "المحتوى",
-    stat_approved_docs: "أطباء معتمدين",
-    pending_approvals: "طلبات الانضمام المعلقة",
-    review_btn: "مراجعة",
-    approve_btn: "اعتماد",
-    reject_btn: "رفض",
-    approved_docs_list: "قائمة الأطباء المعتمدين",
-    ban_user: "حظر",
-    unban_user: "فك الحظر",
-    delete_user: "حذف نهائي", 
-    delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", 
-    view_details: "عرض التفاصيل", 
-    search_user_placeholder: "بحث عن مستخدم...",
-    
-    // Patient Management
-    manage_patients_title: "إدارة ملفات المرضى",
-    add_patient_btn: "ضم مريض جديد",
-    back_list_btn: "العودة للقائمة",
-    search_available_placeholder: "بحث عن مستخدم بالاسم أو البريد...",
-    add_btn: "ضم",
-    
-    // Articles & CMS
-    knowledge_center: "مركز المعرفة",
-    knowledge_desc: "مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي.",
-    new_article_btn: "نشر مقال جديد",
-    article_title_label: "عنوان المقال",
-    article_title_placeholder: "مثال: كيفية التعامل مع الأرق...",
-    article_cat_label: "التصنيف",
-    article_content_label: "المحتوى",
-    article_content_placeholder: "اكتب محتوى المقال هنا بشكل مفصل...",
-    no_articles: "لا توجد مقالات منشورة حتى الآن.",
-    publish_now: "نشر الآن",
-    cat_medical: "طبي وعلمي",
-    cat_motivation: "دعم نفسي",
-    cat_tip: "نصائح عملية",
-    cat_all: "الكل",
-    cancel_btn: "إلغاء",
-    read_more: "قراءة المزيد",
-    author_by: "بقلم",
+// Doctor Selection
+doc_select_title: "اختر طبيبك المعالج",
+doc_search_placeholder: "بحث باسم الطبيب...",
+doc_select_btn: "إرسال طلب انضمام", 
 
-    // Support & Tickets
-    support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
-    new_ticket: "فتح تذكرة جديدة",
-    new_ticket_title: "طلب مساعدة جديد",
-    ticket_subject: "الموضوع",
-    ticket_details: "التفاصيل",
-    send_request: "إرسال الطلب",
-    my_tickets: "تذاكري",
-    no_tickets: "لا توجد تذاكر سابقة.",
-    select_ticket_prompt: "اختر تذكرة لعرض التفاصيل أو ابدأ تذكرة جديدة",
-    status_open: "مفتوح",
-    status_pending: "قيد المراجعة",
-    status_resolved: "تم الحل",
-    status_closed: "مغلق",
-    ticket_closed_msg: "تم إغلاق هذه التذكرة. لفتحها مجدداً، يرجى إنشاء تذكرة جديدة.",
-    write_reply: "اكتب ردك هنا...",
-    me: "أنا",
-    support_team: "الدعم الفني",
-    current_account: "حسابك الحالي",
+// Algorithm Setup
+med_type_title: "نوع الدواء",
+med_type_narcotic: "مخدرات (جدول أول)",
+med_type_narcotic_desc: "يتطلب حجز في مصحة",
+med_type_psych: "أدوية نفسية",
+med_type_psych_desc: "يتطلب إشراف طبي صارم",
+med_type_normal: "أدوية عامة",
+med_type_normal_desc: "يتطلب متابعة سريرية",
+blocked_title: "الدخول محظور",
+warning_title: "تنبيه طبي هام",
+med_form_title: "شكل الدواء",
+form_tablet: "أقراص / حبوب",
+form_liquid: "سائل / قطرات",
+unit_title: "وحدة القياس",
 
-    // Scientific Modal
-    sci_title: "تم بناء هذه الخطة على أسس علمية",
-    sci_subtitle: "هذه الخوارزمية تعتمد على البروتوكولات العالمية. يجب مراجعة الخطة مع طبيبك.",
-    sci_principle_1_title: "التخفيض الزائدي (Hyperbolic Tapering)",
-    sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ.",
-    sci_principle_2_title: "التكيف العصبي (Neuro-Adaptation)",
-    sci_principle_2_desc: "النظام يتكيف مع مدخلاتك اليومية. إذا كنت تشعر بالتعب، سيقترح النظام تثبيت الجرعة.",
-    sci_principle_3_title: "محاكاة المخزون (Inventory Optimization)",
-    sci_principle_3_desc: "حساب المسار الأكثر أماناً لضمان عدم نفاد الدواء قبل الوصول لخط النهاية.",
-    sci_sources_title: "المصادر والمراجع العلمية:",
-    sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
-    sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
-    sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
-    sci_trust_msg: "هذا النظام هو أداة حسابية مساعدة، ولا يستبدل استشارة طبيبك الخاص.",
-    sci_btn_understood: "فهمت، اعرض المسودة",
+// Doctor Dashboard & Plan Builder (NEW)
+stat_total_patients: "إجمالي المرضى",
+stat_new_requests: "طلبات جديدة",
+stat_recovered: "حالات التعافي",
+stat_overview: "نظرة عامة",
+create_plan_btn: "إنشاء الخطة العلاجية",
+plan_notes: "ملاحظات للمريض",
+plan_phases: "مراحل التخفيض",
+duration_days: "المدة (أيام)",
+submit_plan: "اعتماد وإرسال",
 
-    // Community & Inventory New Keys
-    community_clinic: "عيادة الطبيب",
-    community_public_room_hint: "* ستكون هذه الغرفة عامة ويمكن لجميع المستخدمين رؤيتها والانضمام إليها.",
-    community_doctor_room_hint: "* سيتمكن جميع مرضاك الحاليين والمستقبليين من دخول هذه الغرفة تلقائياً.",
-    inventory_updated_msg: "تم تحديث المخزون وإعادة حساب الرصيد."
+// NEW KEYS FOR PLAN BUILDER
+pattern_builder: "منشئ الأنماط",
+pattern_sequence: "النمط (مثال: 0.5, 0, 0.5, 0)",
+repeat_count: "عدد التكرار",
+days_per_dose: "أيام لكل جرعة",
+apply_pattern: "تطبيق النمط",
+clear_phases: "مسح الكل",
+
+// NEW KEYS FOR PATIENT REQUESTS
+patient_requests_title: "طلبات المرضى الجدد",
+accept_patient: "قبول",
+reject_patient: "رفض",
+no_requests: "لا توجد طلبات معلقة",
+req_sent_msg: "تم إرسال طلبك للطبيب. يرجى الانتظار لحين الموافقة.",
+
+// Admin & Management
+admin_title: "غرفة التحكم المركزية",
+admin_subtitle: "نظام الإدارة المتكامل",
+tab_overview: "نظرة عامة",
+tab_doctors: "إدارة الأطباء",
+tab_users: "المستخدمين",
+tab_cms: "المحتوى",
+stat_approved_docs: "أطباء معتمدين",
+pending_approvals: "طلبات الانضمام المعلقة",
+review_btn: "مراجعة",
+approve_btn: "اعتماد",
+reject_btn: "رفض",
+approved_docs_list: "قائمة الأطباء المعتمدين",
+ban_user: "حظر",
+unban_user: "فك الحظر",
+delete_user: "حذف نهائي", 
+delete_confirm_msg: "هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.", 
+view_details: "عرض التفاصيل", 
+search_user_placeholder: "بحث عن مستخدم...",
+
+// Patient Management
+manage_patients_title: "إدارة ملفات المرضى",
+add_patient_btn: "ضم مريض جديد",
+back_list_btn: "العودة للقائمة",
+search_available_placeholder: "بحث عن مستخدم بالاسم أو البريد...",
+add_btn: "ضم",
+
+// Articles & CMS
+knowledge_center: "مركز المعرفة",
+knowledge_desc: "مقالات طبية ونصائح يومية لمساعدتك في رحلة التعافي.",
+new_article_btn: "نشر مقال جديد",
+article_title_label: "عنوان المقال",
+article_title_placeholder: "مثال: كيفية التعامل مع الأرق...",
+article_cat_label: "التصنيف",
+article_content_label: "المحتوى",
+article_content_placeholder: "اكتب محتوى المقال هنا بشكل مفصل...",
+no_articles: "لا توجد مقالات منشورة حتى الآن.",
+publish_now: "نشر الآن",
+cat_medical: "طبي وعلمي",
+cat_motivation: "دعم نفسي",
+cat_tip: "نصائح عملية",
+cat_news: "أخبار",
+cat_announcement: "إعلانات",
+cat_all: "الكل",
+cancel_btn: "إلغاء",
+read_more: "قراءة المزيد",
+author_by: "بقلم",
+
+// Support & Tickets
+support_desc: "تواصل مباشرة مع الفريق التقني والإداري للنظام.",
+new_ticket: "فتح تذكرة جديدة",
+new_ticket_title: "طلب مساعدة جديد",
+ticket_subject: "الموضوع",
+ticket_details: "التفاصيل",
+send_request: "إرسال الطلب",
+my_tickets: "تذاكري",
+no_tickets: "لا توجد تذاكر سابقة.",
+select_ticket_prompt: "اختر تذكرة لعرض التفاصيل أو ابدأ تذكرة جديدة",
+status_open: "مفتوح",
+status_pending: "قيد المراجعة",
+status_resolved: "تم الحل",
+status_closed: "مغلق",
+ticket_closed_msg: "تم إغلاق هذه التذكرة. لفتحها مجدداً، يرجى إنشاء تذكرة جديدة.",
+write_reply: "اكتب ردك هنا...",
+me: "أنا",
+support_team: "الدعم الفني",
+current_account: "حسابك الحالي",
+
+// Scientific Modal
+sci_title: "تم بناء هذه الخطة على أسس علمية",
+sci_subtitle: "هذه الخوارزمية تعتمد على البروتوكولات العالمية. يجب مراجعة الخطة مع طبيبك.",
+sci_principle_1_title: "التخفيض الزائدي (Hyperbolic Tapering)",
+sci_principle_1_desc: "نظام يقلل نسبة الخصم كلما انخفضت الجرعة. هذا يمنع 'صدمة المستقبلات' التي تحدث عند التوقف المفاجئ.",
+sci_principle_2_title: "التكيف العصبي (Neuro-Adaptation)",
+sci_principle_2_desc: "النظام يتكيف مع مدخلاتك اليومية. إذا كنت تشعر بالتعب، سيقترح النظام تثبيت الجرعة.",
+sci_principle_3_title: "محاكاة المخزون (Inventory Optimization)",
+sci_principle_3_desc: "حساب المسار الأكثر أماناً لضمان عدم نفاد الدواء قبل الوصول لخط النهاية.",
+sci_sources_title: "المصادر والمراجع العلمية:",
+sci_source_1: "The Maudsley Deprescribing Guidelines (Horowitz & Taylor, 2024)",
+sci_source_2: "The Ashton Manual (Benzodiazepines: How They Work and How to Withdraw)",
+sci_source_3: "Lancet Psychiatry: Tapering of SSRIs to mitigate withdrawal symptoms",
+sci_trust_msg: "هذا النظام هو أداة حسابية مساعدة، ولا يستبدل استشارة طبيبك الخاص.",
+sci_btn_understood: "فهمت، اعرض المسودة",
+
+// Community & Inventory New Keys
+community_clinic: "عيادة الطبيب",
+community_public_room_hint: "* ستكون هذه الغرفة عامة ويمكن لجميع المستخدمين رؤيتها والانضمام إليها.",
+community_doctor_room_hint: "* سيتمكن جميع مرضاك الحاليين والمستقبليين من دخول هذه الغرفة تلقائياً.",
+inventory_updated_msg: "تم تحديث المخزون وإعادة حساب الرصيد."
 };
 ```
 ---
@@ -2599,6 +2600,8 @@ export const en = {
     cat_medical: "Medical",
     cat_motivation: "Motivation",
     cat_tip: "Tip",
+    cat_news: "News",
+    cat_announcement: "Announcements",
     cat_all: "All",
     cancel_btn: "Cancel",
     read_more: "Read More",
@@ -3438,21 +3441,26 @@ export const translations = {
 ### File: `views\admin\AdminCMS.tsx`
 ```tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, FileText, Image, Tag, AlignLeft, X, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, FileText, Image, X, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { publishArticleService } from '../../services/adminServices';
 import { Article, ArticleCategory } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useData } from '../../contexts/DataContext';
 
-interface AdminCMSProps {
-    articles: Article[];
-    publishArticle: (article: any) => void;
-    deleteArticle: (id: string) => void;
-}
-
-export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSProps) => {
+export const AdminCMS = () => {
     const { t, language } = useLanguage();
+    const { userProfile } = useData(); // Get admin profile for publishing
+    
+    // -- Data State --
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // -- Modal State --
     const [showArticleModal, setShowArticleModal] = useState(false);
     const [newArticle, setNewArticle] = useState({ title: '', content: '', category: 'tip' as ArticleCategory });
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -3461,6 +3469,25 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
     const modalRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
+    // -- Fetch Data (Server-Side) --
+    const fetchArticles = async () => {
+        setLoading(true);
+        try {
+            const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+            const snapshot = await getDocs(q);
+            const fetchedData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article));
+            setArticles(fetchedData);
+        } catch (e) {
+            console.error("Error fetching articles:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchArticles();
+    }, []);
+
     useEffect(() => {
         if (showArticleModal) {
             setTimeout(() => titleInputRef.current?.focus(), 100);
@@ -3468,7 +3495,10 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
         setErrorMsg(null);
     }, [showArticleModal]);
 
-    const handlePublish = () => {
+    // -- Actions --
+    const handlePublish = async () => {
+        if (!userProfile) return;
+
         if (!newArticle.title.trim() || newArticle.title.length < 5) {
             setErrorMsg(language === 'ar' ? "العنوان قصير جداً (5 أحرف على الأقل)." : "Title too short (min 5 chars).");
             return;
@@ -3478,9 +3508,31 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             return;
         }
 
-        publishArticle(newArticle);
-        setShowArticleModal(false);
-        setNewArticle({ title: '', content: '', category: 'tip' });
+        // FIX: Add isPublished: true to satisfy the type definition
+        const result = await publishArticleService(userProfile, {
+            ...newArticle,
+            isPublished: true
+        });
+
+        if (result.success) {
+            setShowArticleModal(false);
+            setNewArticle({ title: '', content: '', category: 'tip' as ArticleCategory });
+            fetchArticles(); // Refresh list
+        } else {
+            setErrorMsg(result.error || "Failed to publish");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذا المقال؟" : "Are you sure you want to delete this article?")) return;
+        
+        try {
+            await deleteDoc(doc(db, "articles", id));
+            setArticles(prev => prev.filter(a => a.id !== id));
+        } catch (e) {
+            console.error("Delete error", e);
+            alert("Failed to delete article");
+        }
     };
 
     const getCategoryColor = (cat: string) => {
@@ -3488,9 +3540,21 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             case 'medical': return 'indigo';
             case 'motivation': return 'rose';
             case 'news': return 'blue';
-            default: return 'amber';
+            case 'announcement': return 'red';
+            case 'tip': return 'amber';
+            default: return 'slate';
         }
     };
+
+    const categories: ArticleCategory[] = ['medical', 'motivation', 'tip', 'news', 'announcement'];
+
+    if (loading) {
+        return (
+            <div className="flex h-64 items-center justify-center text-indigo-400">
+                <Loader2 size={32} className="animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <section aria-labelledby="cms-heading" className="animate-in fade-in space-y-8">
@@ -3515,7 +3579,6 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                     aria-modal="true"
                     aria-labelledby="modal-title"
                  >
-                     {/* Wrapper div for ref to avoid functional component issue */}
                      <div className="w-full max-w-2xl relative outline-none" tabIndex={-1} ref={modalRef}>
                          <Card className="!bg-slate-900 border-white/10 shadow-2xl rounded-[2rem] overflow-hidden">
                              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -3559,7 +3622,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                      <div role="group" aria-labelledby="cat-label">
                                          <label id="cat-label" className="text-xs font-bold text-slate-500 uppercase mb-3 block ml-1">{t('article_cat_label')}</label>
                                          <div className="flex gap-3 flex-wrap">
-                                             {(['medical', 'motivation', 'tip', 'news'] as const).map(cat => (
+                                             {categories.map(cat => (
                                                  <button 
                                                     key={cat}
                                                     onClick={() => setNewArticle({...newArticle, category: cat})}
@@ -3570,7 +3633,7 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
                                                         : 'bg-slate-950 border-white/10 text-slate-500 hover:bg-slate-800 hover:text-white'
                                                     }`}
                                                  >
-                                                     {cat.toUpperCase()}
+                                                     {t(`cat_${cat}` as any) || cat.toUpperCase()}
                                                  </button>
                                              ))}
                                          </div>
@@ -3611,15 +3674,15 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
             ) : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
                     {articles.map(art => (
-                        <li key={art.id} className="group relative bg-slate-900/60 backdrop-blur-md border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-indigo-500/10 flex flex-col h-full focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-slate-950">
+                        <li key={art.id} className="group relative bg-slate-900/60 backdrop-blur-md border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-indigo-500/10 flex flex-col h-full">
                             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] pointer-events-none"></div>
                             
                             <div className="flex justify-between items-start mb-4 relative z-10">
                                 <Badge color={getCategoryColor(art.category) as any} className="shadow-none bg-slate-950/50 border-white/10">
-                                    {art.category.toUpperCase()}
+                                    {t(`cat_${art.category}` as any) || art.category.toUpperCase()}
                                 </Badge>
                                 <button 
-                                    onClick={() => art.id && deleteArticle(art.id)}
+                                    onClick={() => art.id && handleDelete(art.id)}
                                     className="text-slate-600 hover:text-rose-500 p-2 hover:bg-rose-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 outline-none focus:ring-2 focus:ring-rose-500"
                                     title="Delete Article"
                                     aria-label={`Delete article: ${art.title}`}
@@ -3656,32 +3719,127 @@ export const AdminCMS = ({ articles, publishArticle, deleteArticle }: AdminCMSPr
 
 ### File: `views\admin\AdminDoctors.tsx`
 ```tsx
-import React, { useMemo } from 'react';
-import { Lock, Stethoscope, Eye, Ban, Trash2, ShieldCheck, MapPin } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { 
+    Lock, Stethoscope, Eye, Ban, Trash2, ShieldCheck, MapPin, Loader2, X, Check, AlertTriangle 
+} from 'lucide-react';
+import { 
+    collection, query, where, onSnapshot, doc, updateDoc, deleteDoc 
+} from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { UserProfile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-interface AdminDoctorsProps {
-    users: UserProfile[];
-    setSelectedDoctor: (doc: UserProfile) => void;
-    toggleBan: (user: UserProfile) => void;
-    deleteUser: (uid: string) => void;
-}
-
-export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }: AdminDoctorsProps) => {
+export const AdminDoctors = () => {
     const { t, language } = useLanguage();
     
-    // Performance: Memoize filtering to prevent re-calculation on every render
+    // -- Data State --
+    const [doctors, setDoctors] = useState<UserProfile[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    // -- Modal State --
+    const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const rejectInputRef = useRef<HTMLTextAreaElement>(null);
+
+    // -- Fetch Data (Real-time, Optimized for Doctors only) --
+    useEffect(() => {
+        const q = query(collection(db, "users"), where("role", "==", "doctor"));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docsData: UserProfile[] = [];
+            snapshot.forEach(doc => {
+                docsData.push({ uid: doc.id, ...doc.data() } as UserProfile);
+            });
+            setDoctors(docsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching doctors:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // -- Memoized Categorization --
     const { pendingDoctors, approvedDoctors } = useMemo(() => {
-        const doctors = users.filter(u => u.role === 'doctor');
         return {
             pendingDoctors: doctors.filter(d => d.doctorData?.accountStatus === 'pending'),
             approvedDoctors: doctors.filter(d => d.doctorData?.accountStatus === 'approved')
         };
-    }, [users]);
+    }, [doctors]);
+
+    // -- Actions --
+    const handleApprove = async (doctor: UserProfile) => {
+        if (!doctor.uid) return;
+        if (!window.confirm(language === 'ar' ? 'اعتماد هذا الطبيب؟' : 'Approve this doctor?')) return;
+        
+        try {
+            await updateDoc(doc(db, "users", doctor.uid), {
+                "doctorData.accountStatus": "approved",
+                "doctorData.rejectionReason": null
+            });
+            if (selectedDoctor?.uid === doctor.uid) setSelectedDoctor(null);
+        } catch (e) {
+            console.error("Approval failed", e);
+            alert("Failed to approve");
+        }
+    };
+
+    const handleReject = async () => {
+        if (!selectedDoctor?.uid || !rejectionReason.trim()) return;
+        try {
+            await updateDoc(doc(db, "users", selectedDoctor.uid), {
+                "doctorData.accountStatus": "rejected",
+                "doctorData.rejectionReason": rejectionReason
+            });
+            setShowRejectModal(false);
+            setSelectedDoctor(null);
+            setRejectionReason("");
+        } catch (e) {
+            console.error("Rejection failed", e);
+            alert("Failed to reject");
+        }
+    };
+
+    const handleToggleBan = async (doctor: UserProfile) => {
+        if (!doctor.uid) return;
+        try {
+            await updateDoc(doc(db, "users", doctor.uid), {
+                isBanned: !doctor.isBanned
+            });
+        } catch (e) {
+            console.error("Ban toggle failed", e);
+        }
+    };
+
+    const handleDelete = async (uid: string) => {
+        if (!window.confirm(language === 'ar' ? 'حذف هذا الطبيب نهائياً؟' : 'Permanently delete this doctor?')) return;
+        try {
+            await deleteDoc(doc(db, "users", uid));
+            if (selectedDoctor?.uid === uid) setSelectedDoctor(null);
+        } catch (e) {
+            console.error("Delete failed", e);
+        }
+    };
+
+    const openRejectModal = (doc: UserProfile) => {
+        setSelectedDoctor(doc);
+        setShowRejectModal(true);
+        setTimeout(() => rejectInputRef.current?.focus(), 100);
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-64 items-center justify-center text-indigo-400">
+                <Loader2 size={32} className="animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-10 animate-in fade-in">
@@ -3693,7 +3851,7 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
                      </div>
                      <h2 id="pending-heading" className="text-xl font-bold text-white">
                          {t('pending_approvals')}
-                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5" aria-label={`${pendingDoctors.length} requests`}>{pendingDoctors.length}</span>
+                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5">{pendingDoctors.length}</span>
                      </h2>
                  </div>
                  
@@ -3703,19 +3861,19 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
                          <p>{language === 'ar' ? 'لا توجد طلبات معلقة.' : 'No pending requests. All clear.'}</p>
                      </div>
                  ) : (
-                     <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" role="list">
+                     <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {pendingDoctors.map(doc => (
-                            <li key={doc.uid} className="group relative bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] hover:border-amber-500/30 transition-all duration-300 shadow-lg hover:shadow-amber-900/10 list-none">
+                            <li key={doc.uid} className="group relative bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] hover:border-amber-500/30 transition-all duration-300 shadow-lg hover:shadow-amber-900/10">
                                 <div className="absolute top-0 right-0 p-6 opacity-50">
                                     <Badge color="amber" className="shadow-none bg-amber-500/10 border-amber-500/20">Pending</Badge>
                                 </div>
                                 
                                 <div className="flex flex-col items-center text-center mb-6 pt-4">
-                                    <div className="w-20 h-20 mb-4 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-400 text-2xl font-bold border border-white/5 shadow-inner group-hover:scale-105 transition-transform overflow-hidden">
+                                    <div className="w-20 h-20 mb-4 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-400 text-2xl font-bold border border-white/5 shadow-inner overflow-hidden">
                                         {doc.doctorData?.photoUrl ? (
-                                            <img src={doc.doctorData.photoUrl} alt={`Photo of Dr. ${doc.name}`} className="w-full h-full object-cover" />
+                                            <img src={doc.doctorData.photoUrl} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span aria-hidden="true">{doc.name.charAt(0)}</span>
+                                            <span>{doc.name.charAt(0)}</span>
                                         )}
                                     </div>
                                     <h3 className="font-bold text-white text-xl mb-1">{doc.name}</h3>
@@ -3739,7 +3897,6 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
                                     onClick={() => setSelectedDoctor(doc)} 
                                     variant="secondary" 
                                     className="w-full !py-3 border-white/5 hover:border-white/20 hover:bg-white/5"
-                                    aria-label={`${t('view_details')} ${doc.name}`}
                                 >
                                     <Eye size={16} className="mr-2" aria-hidden="true"/> {t('view_details')}
                                 </Button>
@@ -3757,99 +3914,139 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
                      </div>
                      <h2 id="approved-heading" className="text-xl font-bold text-white">
                          {t('approved_docs_list')}
-                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5" aria-label={`${approvedDoctors.length} doctors`}>{approvedDoctors.length}</span>
+                         <span className="ml-3 text-sm bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/5">{approvedDoctors.length}</span>
                      </h2>
                 </div>
 
                 <Card className="bg-slate-900/60 border-white/10 overflow-hidden !p-0 backdrop-blur-md">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-400">
-                            <caption className="sr-only">Table of approved doctors</caption>
                             <thead className="bg-slate-950/80 text-slate-500 uppercase font-bold text-xs tracking-wider">
                                 <tr>
-                                    <th className="p-5" scope="col">Doctor</th>
-                                    <th className="p-5" scope="col">Specialty</th>
-                                    <th className="p-5 text-center" scope="col">Patients</th>
-                                    <th className="p-5 text-center" scope="col">Level</th>
-                                    <th className="p-5 text-center" scope="col">Actions</th>
+                                    <th className="p-5">Doctor</th>
+                                    <th className="p-5">Specialty</th>
+                                    <th className="p-5 text-center">Level</th>
+                                    <th className="p-5 text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {approvedDoctors.length === 0 && (
-                                    <tr><td colSpan={5} className="p-12 text-center text-slate-600">No approved doctors registered yet.</td></tr>
-                                )}
-                                {approvedDoctors.map(doc => {
-                                    const patientCount = users.filter(u => u.patientData?.assignedDoctorId === doc.uid && !u.patientData?.isRecovered).length;
-                                    const level = Math.floor((doc.doctorData?.recoveredCount || 0) / 5) + 1;
-
-                                    return (
-                                        <tr key={doc.uid} className="hover:bg-white/5 transition-colors group">
-                                            <td className="p-5 font-bold text-white flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/20 group-hover:scale-110 transition-transform overflow-hidden">
-                                                    {doc.doctorData?.photoUrl ? (
-                                                        <img src={doc.doctorData.photoUrl} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <span aria-hidden="true">{doc.name.charAt(0)}</span>
-                                                    )}
+                                {approvedDoctors.map(doc => (
+                                    <tr key={doc.uid} className="hover:bg-white/5 transition-colors group">
+                                        <td className="p-5 font-bold text-white flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/20 overflow-hidden">
+                                                {doc.doctorData?.photoUrl ? (
+                                                    <img src={doc.doctorData.photoUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span>{doc.name.charAt(0)}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="text-base">{doc.name}</div>
+                                                <div className="text-xs text-slate-500 font-mono font-normal flex items-center gap-1 mt-0.5">
+                                                    <MapPin size={10}/> {doc.doctorData?.clinicLocation || 'Online'}
                                                 </div>
-                                                <div>
-                                                    <div className="text-base">{doc.name}</div>
-                                                    <div className="text-xs text-slate-500 font-mono font-normal flex items-center gap-1 mt-0.5">
-                                                        <MapPin size={10} aria-hidden="true"/> {doc.doctorData?.clinicLocation || 'Online'}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-5">
-                                                <Badge color="blue" className="bg-blue-500/10 border-blue-500/20 text-blue-300 shadow-none">
-                                                    {doc.doctorData?.specialty}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-5 text-center">
-                                                <span className="font-mono font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-white/5" title="Active Patients">
-                                                    {patientCount}
-                                                </span>
-                                            </td>
-                                            <td className="p-5 text-center">
-                                                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
-                                                    LVL {level}
-                                                </div>
-                                            </td>
-                                            <td className="p-5 text-center">
-                                                <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                    <button 
-                                                        onClick={() => setSelectedDoctor(doc)} 
-                                                        className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors border border-blue-500/20 outline-none focus-visible:ring-2 focus-visible:ring-blue-500" 
-                                                        title={t('view_details')}
-                                                        aria-label={`${t('view_details')} ${doc.name}`}
-                                                    >
-                                                        <Eye size={16} aria-hidden="true"/>
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => toggleBan(doc)} 
-                                                        className="p-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500 hover:text-white transition-colors border border-amber-500/20 outline-none focus-visible:ring-2 focus-visible:ring-amber-500" 
-                                                        title={doc.isBanned ? t('unban_user') : t('ban_user')}
-                                                        aria-label={doc.isBanned ? `${t('unban_user')} ${doc.name}` : `${t('ban_user')} ${doc.name}`}
-                                                    >
-                                                        <Ban size={16} aria-hidden="true"/>
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => doc.uid && deleteUser(doc.uid)} 
-                                                        className="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500 hover:text-white transition-colors border border-rose-500/20 outline-none focus-visible:ring-2 focus-visible:ring-rose-500" 
-                                                        title={t('delete_user')}
-                                                        aria-label={`${t('delete_user')} ${doc.name}`}
-                                                    >
-                                                        <Trash2 size={16} aria-hidden="true"/>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <Badge color="blue">{doc.doctorData?.specialty}</Badge>
+                                        </td>
+                                        <td className="p-5 text-center">
+                                            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+                                                LVL {doc.doctorData?.doctorLevel || 1}
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button onClick={() => setSelectedDoctor(doc)} className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-colors">
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button onClick={() => handleToggleBan(doc)} className={`p-2 rounded-lg transition-colors ${doc.isBanned ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white' : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}`}>
+                                                    <Ban size={16} />
+                                                </button>
+                                                <button onClick={() => doc.uid && handleDelete(doc.uid)} className="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500 hover:text-white transition-colors">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
                 </Card>
              </section>
+
+             {/* Doctor Details Modal */}
+             {selectedDoctor && !showRejectModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="w-full max-w-lg bg-slate-900 border border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-900/40 to-transparent pointer-events-none"></div>
+                        <button onClick={() => setSelectedDoctor(null)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-white z-20"><X size={20}/></button>
+                        
+                        <div className="text-center pt-8 pb-6 relative z-10">
+                            <div className="w-28 h-28 mx-auto mb-4 rounded-full p-1 bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-xl">
+                                {selectedDoctor.doctorData?.photoUrl ? (
+                                    <img src={selectedDoctor.doctorData.photoUrl} alt="" className="w-full h-full rounded-full object-cover border-4 border-slate-900" />
+                                ) : (
+                                    <div className="w-full h-full bg-slate-800 rounded-full flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-slate-900">Dr</div>
+                                )}
+                            </div>
+                            <h2 className="text-2xl font-black text-white">{selectedDoctor.name}</h2>
+                            <p className="text-indigo-400 font-bold uppercase text-xs tracking-widest mt-1">{selectedDoctor.doctorData?.specialty}</p>
+                        </div>
+
+                        <div className="px-8 pb-8 space-y-4">
+                            <div className="bg-slate-950 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">License</span>
+                                    <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">Email</span>
+                                    <span className="text-white">{selectedDoctor.email}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-slate-500 font-bold">Phone</span>
+                                    <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500 font-bold">Bio</span>
+                                    <span className="text-white truncate w-40 text-right">{selectedDoctor.doctorData?.bio}</span>
+                                </div>
+                            </div>
+
+                            {selectedDoctor.doctorData?.accountStatus === 'pending' && (
+                                <div className="flex gap-3 pt-2">
+                                    <Button onClick={() => handleApprove(selectedDoctor)} variant="success" className="flex-1">Approve</Button>
+                                    <Button onClick={() => openRejectModal(selectedDoctor)} variant="danger" className="flex-1">Reject</Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+             )}
+
+             {/* Reject Modal */}
+             {showRejectModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 animate-in fade-in">
+                    <Card className="w-full max-w-md !bg-slate-900 border-rose-500/30">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <AlertTriangle className="text-rose-500"/> Rejection Reason
+                        </h3>
+                        <textarea 
+                            ref={rejectInputRef}
+                            className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none h-32 resize-none mb-4"
+                            placeholder="Reason..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                        />
+                        <div className="flex gap-3">
+                            <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">Cancel</Button>
+                            <Button onClick={handleReject} variant="danger" className="flex-1">Confirm Reject</Button>
+                        </div>
+                    </Card>
+                </div>
+             )}
         </div>
     );
 };
@@ -3858,50 +4055,104 @@ export const AdminDoctors = ({ users, setSelectedDoctor, toggleBan, deleteUser }
 
 ### File: `views\admin\AdminOverview.tsx`
 ```tsx
-import React, { useMemo } from 'react';
-import { Lock, CheckCircle, Users, Activity, AlertCircle, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Lock, CheckCircle, Users, Activity, Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { collection, query, where, getCountFromServer, getDocs, limit, orderBy } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { UserProfile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AdminOverviewProps {
-    users: UserProfile[];
     setActiveTab: (tab: any) => void;
 }
 
-export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
+export const AdminOverview = ({ setActiveTab }: AdminOverviewProps) => {
     const { t, language } = useLanguage();
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        approvedDocs: 0,
+        recovered: 0,
+        pendingDocs: 0
+    });
+    const [pendingDocsList, setPendingDocsList] = useState<UserProfile[]>([]);
 
-    const doctorsList = users.filter(u => u.role === 'doctor');
-    const pendingDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'pending');
-    const approvedDoctors = doctorsList.filter(d => d.doctorData?.accountStatus === 'approved');
-    const normalUsers = users.filter(u => u.role === 'normal_user' || u.role === 'patient');
-    const recoveredUsers = users.filter(u => u.patientData?.isRecovered);
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                // 1. Parallel Count Fetching (Very Fast)
+                const usersColl = collection(db, 'users');
+                
+                const [usersSnap, doctorsSnap, recoveredSnap, pendingSnap] = await Promise.all([
+                    // Total Patients
+                    getCountFromServer(query(usersColl, where('role', 'in', ['normal_user', 'patient']))),
+                    // Approved Doctors
+                    getCountFromServer(query(usersColl, where('role', '==', 'doctor'), where('doctorData.accountStatus', '==', 'approved'))),
+                    // Recovered Patients
+                    getCountFromServer(query(usersColl, where('patientData.isRecovered', '==', true))),
+                    // Pending Doctors (Count)
+                    getCountFromServer(query(usersColl, where('role', '==', 'doctor'), where('doctorData.accountStatus', '==', 'pending')))
+                ]);
 
-    const stats = useMemo(() => {
-        return [
-            { name: t('stat_total_patients'), value: normalUsers.length, color: '#6366f1', icon: Users },
-            { name: t('stat_approved_docs'), value: approvedDoctors.length, color: '#10b981', icon: CheckCircle },
-            { name: t('stat_recovered'), value: recoveredUsers.length, color: '#f59e0b', icon: Activity },
-            { name: t('pending_approvals'), value: pendingDoctors.length, color: '#f43f5e', icon: Lock },
-        ];
-    }, [users, t, normalUsers.length, approvedDoctors.length, recoveredUsers.length, pendingDoctors.length]);
+                // 2. Fetch small list of pending doctors for UI (Limit 5)
+                const pendingDocsQuery = query(
+                    usersColl, 
+                    where('role', '==', 'doctor'), 
+                    where('doctorData.accountStatus', '==', 'pending'),
+                    limit(5)
+                );
+                const pendingDocsSnapshot = await getDocs(pendingDocsQuery);
+                const pendingDocsData = pendingDocsSnapshot.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
 
-    const pieData = [
-        { name: 'Active', value: Math.max(0, normalUsers.length - recoveredUsers.length), color: '#6366f1' },
-        { name: 'Recovered', value: recoveredUsers.length, color: '#10b981' },
+                setStats({
+                    totalUsers: usersSnap.data().count,
+                    approvedDocs: doctorsSnap.data().count,
+                    recovered: recoveredSnap.data().count,
+                    pendingDocs: pendingSnap.data().count
+                });
+                setPendingDocsList(pendingDocsData);
+
+            } catch (error) {
+                console.error("Error fetching admin stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    const statItems = [
+        { name: t('stat_total_patients'), value: stats.totalUsers, color: '#6366f1', icon: Users },
+        { name: t('stat_approved_docs'), value: stats.approvedDocs, color: '#10b981', icon: CheckCircle },
+        { name: t('stat_recovered'), value: stats.recovered, color: '#f59e0b', icon: Activity },
+        { name: t('pending_approvals'), value: stats.pendingDocs, color: '#f43f5e', icon: Lock },
     ];
 
-    const recoveryRate = normalUsers.length > 0 ? Math.round((recoveredUsers.length / normalUsers.length) * 100) : 0;
+    const pieData = [
+        { name: 'Active', value: Math.max(0, stats.totalUsers - stats.recovered), color: '#6366f1' },
+        { name: 'Recovered', value: stats.recovered, color: '#10b981' },
+    ];
+
+    const recoveryRate = stats.totalUsers > 0 ? Math.round((stats.recovered / stats.totalUsers) * 100) : 0;
+
+    if (loading) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in">
             {/* Stats Grid */}
             <section aria-label={language === 'ar' ? 'الإحصائيات العامة' : 'General Statistics'}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {stats.map((stat, idx) => (
+                    {statItems.map((stat, idx) => (
                         <div key={idx} className="relative group">
                             <div className="absolute inset-0 bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl blur-xl opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                             <Card className="relative bg-slate-900/80 border-white/5 p-6 flex flex-col justify-between h-32 overflow-hidden group-hover:border-white/10 transition-all">
@@ -3914,7 +4165,7 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                         {stat.value}
                                     </div>
                                 </div>
-                                <div className="h-1 w-full bg-slate-800 rounded-full mt-4 overflow-hidden" role="progressbar" aria-valuenow={70} aria-valuemin={0} aria-valuemax={100} aria-label="Indicator">
+                                <div className="h-1 w-full bg-slate-800 rounded-full mt-4 overflow-hidden">
                                     <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{ width: '70%', backgroundColor: stat.color }}></div>
                                 </div>
                             </Card>
@@ -3934,9 +4185,9 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                         
                         <div className="flex-1 w-full min-h-[250px] z-10" aria-hidden="true">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <BarChart data={statItems} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                     <defs>
-                                        {stats.map((entry, index) => (
+                                        {statItems.map((entry, index) => (
                                             <linearGradient key={`grad-${index}`} id={`color-${index}`} x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor={entry.color} stopOpacity={0.8}/>
                                                 <stop offset="95%" stopColor={entry.color} stopOpacity={0.1}/>
@@ -3950,33 +4201,12 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                         itemStyle={{color: '#fff', fontWeight: 'bold'}}
                                     />
                                     <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={50} animationDuration={1500}>
-                                        {stats.map((entry, index) => (
+                                        {statItems.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={`url(#color-${index})`} />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
-                        </div>
-
-                        {/* Hidden Table for Screen Readers */}
-                        <div className="sr-only">
-                            <table>
-                                <caption>{language === 'ar' ? 'جدول نظرة عامة على الإحصائيات' : 'Overview Statistics Table'}</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">{language === 'ar' ? 'الفئة' : 'Category'}</th>
-                                        <th scope="col">{language === 'ar' ? 'العدد' : 'Count'}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.map((stat, i) => (
-                                        <tr key={i}>
-                                            <td>{stat.name}</td>
-                                            <td>{stat.value}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
                         </div>
                     </Card>
                 </section>
@@ -3988,14 +4218,14 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                             <h3 id="pending-title" className="text-white font-bold mb-4 flex items-center gap-2">
                                 <Lock size={18} className="text-amber-500" aria-hidden="true"/> {t('pending_approvals')}
                             </h3>
-                            {pendingDoctors.length === 0 ? (
+                            {pendingDocsList.length === 0 ? (
                                 <div className="text-center text-slate-500 py-8 flex flex-col items-center justify-center h-full flex-1">
                                     <CheckCircle size={40} className="mb-3 text-emerald-500/20" aria-hidden="true"/>
                                     <p className="text-sm">All clear! No pending requests.</p>
                                 </div>
                             ) : (
                                 <ul className="space-y-3 flex-1">
-                                    {pendingDoctors.slice(0, 3).map(doc => (
+                                    {pendingDocsList.map(doc => (
                                         <li key={doc.uid} className="flex justify-between items-center bg-slate-950/50 p-4 rounded-xl border border-white/5 hover:border-amber-500/30 transition-all group">
                                             <div>
                                                 <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">{doc.name}</div>
@@ -4011,13 +4241,13 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                             </Button>
                                         </li>
                                     ))}
-                                    {pendingDoctors.length > 3 && (
+                                    {stats.pendingDocs > 5 && (
                                         <li className="text-center pt-2">
                                             <button 
                                                 onClick={() => setActiveTab('doctors')} 
                                                 className="text-xs text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto"
                                             >
-                                                + {pendingDoctors.length - 3} more <ArrowRight size={12} />
+                                                + {stats.pendingDocs - 5} more <ArrowRight size={12} />
                                             </button>
                                         </li>
                                     )}
@@ -4057,11 +4287,6 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
                                 <span className="text-2xl font-black text-white">{recoveryRate}%</span>
                                 <span className="text-[9px] text-slate-500 uppercase tracking-widest">Recovery Rate</span>
                              </div>
-
-                             {/* Hidden Description for Recovery Rate */}
-                             <div className="sr-only">
-                                 {language === 'ar' ? `معدل التعافي: ${recoveryRate} بالمائة.` : `Recovery Rate: ${recoveryRate} percent.`}
-                             </div>
                         </Card>
                     </section>
                 </div>
@@ -4074,9 +4299,16 @@ export const AdminOverview = ({ users, setActiveTab }: AdminOverviewProps) => {
 
 ### File: `views\admin\AdminUsers.tsx`
 ```tsx
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Ban, Trash2, User, Shield, Stethoscope, Mail, CheckCircle, Smartphone, Calendar, Eye, X, Activity, Ruler, Weight, Send, MessageSquare, Loader2 } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+    Search, Ban, Trash2, User, Shield, Stethoscope, Mail, CheckCircle, 
+    Smartphone, Calendar, Eye, X, Activity, Ruler, Weight, Send, 
+    MessageSquare, Loader2, ChevronLeft, ChevronRight 
+} from 'lucide-react';
+import { 
+    collection, addDoc, query, where, orderBy, limit, getDocs, 
+    startAfter, endBefore, limitToLast, DocumentData, QueryDocumentSnapshot 
+} from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
 import { UserProfile } from '../../types';
 import { Badge } from '../../components/ui/Badge';
@@ -4084,25 +4316,106 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../components/ui/Button'; 
 import { Card } from '../../components/ui/Card';     
 
-interface AdminUsersProps {
-    users: UserProfile[];
-    toggleBan: (user: UserProfile) => void;
-    deleteUser: (uid: string) => void;
-}
+// Limit items per page for Server-Side Pagination
+const ITEMS_PER_PAGE = 10;
 
-export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) => {
+export const AdminUsers = () => {
     const { t, language, dir } = useLanguage();
+    
+    // -- Data State --
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [loading, setLoading] = useState(false);
+    
+    // -- Pagination State --
+    const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+    const [pageStack, setPageStack] = useState<QueryDocumentSnapshot<DocumentData>[]>([]);
+    const [isFirstPage, setIsFirstPage] = useState(true);
+    const [isLastPage, setIsLastPage] = useState(false);
+
+    // -- Search State --
     const [searchTerm, setSearchTerm] = useState("");
+    
+    // -- Modal & Actions State --
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
-
-    // Message State
     const [showMsgForm, setShowMsgForm] = useState(false);
     const [msgSubject, setMsgSubject] = useState("");
     const [msgContent, setMsgContent] = useState("");
     const [isSending, setIsSending] = useState(false);
 
-    // Focus management for accessibility
+    // -- 1. Fetch Users Function (Server-Side) --
+    const fetchUsers = async (direction: 'next' | 'prev' | 'initial' = 'initial') => {
+        setLoading(true);
+        try {
+            const usersRef = collection(db, "users");
+            let q = query(usersRef, orderBy("createdAt", "desc"), limit(ITEMS_PER_PAGE));
+
+            // Apply Search Filtering (Simple "Start With" logic for Name/Email)
+            if (searchTerm.trim()) {
+                // Note: Firestore search is limited. This works for exact prefixes.
+                // For production with massive data, consider Algolia. 
+                // Here we search by Name for simplicity in this demo.
+                q = query(
+                    usersRef, 
+                    orderBy("name"), 
+                    where("name", ">=", searchTerm), 
+                    where("name", "<=", searchTerm + '\uf8ff'),
+                    limit(ITEMS_PER_PAGE)
+                );
+            } else {
+                // Apply Pagination logic only if not searching (or if searching logic supports it)
+                if (direction === 'next' && lastVisible) {
+                    q = query(usersRef, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(ITEMS_PER_PAGE));
+                } else if (direction === 'prev' && pageStack.length > 1) {
+                    // To go back, we use the doc at index [length - 2] as the startAfter point for the previous page
+                    const prevStartDoc = pageStack[pageStack.length - 2];
+                    q = query(usersRef, orderBy("createdAt", "desc"), startAfter(prevStartDoc), limit(ITEMS_PER_PAGE));
+                }
+            }
+
+            const snapshot = await getDocs(q);
+            
+            const fetchedUsers: UserProfile[] = [];
+            snapshot.forEach(doc => fetchedUsers.push({ uid: doc.id, ...doc.data() } as UserProfile));
+            
+            setUsers(fetchedUsers);
+            
+            // Update Pagination Cursors
+            if (snapshot.docs.length > 0) {
+                const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+                setLastVisible(lastDoc);
+                
+                if (direction === 'next') {
+                    setPageStack(prev => [...prev, lastDoc]);
+                } else if (direction === 'prev') {
+                    setPageStack(prev => prev.slice(0, -1));
+                } else if (direction === 'initial') {
+                    setPageStack([lastDoc]);
+                }
+                
+                setIsLastPage(snapshot.docs.length < ITEMS_PER_PAGE);
+            } else {
+                setIsLastPage(true);
+            }
+            
+            setIsFirstPage(direction === 'initial' || (direction === 'prev' && pageStack.length <= 1));
+
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        }
+        setLoading(false);
+    };
+
+    // Initial Load & Search Trigger
+    useEffect(() => {
+        // Debounce search to prevent too many reads
+        const timer = setTimeout(() => {
+            fetchUsers('initial');
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // -- 2. Focus Management --
     useEffect(() => {
         if (selectedUser) {
             setTimeout(() => modalRef.current?.focus(), 100);
@@ -4110,31 +4423,16 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
         } else {
             document.body.style.overflow = 'unset';
             setShowMsgForm(false);
-            setMsgSubject("");
-            setMsgContent("");
         }
         return () => { document.body.style.overflow = 'unset'; };
     }, [selectedUser]);
 
-    // Performance: Memoize filtering
-    const filteredUsers = useMemo(() => {
-        const lowerTerm = searchTerm.toLowerCase();
-        return users.filter(u => 
-            (u.role === 'normal_user' || u.role === 'patient') &&
-            (u.name.toLowerCase().includes(lowerTerm) || u.email.toLowerCase().includes(lowerTerm))
-        );
-    }, [users, searchTerm]);
-
-    const handleCloseModal = () => setSelectedUser(null);
-
+    // -- 3. Actions Handlers --
     const handleSendMessage = async () => {
         if (!selectedUser?.uid || !msgSubject.trim() || !msgContent.trim()) return;
-        
         setIsSending(true);
         try {
-            // FIX: Safe access to auth using optional chaining
             const adminUser = auth?.currentUser;
-            
             await addDoc(collection(db, "tickets"), {
                 userId: selectedUser.uid,
                 userEmail: selectedUser.email,
@@ -4150,12 +4448,12 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
                     isAdmin: true
                 }]
             });
-            alert(language === 'ar' ? "تم إرسال الرسالة بنجاح" : "Message sent successfully");
+            alert("Message sent successfully");
             setShowMsgForm(false);
             setMsgSubject("");
             setMsgContent("");
         } catch (e) {
-            console.error("Failed to send message", e);
+            console.error(e);
             alert("Error sending message");
         } finally {
             setIsSending(false);
@@ -4167,248 +4465,120 @@ export const AdminUsers = ({ users, toggleBan, deleteUser }: AdminUsersProps) =>
             <h2 id="users-section-title" className="sr-only">{language === 'ar' ? 'إدارة المستخدمين' : 'User Management'}</h2>
 
             {/* Search Bar */}
-            <div className="relative group">
-                <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-                <div className="relative flex items-center bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-                    <div className="p-3 bg-slate-800 rounded-xl text-slate-400">
-                        <Search size={20} aria-hidden="true" />
-                    </div>
-                    <label htmlFor="user-search" className="sr-only">{t('search_user_placeholder')}</label>
-                    <input 
-                        id="user-search"
-                        className="w-full bg-transparent border-none text-white px-4 py-2 outline-none placeholder-slate-500 font-medium"
-                        placeholder={t('search_user_placeholder')}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    <div className="px-4 text-xs text-slate-500 font-bold uppercase tracking-wider hidden md:block" aria-live="polite">
-                        {filteredUsers.length} {language === 'ar' ? 'مستخدم' : 'Users'}
-                    </div>
+            <div className="relative flex items-center bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+                <div className="p-3 bg-slate-800 rounded-xl text-slate-400">
+                    <Search size={20} />
                 </div>
+                <input 
+                    className="w-full bg-transparent border-none text-white px-4 py-2 outline-none placeholder-slate-500 font-medium"
+                    placeholder={language === 'ar' ? "بحث بالاسم..." : "Search by name..."}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
             </div>
 
             {/* Users Grid */}
-            {filteredUsers.length === 0 ? (
-                <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 bg-slate-900/20" role="status">
-                    <User size={48} className="mx-auto mb-4 opacity-20" aria-hidden="true"/>
-                    <p>{language === 'ar' ? `لا توجد نتائج بحث مطابقة لـ "${searchTerm}"` : `No users found matching "${searchTerm}"`}</p>
+            {loading ? (
+                <div className="flex h-64 items-center justify-center text-indigo-400">
+                    <Loader2 size={32} className="animate-spin" />
+                </div>
+            ) : users.length === 0 ? (
+                <div className="text-center py-20 bg-slate-900/20 rounded-3xl border border-dashed border-slate-800 text-slate-500">
+                    <User size={48} className="mx-auto mb-4 opacity-20"/>
+                    <p>{language === 'ar' ? 'لا يوجد مستخدمين.' : 'No users found.'}</p>
                 </div>
             ) : (
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-6" role="list">
-                    {filteredUsers.map(user => (
-                        <li key={user.uid} className="group relative bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/90 transition-all duration-300 overflow-hidden shadow-lg list-none focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-slate-950">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
-                            
-                            <div className="flex items-start justify-between mb-6 relative z-10">
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {users.map(user => (
+                        <li key={user.uid} className="bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 transition-all">
+                            <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-4">
-                                    <div 
-                                        className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl border shadow-inner transition-transform group-hover:scale-105 ${user.isBanned ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-800 text-slate-300 border-white/5'}`}
-                                        aria-hidden="true"
-                                    >
+                                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-slate-300 border border-white/5">
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                                            {user.name}
-                                            {user.isBanned && <Badge color="red" className="!py-0 !px-1.5 text-[9px]">BANNED</Badge>}
-                                        </h3>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Badge color={user.role === 'patient' ? 'indigo' : 'blue'} className="bg-slate-950/50 border-white/5 shadow-none">
-                                                {user.role === 'patient' ? 'Patient' : 'User'}
-                                            </Badge>
-                                            {user.planType && (
-                                                <span className="text-[10px] text-slate-500 bg-slate-950/30 px-2 py-0.5 rounded border border-white/5 uppercase tracking-wider">
-                                                    {user.planType}
-                                                </span>
-                                            )}
+                                        <h3 className="font-bold text-white">{user.name}</h3>
+                                        <div className="flex gap-2 mt-1">
+                                            <Badge color={user.role === 'patient' ? 'indigo' : 'blue'}>{user.role}</Badge>
+                                            {user.isBanned && <Badge color="red">BANNED</Badge>}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="space-y-3 mb-6 relative z-10">
-                                <div className="flex items-center gap-3 text-sm text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-white/5">
-                                    <Mail size={14} className="text-slate-500" aria-hidden="true"/> 
-                                    <span className="truncate">{user.email}</span>
-                                </div>
-                                {user.patientData?.assignedDoctorName ? (
-                                    <div className="flex items-center gap-3 text-sm text-indigo-300 bg-indigo-900/10 p-3 rounded-xl border border-indigo-500/10">
-                                        <Stethoscope size={14} aria-hidden="true"/> 
-                                        <span>Dr. {user.patientData.assignedDoctorName}</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-3 text-sm text-slate-500 bg-slate-950/40 p-3 rounded-xl border border-white/5 border-dashed">
-                                        <Shield size={14} aria-hidden="true"/> 
-                                        <span>{language === 'ar' ? 'لا يوجد طبيب مشرف' : 'No Doctor Assigned'}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between items-center text-[10px] text-slate-600 px-1 font-mono">
-                                    <span className="flex items-center gap-1"><Smartphone size={10}/> ID: {user.uid?.slice(0,6)}</span>
-                                    <span className="flex items-center gap-1"><Calendar size={10}/> {user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A'}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 relative z-10 pt-2 border-t border-white/5">
                                 <button 
                                     onClick={() => setSelectedUser(user)}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                                    aria-label={language === 'ar' ? 'عرض الملف' : 'View Profile'}
+                                    className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-colors"
                                 >
-                                    <Eye size={14} aria-hidden="true" />
-                                    {language === 'ar' ? 'عرض الملف' : 'View Profile'}
+                                    <Eye size={18} />
                                 </button>
-
-                                <button 
-                                    onClick={() => toggleBan(user)} 
-                                    className={`p-2.5 rounded-xl text-xs font-bold transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
-                                        user.isBanned 
-                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white focus-visible:ring-emerald-500' 
-                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500 hover:text-white focus-visible:ring-amber-500'
-                                    }`}
-                                    title={user.isBanned ? t('unban_user') : t('ban_user')}
-                                    aria-label={user.isBanned ? t('unban_user') : t('ban_user')}
-                                >
-                                    {user.isBanned ? <CheckCircle size={16} aria-hidden="true"/> : <Ban size={16} aria-hidden="true"/>}
-                                </button>
-                                
-                                <button 
-                                    onClick={() => user.uid && deleteUser(user.uid)} 
-                                    className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-rose-500"
-                                    title={t('delete_user')}
-                                    aria-label={`${t('delete_user')} ${user.name}`}
-                                >
-                                    <Trash2 size={16} aria-hidden="true"/>
-                                </button>
+                            </div>
+                            <div className="space-y-2 text-sm text-slate-400">
+                                <div className="flex items-center gap-2"><Mail size={14}/> {user.email}</div>
+                                <div className="flex items-center gap-2"><Calendar size={14}/> {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</div>
                             </div>
                         </li>
                     ))}
                 </ul>
             )}
 
-            {/* USER DETAILS MODAL */}
-            {selectedUser && (
-                <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in duration-300"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="user-modal-title"
-                >
-                    <div 
-                        ref={modalRef}
-                        tabIndex={-1}
-                        className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden outline-none flex flex-col max-h-[90vh]"
+            {/* Pagination Controls */}
+            {!searchTerm && !loading && (
+                <div className="flex justify-center items-center gap-4 pt-4">
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => fetchUsers('prev')} 
+                        disabled={isFirstPage}
+                        className="!rounded-xl"
                     >
-                        {/* Header */}
-                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
-                        <button 
-                            onClick={handleCloseModal}
-                            className="absolute top-6 right-6 p-2 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors z-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            aria-label={t('close')}
-                        >
-                            <X size={20} />
-                        </button>
+                        {dir === 'rtl' ? <ChevronRight /> : <ChevronLeft />}
+                    </Button>
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{language === 'ar' ? 'صفحة' : 'Page'} {pageStack.length}</span>
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => fetchUsers('next')} 
+                        disabled={isLastPage}
+                        className="!rounded-xl"
+                    >
+                        {dir === 'rtl' ? <ChevronLeft /> : <ChevronRight />}
+                    </Button>
+                </div>
+            )}
 
-                        <div className="p-8 pt-10 relative z-10 overflow-y-auto custom-scrollbar">
-                            <div className="text-center mb-8">
-                                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center text-3xl font-bold text-slate-400 border-4 border-slate-950 shadow-xl">
-                                    {selectedUser.name.charAt(0).toUpperCase()}
-                                </div>
-                                <h2 id="user-modal-title" className="text-2xl font-black text-white">{selectedUser.name}</h2>
-                                <p className="text-slate-500 font-mono text-xs mt-1">{selectedUser.email}</p>
-                                {selectedUser.isBanned && (
-                                    <span className="inline-block mt-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
-                                        ACCOUNT BANNED
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-3 gap-4 mb-8">
-                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
-                                    <Activity size={18} className="mx-auto mb-2 text-indigo-400" />
-                                    <span className="block text-xs text-slate-500 uppercase font-bold">Progress</span>
-                                    <span className="block text-lg font-black text-white">{Math.round(selectedUser.progress || 0)}%</span>
-                                </div>
-                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
-                                    <Weight size={18} className="mx-auto mb-2 text-emerald-400" />
-                                    <span className="block text-xs text-slate-500 uppercase font-bold">Weight</span>
-                                    <span className="block text-lg font-black text-white">{selectedUser.weight || '-'} <span className="text-xs text-slate-600">kg</span></span>
-                                </div>
-                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5 text-center">
-                                    <Ruler size={18} className="mx-auto mb-2 text-amber-400" />
-                                    <span className="block text-xs text-slate-500 uppercase font-bold">Age</span>
-                                    <span className="block text-lg font-black text-white">{selectedUser.age || '-'}</span>
-                                </div>
-                            </div>
-
-                            {/* Actions / Message Toggle */}
-                            <div className="mb-6">
-                                {!showMsgForm ? (
-                                    <Button 
-                                        onClick={() => setShowMsgForm(true)} 
-                                        variant="secondary" 
-                                        className="w-full !py-3 bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500 hover:text-white"
-                                    >
-                                        <MessageSquare size={18} className="mr-2" /> {language === 'ar' ? 'إرسال رسالة خاصة' : 'Send Direct Message'}
-                                    </Button>
-                                ) : (
-                                    <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 animate-in slide-in-from-top-2">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h4 className="text-sm font-bold text-white flex items-center gap-2"><Send size={14} className="text-indigo-400"/> New Message</h4>
-                                            <button onClick={() => setShowMsgForm(false)} className="text-slate-500 hover:text-white text-xs">Cancel</button>
-                                        </div>
-                                        <input 
-                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mb-3 text-white text-sm focus:border-indigo-500 outline-none"
-                                            placeholder="Subject"
-                                            value={msgSubject}
-                                            onChange={(e) => setMsgSubject(e.target.value)}
-                                        />
-                                        <textarea 
-                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mb-4 text-white text-sm focus:border-indigo-500 outline-none h-24 resize-none"
-                                            placeholder="Message content..."
-                                            value={msgContent}
-                                            onChange={(e) => setMsgContent(e.target.value)}
-                                        />
-                                        <Button 
-                                            onClick={handleSendMessage} 
-                                            variant="primary" 
-                                            className="w-full !py-2" 
-                                            disabled={!msgSubject.trim() || !msgContent.trim() || isSending}
-                                        >
-                                            {isSending ? <Loader2 className="animate-spin" size={18} /> : "Send Ticket"}
-                                        </Button>
+            {/* User Details Modal */}
+            {selectedUser && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in">
+                    <div ref={modalRef} tabIndex={-1} className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl relative overflow-hidden outline-none">
+                        <button onClick={() => setSelectedUser(null)} className="absolute top-6 right-6 p-2 bg-slate-800 rounded-full text-white z-10"><X size={20}/></button>
+                        <div className="p-8 pt-12">
+                            <h2 className="text-2xl font-black text-white mb-2">{selectedUser.name}</h2>
+                            <p className="text-slate-400 mb-6">{selectedUser.email}</p>
+                            
+                            {/* Message Form */}
+                            {!showMsgForm ? (
+                                <Button onClick={() => setShowMsgForm(true)} className="w-full mb-4" variant="secondary">
+                                    <MessageSquare size={18} className="mr-2"/> {language === 'ar' ? 'إرسال رسالة' : 'Send Message'}
+                                </Button>
+                            ) : (
+                                <div className="bg-slate-950 p-4 rounded-xl border border-white/10 mb-4 animate-in slide-in-from-top-2">
+                                    <input className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 mb-2 text-white text-sm" placeholder="Subject" value={msgSubject} onChange={e => setMsgSubject(e.target.value)} />
+                                    <textarea className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 mb-2 text-white text-sm h-20" placeholder="Message..." value={msgContent} onChange={e => setMsgContent(e.target.value)} />
+                                    <div className="flex gap-2 justify-end">
+                                        <button onClick={() => setShowMsgForm(false)} className="text-xs text-slate-500">Cancel</button>
+                                        <button onClick={handleSendMessage} disabled={isSending} className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg">{isSending ? '...' : 'Send'}</button>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
-                            {/* Medical Info */}
-                            <div className="space-y-4 bg-slate-950/30 p-5 rounded-3xl border border-white/5">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                                    <Activity size={14} /> Clinical Profile
-                                </h3>
-                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-                                    <span className="text-slate-500">Medication</span>
-                                    <span className="text-white font-bold">{selectedUser.medType || 'Not Set'}</span>
+                            {/* Info Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                                    <span className="text-xs text-slate-500 font-bold block mb-1">Role</span>
+                                    <span className="text-white font-mono">{selectedUser.role}</span>
                                 </div>
-                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-                                    <span className="text-slate-500">Form</span>
-                                    <span className="text-white font-bold">{selectedUser.medForm || '-'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-                                    <span className="text-slate-500">Plan Type</span>
-                                    <span className="text-indigo-400 font-bold uppercase">{selectedUser.planType || 'None'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Last Active</span>
-                                    <span className="text-white font-mono">{selectedUser.lastActive ? new Date(selectedUser.lastActive).toLocaleDateString() : 'Never'}</span>
+                                <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/5">
+                                    <span className="text-xs text-slate-500 font-bold block mb-1">Last Active</span>
+                                    <span className="text-white font-mono">{selectedUser.lastActive ? new Date(selectedUser.lastActive).toLocaleDateString() : '-'}</span>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div className="p-6 border-t border-white/5 bg-slate-900/50 backdrop-blur-md">
-                            <Button onClick={handleCloseModal} variant="secondary" className="w-full rounded-xl">
-                                {t('close')}
-                            </Button>
                         </div>
                     </div>
                 </div>
@@ -4994,214 +5164,38 @@ export const DashboardHeader = ({
 
 ### File: `views\AdminView.tsx`
 ```tsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
-    collection, query, orderBy, deleteDoc, onSnapshot, doc 
-} from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
-import { UserProfile, Article } from '../types';
-import { Activity, Users, FileText, Stethoscope, X, Trash2, ShieldAlert, CheckCircle, AlertTriangle, MessageSquare, LifeBuoy } from 'lucide-react';
+    Activity, Users, FileText, Stethoscope, MessageSquare, LifeBuoy, ShieldAlert 
+} from 'lucide-react';
 
-// Services
-import { 
-    approveDoctorService, 
-    rejectDoctorService, 
-    toggleBanService, 
-    deleteUserService, 
-    publishArticleService 
-} from '../services/adminServices';
+// Components
+import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
+
+// Sub-views (Modules) - Now independent
+import { AdminOverview } from './admin/AdminOverview';
+import { AdminDoctors } from './admin/AdminDoctors';
+import { AdminUsers } from './admin/AdminUsers';
+import { AdminCMS } from './admin/AdminCMS';
+import { CommunityView } from './CommunityView';
+import { SupportView } from './SupportView';
 
 // Contexts
 import { useLanguage } from '../contexts/LanguageContext';
 import { useData } from '../contexts/DataContext';
 
-// Components
-import { LayoutContainer } from '../components/ui/LayoutContainer';
-import { PageHeader } from '../components/ui/PageHeader';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
-
-// Sub-views & Modules
-import { AdminOverview } from './admin/AdminOverview';
-import { AdminDoctors } from './admin/AdminDoctors';
-import { AdminUsers } from './admin/AdminUsers';
-import { AdminCMS } from './admin/AdminCMS';
-import { CommunityView } from './CommunityView'; // Reusing existing view
-import { SupportView } from './SupportView';     // Reusing existing view
-
 export const AdminView = () => {
     const { t, language } = useLanguage();
     const { userProfile } = useData();
 
-    // -- Global State --
+    // -- State --
     const [activeTab, setActiveTab] = useState<'overview' | 'doctors' | 'users' | 'cms' | 'community' | 'support'>('overview');
-    const [loading, setLoading] = useState(false);
-    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    
-    // -- Data Stores --
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [articles, setArticles] = useState<Article[]>([]);
-
-    // -- Modals State --
-    const [selectedDoctor, setSelectedDoctor] = useState<UserProfile | null>(null);
-    const [showRejectModal, setShowRejectModal] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState("");
-
-    // Refs
-    const modalRef = useRef<HTMLDivElement>(null);
-    const rejectInputRef = useRef<HTMLTextAreaElement>(null);
-
-    // -- 1. REAL-TIME DATA FETCHING --
-    useEffect(() => {
-        setLoading(true);
-        // Users
-        const qUsers = query(collection(db, "users"));
-        const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
-            const fetchedUsers: UserProfile[] = [];
-            snapshot.forEach(d => fetchedUsers.push({ uid: d.id, ...d.data() } as UserProfile));
-            setUsers(fetchedUsers);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching users:", error);
-            showStatus('error', "Failed to sync users data");
-            setLoading(false);
-        });
-
-        // Articles
-        const qArticles = query(collection(db, "articles"), orderBy("createdAt", "desc"));
-        const unsubscribeArticles = onSnapshot(qArticles, (snapshot) => {
-            setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
-        });
-
-        return () => {
-            unsubscribeUsers();
-            unsubscribeArticles();
-        };
-    }, []);
-
-    // Focus management
-    useEffect(() => {
-        if (selectedDoctor || showRejectModal) {
-            setTimeout(() => {
-                if (showRejectModal) rejectInputRef.current?.focus();
-                else modalRef.current?.focus();
-            }, 100);
-        }
-    }, [selectedDoctor, showRejectModal]);
-
-    // -- HELPERS --
-    const showStatus = (type: 'success' | 'error', text: string) => {
-        setStatusMsg({ type, text });
-        setTimeout(() => setStatusMsg(null), 4000);
-    };
-
-    // -- ACTIONS --
-    const approveDoctor = async (docUid: string) => {
-        if (!userProfile) return;
-        if (!window.confirm(language === 'ar' ? "هل تؤكد اعتماد هذا الطبيب؟" : "Confirm doctor approval?")) return;
-        
-        const doctorName = users.find(u => u.uid === docUid)?.name || "Unknown";
-        const result = await approveDoctorService(userProfile, docUid, doctorName);
-
-        if (result.success) {
-            showStatus('success', language === 'ar' ? "تم اعتماد الطبيب بنجاح." : "Doctor approved successfully.");
-            if (selectedDoctor?.uid === docUid) setSelectedDoctor(null);
-        } else {
-            showStatus('error', result.error || "Failed to approve doctor.");
-        }
-    };
-
-    const handleRejectClick = (doctor: UserProfile) => {
-        setSelectedDoctor(doctor);
-        setShowRejectModal(true);
-        setRejectionReason("");
-    };
-
-    const confirmReject = async () => {
-        if (!userProfile || !selectedDoctor?.uid) return;
-        if (!rejectionReason.trim()) {
-            showStatus('error', language === 'ar' ? "يرجى ذكر سبب الرفض." : "Rejection reason is required.");
-            return;
-        }
-
-        const result = await rejectDoctorService(userProfile, selectedDoctor.uid, selectedDoctor.name, rejectionReason);
-
-        if (result.success) {
-            showStatus('success', language === 'ar' ? "تم رفض الطلب." : "Doctor request rejected.");
-            setShowRejectModal(false);
-            setSelectedDoctor(null);
-            setRejectionReason("");
-        } else {
-            showStatus('error', result.error || "Failed to reject request.");
-        }
-    };
-
-    const toggleBan = async (targetUser: UserProfile) => {
-        if (!userProfile || !targetUser.uid) return;
-        const newVal = !targetUser.isBanned;
-        
-        if(window.confirm(newVal ? 
-            (language === 'ar' ? "حظر هذا المستخدم؟" : "Ban this user?") : 
-            (language === 'ar' ? "فك الحظر عن المستخدم؟" : "Unban this user?")
-        )) {
-            const result = await toggleBanService(userProfile, targetUser.uid, targetUser.name, newVal);
-            
-            if (result.success) {
-                showStatus('success', language === 'ar' ? `تم ${newVal ? 'حظر' : 'فك حظر'} المستخدم.` : `User ${newVal ? 'banned' : 'unbanned'}.`);
-            } else {
-                showStatus('error', result.error || "Action failed.");
-            }
-        }
-    };
-
-    const deleteUser = async (targetUid: string) => {
-        if (!userProfile) return;
-        if (!window.confirm(language === 'ar' ? "تحذير: هذا الإجراء سيحذف المستخدم نهائياً. هل أنت متأكد؟" : "Warning: This will permanently delete the user. Continue?")) return;
-        
-        const result = await deleteUserService(userProfile, targetUid);
-
-        if (result.success) {
-            showStatus('success', language === 'ar' ? "تم حذف المستخدم." : "User deleted.");
-            if (selectedDoctor?.uid === targetUid) setSelectedDoctor(null);
-        } else {
-            showStatus('error', result.error || "Failed to delete user.");
-        }
-    };
-
-    const publishArticle = async (articleData: Omit<Article, 'id' | 'createdAt' | 'authorName' | 'authorId' | 'authorRole'>) => {
-        if (!userProfile) return;
-        if (!articleData.title || !articleData.content) {
-            showStatus('error', language === 'ar' ? "العنوان والمحتوى مطلوبان." : "Title and content are required.");
-            return;
-        }
-        
-        const result = await publishArticleService(userProfile, articleData);
-
-        if (result.success) {
-            showStatus('success', language === 'ar' ? "تم نشر المقال." : "Article published.");
-        } else {
-            showStatus('error', result.error || "Failed to publish article.");
-        }
-    };
-
-    const deleteArticle = async (id: string) => {
-        if(window.confirm(language === 'ar' ? "حذف هذا المقال؟" : "Delete this article?")) {
-            try {
-                await deleteDoc(doc(db, "articles", id));
-                showStatus('success', language === 'ar' ? "تم الحذف." : "Article deleted.");
-            } catch (e) {
-                showStatus('error', "Failed to delete article.");
-            }
-        }
-    }
-
-    const pendingDoctorsCount = users.filter(u => u.role === 'doctor' && u.doctorData?.accountStatus === 'pending').length;
 
     // Tabs Configuration
     const tabs = [
         { id: 'overview', icon: Activity, label: t('tab_overview') },
-        { id: 'doctors', icon: Stethoscope, label: t('tab_doctors'), badge: pendingDoctorsCount > 0 ? pendingDoctorsCount : null },
+        { id: 'doctors', icon: Stethoscope, label: t('tab_doctors') },
         { id: 'users', icon: Users, label: t('tab_users') },
         { id: 'cms', icon: FileText, label: t('tab_cms') },
         { id: 'community', icon: MessageSquare, label: language === 'ar' ? 'الرقابة' : 'Chat Mod' },
@@ -5218,7 +5212,7 @@ export const AdminView = () => {
                         {language === 'ar' ? 'غرفة التحكم المركزية' : 'Admin Command Center'}
                     </h1>
                     <p className="text-slate-500 font-mono text-xs mt-1 tracking-widest uppercase">
-                        System Status: <span className="text-emerald-500">ONLINE</span> • {users.length} Users
+                        System Status: <span className="text-emerald-500">ONLINE</span>
                     </p>
                 </div>
 
@@ -5227,22 +5221,7 @@ export const AdminView = () => {
                 </div>
             </header>
 
-            {/* Status Toast */}
-            {statusMsg && (
-                <div 
-                    className={`fixed top-6 left-1/2 -translate-x-1/2 z-[150] px-6 py-3 rounded-full shadow-2xl font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border ${
-                        statusMsg.type === 'success' 
-                        ? 'bg-emerald-500/90 text-white border-emerald-400/50' 
-                        : 'bg-rose-500/90 text-white border-rose-400/50'
-                    }`}
-                    role="alert"
-                >
-                    {statusMsg.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
-                    {statusMsg.text}
-                </div>
-            )}
-
-            {/* Navigation Tabs - Performance Optimized */}
+            {/* Navigation Tabs */}
             <div 
                 className="flex p-1 bg-slate-900 rounded-lg border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-lg relative z-10"
                 role="tablist"
@@ -5264,14 +5243,11 @@ export const AdminView = () => {
                     >
                         <tab.icon size={16} aria-hidden="true" />
                         {tab.label}
-                        {tab.badge && (
-                             <span className="ml-2 bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">{tab.badge}</span>
-                        )}
                     </button>
                 ))}
             </div>
 
-            {/* Main Content Area */}
+            {/* Main Content Area - Components fetch their own data now */}
             <main 
                 id={`panel-${activeTab}`} 
                 role="tabpanel" 
@@ -5279,164 +5255,13 @@ export const AdminView = () => {
                 className="animate-in slide-in-from-bottom-4 relative z-10 outline-none"
                 tabIndex={-1}
             >
-                {activeTab === 'overview' && (
-                    <AdminOverview users={users} setActiveTab={setActiveTab} />
-                )}
-
-                {activeTab === 'doctors' && (
-                    <AdminDoctors 
-                        users={users} 
-                        setSelectedDoctor={setSelectedDoctor} 
-                        toggleBan={toggleBan} 
-                        deleteUser={deleteUser} 
-                    />
-                )}
-
-                {activeTab === 'users' && (
-                    <AdminUsers 
-                        users={users} 
-                        toggleBan={toggleBan} 
-                        deleteUser={deleteUser} 
-                    />
-                )}
-
-                {activeTab === 'cms' && (
-                    <AdminCMS 
-                        articles={articles} 
-                        publishArticle={publishArticle} 
-                        deleteArticle={deleteArticle} 
-                    />
-                )}
-
-                {activeTab === 'community' && userProfile && (
-                    <CommunityView currentUser={userProfile} />
-                )}
-
-                {activeTab === 'support' && userProfile && (
-                    <SupportView user={userProfile} />
-                )}
+                {activeTab === 'overview' && <AdminOverview setActiveTab={setActiveTab} />}
+                {activeTab === 'doctors' && <AdminDoctors />}
+                {activeTab === 'users' && <AdminUsers />}
+                {activeTab === 'cms' && <AdminCMS />}
+                {activeTab === 'community' && userProfile && <CommunityView currentUser={userProfile} />}
+                {activeTab === 'support' && userProfile && <SupportView user={userProfile} />}
             </main>
-
-            {/* --- SHARED MODALS --- */}
-            {selectedDoctor && !showRejectModal && (
-                <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="modal-doc-name"
-                >
-                    <div 
-                        ref={modalRef} 
-                        tabIndex={-1}
-                        className="w-full max-w-lg relative outline-none"
-                    >
-                        <Card className="!bg-slate-900 border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-900/40 to-transparent pointer-events-none"></div>
-                            <button 
-                                onClick={() => setSelectedDoctor(null)} 
-                                className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white z-20 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                aria-label={t('close')}
-                            >
-                                <X size={20}/>
-                            </button>
-                            
-                            <div className="text-center pt-8 pb-6 relative z-10">
-                                <div className="w-28 h-28 mx-auto mb-4 rounded-full p-1 bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-xl">
-                                    {selectedDoctor.doctorData?.photoUrl ? (
-                                        <img src={selectedDoctor.doctorData.photoUrl} alt="" className="w-full h-full rounded-full object-cover border-4 border-slate-900" />
-                                    ) : (
-                                        <div className="w-full h-full bg-slate-800 rounded-full flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-slate-900" aria-hidden="true">Dr</div>
-                                    )}
-                                </div>
-                                <h2 id="modal-doc-name" className="text-2xl font-black text-white">{selectedDoctor.name}</h2>
-                                <p className="text-indigo-400 font-bold uppercase text-xs tracking-widest mt-1">{selectedDoctor.doctorData?.specialty}</p>
-                            </div>
-
-                            <div className="px-8 pb-8 space-y-4">
-                                {/* Doctor Details Grid */}
-                                <div className="bg-slate-950 p-5 rounded-2xl border border-white/5 space-y-3 text-sm">
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-slate-500 font-bold">License ID</span>
-                                        <span className="text-white font-mono">{selectedDoctor.doctorData?.licenseNumber}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-slate-500 font-bold">Email</span>
-                                        <span className="text-white">{selectedDoctor.email}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-slate-500 font-bold">Phone</span>
-                                        <span className="text-white font-mono">{selectedDoctor.doctorData?.phoneNumber}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500 font-bold">Location</span>
-                                        <span className="text-white">{selectedDoctor.doctorData?.clinicLocation}</span>
-                                    </div>
-                                </div>
-
-                                {selectedDoctor.doctorData?.accountStatus === 'pending' && (
-                                    <div className="flex gap-3 pt-2">
-                                        <Button onClick={() => selectedDoctor.uid && approveDoctor(selectedDoctor.uid)} variant="success" className="flex-1 shadow-lg shadow-emerald-500/20">
-                                            Approve
-                                        </Button>
-                                        <Button onClick={() => handleRejectClick(selectedDoctor)} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">
-                                            Reject
-                                        </Button>
-                                    </div>
-                                )}
-                                
-                                {selectedDoctor.doctorData?.accountStatus === 'approved' && (
-                                     <div className="pt-2">
-                                         <Button 
-                                             onClick={() => selectedDoctor.uid && deleteUser(selectedDoctor.uid)} 
-                                             variant="danger" 
-                                             className="w-full shadow-lg shadow-rose-900/20"
-                                         >
-                                             <Trash2 size={18} className="mr-2" aria-hidden="true"/> Terminate Account
-                                         </Button>
-                                     </div>
-                                )}
-                            </div>
-                        </Card>
-                    </div>
-                </div>
-            )}
-
-            {showRejectModal && (
-                <div 
-                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 animate-in fade-in"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="reject-title"
-                >
-                    <div className="w-full max-w-md outline-none">
-                        <Card className="!bg-slate-900 border-rose-500/30 shadow-2xl rounded-[2rem] overflow-hidden">
-                            <div className="p-6">
-                                <h3 id="reject-title" className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <ShieldAlert className="text-rose-500" aria-hidden="true" /> {language === 'ar' ? 'سبب الرفض' : 'Rejection Reason'}
-                                </h3>
-                                <p className="text-slate-400 text-sm mb-4">
-                                    {language === 'ar' ? 'يرجى توضيح سبب رفض طلب الطبيب.' : 'Please provide a reason for rejection.'}
-                                </p>
-                                
-                                <label htmlFor="reason-text" className="sr-only">Reason</label>
-                                <textarea 
-                                    id="reason-text"
-                                    ref={rejectInputRef}
-                                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none h-32 resize-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-rose-500"
-                                    placeholder={language === 'ar' ? "مثال: نقص في البيانات..." : "E.g. Missing info..."}
-                                    value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                />
-                                
-                                <div className="flex gap-3 mt-6">
-                                    <Button onClick={() => setShowRejectModal(false)} variant="secondary" className="flex-1">{t('cancel_btn')}</Button>
-                                    <Button onClick={confirmReject} variant="danger" className="flex-1 shadow-lg shadow-rose-500/20">{t('reject_btn')}</Button>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                </div>
-            )}
         </LayoutContainer>
     );
 };
@@ -5449,7 +5274,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Article, UserProfile, ArticleCategory } from '../types';
-import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { BookOpen, Lightbulb, Heart, Stethoscope, X, ArrowRight, PenTool, Clock, CheckCircle, Trash2, Megaphone, Newspaper } from 'lucide-react';
 
 // المكونات
 import { Button } from '../components/ui/Button';
@@ -5507,7 +5332,6 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
     const fetchArticles = async () => {
         setLoading(true);
         try {
-            // FIX: Remove orderBy to prevent "Missing Index" error. Sort client-side instead.
             const q = query(
                 collection(db, "articles"), 
                 where("isPublished", "==", true)
@@ -5598,6 +5422,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return <Stethoscope size={14} aria-hidden="true" />;
             case 'motivation': return <Heart size={14} aria-hidden="true" />;
+            case 'news': return <Newspaper size={14} aria-hidden="true" />;
+            case 'announcement': return <Megaphone size={14} aria-hidden="true" />;
             default: return <Lightbulb size={14} aria-hidden="true" />;
         }
     };
@@ -5606,6 +5432,8 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return 'indigo';
             case 'motivation': return 'rose';
+            case 'news': return 'blue';
+            case 'announcement': return 'red';
             default: return 'amber';
         }
     };
@@ -5614,11 +5442,23 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
         switch(cat) {
             case 'medical': return 'from-indigo-500/20 to-blue-500/20 hover:from-indigo-500/30 hover:to-blue-500/30 border-indigo-500/20';
             case 'motivation': return 'from-rose-500/20 to-pink-500/20 hover:from-rose-500/30 hover:to-pink-500/30 border-rose-500/20';
+            case 'news': return 'from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border-blue-500/20';
+            case 'announcement': return 'from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 border-red-500/20';
             default: return 'from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border-amber-500/20';
         }
     };
 
     const canPublish = userProfile?.role === 'admin' || (userProfile?.role === 'doctor' && userProfile?.doctorData?.accountStatus === 'approved');
+
+    // Updated Categories List
+    const categories = [
+        { id: 'all', label: t('cat_all'), icon: BookOpen },
+        { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
+        { id: 'motivation', label: t('cat_motivation'), icon: Heart },
+        { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
+        { id: 'news', label: t('cat_news' as any) || 'News', icon: Newspaper },
+        { id: 'announcement', label: t('cat_announcement' as any) || 'Announcements', icon: Megaphone },
+    ];
 
     return (
         <LayoutContainer>
@@ -5636,12 +5476,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
             {/* Category Filters */}
             <div className="flex gap-3 overflow-x-auto pb-6 mb-2 scrollbar-hide" role="tablist" aria-label="Article Categories">
-                {[
-                    { id: 'all', label: t('cat_all'), icon: BookOpen },
-                    { id: 'medical', label: t('cat_medical'), icon: Stethoscope },
-                    { id: 'motivation', label: t('cat_motivation'), icon: Heart },
-                    { id: 'tip', label: t('cat_tip'), icon: Lightbulb },
-                ].map((cat) => (
+                {categories.map((cat) => (
                     <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id as any)}
@@ -5687,7 +5522,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                                 <div className="mb-4 relative z-20 pointer-events-none">
                                     <div className="flex justify-between items-start mb-4 pointer-events-auto">
                                         <Badge color={getCategoryColor(article.category) as any} className="flex items-center gap-1.5 !text-[10px] !py-1 !px-2.5 shadow-none bg-black/20 border-transparent backdrop-blur-md">
-                                            {getCategoryIcon(article.category)} {article.category.toUpperCase()}
+                                            {getCategoryIcon(article.category)} {t(`cat_${article.category}` as any) || article.category.toUpperCase()}
                                         </Badge>
                                         
                                         <div className="flex gap-2">
@@ -5761,11 +5596,13 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 
                             <div>
                                 <label id="art-cat-label" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('article_cat_label')}</label>
-                                <div className="flex gap-2" role="radiogroup" aria-labelledby="art-cat-label">
+                                <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="art-cat-label">
                                     {[
                                         { id: 'medical', label: t('cat_medical'), color: 'indigo' },
                                         { id: 'motivation', label: t('cat_motivation'), color: 'rose' },
                                         { id: 'tip', label: t('cat_tip'), color: 'amber' },
+                                        { id: 'news', label: t('cat_news' as any) || 'News', color: 'blue' },
+                                        { id: 'announcement', label: t('cat_announcement' as any) || 'Announcement', color: 'red' },
                                     ].map(cat => (
                                         <button
                                             key={cat.id}
@@ -5831,7 +5668,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
                             
                             <div className="flex gap-2 mb-4">
                                 <Badge color={getCategoryColor(readingArticle.category) as any} className="bg-black/20 border-transparent text-white shadow-none">
-                                    {readingArticle.category.toUpperCase()}
+                                    {t(`cat_${readingArticle.category}` as any) || readingArticle.category.toUpperCase()}
                                 </Badge>
                                 {readingArticle.authorRole === 'doctor' && (
                                     <Badge color="blue" className="bg-blue-500/20 border-blue-500/30 text-blue-100 shadow-none">
@@ -6219,6 +6056,9 @@ interface CommunityViewProps {
 export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const { t, dir, language } = useLanguage();
     
+    // Check for Admin (Role OR Email Fallback)
+    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'admin@islamguide.com';
+
     // -- State --
     const [tab, setTab] = useState<'rooms' | 'leaderboard'>('rooms');
     const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -6249,7 +6089,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             
             const filteredRooms = allRooms.filter(room => {
                 // ADMIN SEES ALL ROOMS
-                if (currentUser.role === 'admin') return true;
+                if (isAdmin) return true;
                 
                 if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
                 if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
@@ -6259,7 +6099,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
             setRooms(filteredRooms);
         });
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, isAdmin]);
 
     // 2. Fetch Leaderboard
     useEffect(() => {
@@ -6386,6 +6226,25 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
         }
     };
 
+    // Admin: Delete User from Leaderboard
+    const handleAdminDeleteUser = async (targetUid: string, targetName: string) => {
+        if (!isAdmin) return;
+        
+        const confirmMsg = language === 'ar' 
+            ? `تحذير: هل أنت متأكد من حذف المستخدم "${targetName}" نهائياً؟ سيختفي من لوحة المتصدرين فوراً.` 
+            : `Warning: Are you sure you want to permanently delete user "${targetName}"? They will be removed from the leaderboard immediately.`;
+
+        if (window.confirm(confirmMsg)) {
+            try {
+                await deleteDoc(doc(db, "users", targetUid));
+                alert(language === 'ar' ? "تم الحذف." : "Deleted.");
+            } catch (e) {
+                console.error("Error deleting user:", e);
+                alert(language === 'ar' ? "حدث خطأ أثناء الحذف." : "Error deleting user.");
+            }
+        }
+    };
+
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeRoom || !currentUser.uid) return;
         
@@ -6399,7 +6258,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 timestamp: Date.now(),
                 role: currentUser.role,
                 isDoctor: currentUser.role === 'doctor',
-                isAdmin: currentUser.role === 'admin'
+                isAdmin: isAdmin
             });
             setNewMessage("");
             scrollToBottom();
@@ -6470,7 +6329,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                         const MedIcon = user.medForm === 'liquid' ? FlaskConical : Pill;
 
                         return (
-                            <li key={idx} className={`flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
+                            <li key={idx} className={`relative flex items-center justify-between p-4 rounded-3xl border backdrop-blur-md transition-all hover:scale-[1.01] hover:bg-white/5 ${rankStyle}`}>
                                 <div className="flex items-center gap-5">
                                     <div className="shrink-0">{rankBadge}</div>
                                     <div>
@@ -6494,8 +6353,25 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <span className="text-2xl font-black text-white">{Math.round(user.progress || 0)}<span className="text-sm text-slate-500 ml-0.5">%</span></span>
+                                    </div>
+                                    
+                                    {/* 🛡️ ADMIN DELETE BUTTON - EXTREMELY VISIBLE & GUARANTEED */}
+                                    {isAdmin && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); 
+                                                if (user.uid) handleAdminDeleteUser(user.uid, user.name);
+                                            }}
+                                            className="relative z-50 ml-4 p-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-lg border border-rose-400/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
+                                            title={language === 'ar' ? 'حذف هذا المستخدم' : 'Delete User'}
+                                        >
+                                            <Trash2 size={20} strokeWidth={2.5} />
+                                        </button>
+                                    )}
                                 </div>
                             </li>
                         );
@@ -6545,7 +6421,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {room.isDoctorRoom ? <Stethoscope size={24} /> : <MessageCircle size={24} />}
                                         </div>
                                         
-                                        {(currentUser.uid === room.createdBy || currentUser.role === 'admin') && (
+                                        {(currentUser.uid === room.createdBy || isAdmin) && (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); confirmDeleteRoom(room); }}
                                                 className="p-2 hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 rounded-lg transition-colors z-30 focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -6697,7 +6573,7 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                                             {msg.text}
                                             
                                             {/* ADMIN DELETE BUTTON */}
-                                            {currentUser.role === 'admin' && (
+                                            {isAdmin && (
                                                 <button 
                                                     onClick={() => msg.id && handleDeleteMessage(msg.id)}
                                                     className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 scale-75 hover:scale-90"
@@ -9085,7 +8961,7 @@ export const OnboardingView = ({
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Award, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
+    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -9112,10 +8988,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
-    // Delete Confirmation State
-    const [deleteInput, setDeleteInput] = useState('');
-    const deleteKeyword = language === 'ar' ? 'حذف' : 'DELETE';
-
     // File Import Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -9153,8 +9025,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
-                // Only sync if we haven't touched it yet (all zeros) or if it's a fresh load
-                // This prevents the "jumping" issue while typing
                 const isPrevEmpty = prev.boxes === 0 && prev.pillsPerBox === 0 && prev.loosePills === 0;
                 if (isPrevEmpty) return inventory;
                 return prev;
@@ -9196,7 +9066,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 
     const handleExportData = () => {
         const dataToExport = {
-            profile: { ...userProfile, uid: undefined }, // Exclude UID for privacy in raw file
+            profile: { ...userProfile, uid: undefined },
             inventory: inventory,
             plan: plan,
             logs: logs,
@@ -9228,12 +9098,11 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             try {
                 const json = JSON.parse(e.target?.result as string);
                 
-                // Validate Basic Structure
                 if (!json.inventory || !Array.isArray(json.plan) || !Array.isArray(json.logs)) {
                     throw new Error("Invalid file format");
                 }
 
-                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية (السجلات، الخطة، المخزون). هل أنت متأكد؟' : 'Warning: Importing will overwrite current logs, plan, and inventory. Continue?')) {
+                if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية. هل أنت متأكد؟' : 'Warning: Importing will overwrite current data. Continue?')) {
                     return;
                 }
 
@@ -9244,22 +9113,29 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                     plan: json.plan,
                     logs: json.logs,
                     speedModifier: json.profile?.speedModifier || 1.0,
-                    // We don't overwrite name/email/role here to prevent account lockout/corruption
                 };
 
                 await updateDoc(doc(db, "users", userProfile.uid!), dataToRestore);
-                
-                // Manually trigger context update if needed, but onSnapshot in DataContext should catch it
                 showStatus('success', language === 'ar' ? 'تم استعادة البيانات بنجاح.' : 'Data restored successfully.');
             } catch (err) {
                 console.error("Import Error:", err);
                 showStatus('error', language === 'ar' ? 'ملف غير صالح أو تالف.' : 'Invalid or corrupt backup file.');
             } finally {
                 setLoading(false);
-                if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+                if (fileInputRef.current) fileInputRef.current.value = '';
             }
         };
         reader.readAsText(file);
+    };
+
+    const handleDeleteAccount = () => {
+        const confirmMsg = language === 'ar' 
+            ? "تحذير: هل أنت متأكد تماماً من رغبتك في حذف حسابك نهائياً؟ سيتم فقدان جميع البيانات ولا يمكن استرجاعها."
+            : "Warning: Are you sure you want to permanently delete your account? All data will be lost and cannot be recovered.";
+            
+        if (window.confirm(confirmMsg)) {
+            resetAllData();
+        }
     };
 
     return (
@@ -9550,34 +9426,23 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             {/* Danger Zone */}
             <Card className="border-rose-500/20 bg-rose-900/10 hover:bg-rose-900/20 transition-colors">
                 <section aria-labelledby="danger-zone">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         <div>
                             <h2 id="danger-zone" className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                                 <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
                             </h2>
-                            <p className="text-rose-200/60 text-sm max-w-md mb-4">
+                            <p className="text-rose-200/60 text-sm max-w-md">
                                 {language === 'ar' 
-                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. يرجى كتابة كلمة "حذف" في المربع أدناه للتأكيد.' 
-                                    : 'This action permanently deletes your account. Please type "DELETE" below to confirm.'}
+                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                                    : 'This action permanently deletes your account and all data. This cannot be undone.'}
                             </p>
-                            <div className="relative group max-w-xs">
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-rose-950/50 border border-rose-500/30 rounded-xl px-4 py-3 text-white placeholder-rose-700/50 outline-none focus:border-rose-500 transition-all font-mono"
-                                    placeholder={deleteKeyword}
-                                    value={deleteInput}
-                                    onChange={(e) => setDeleteInput(e.target.value)}
-                                    aria-label="Confirm deletion"
-                                />
-                            </div>
                         </div>
                         <Button 
                             variant="danger" 
-                            onClick={resetAllData} 
-                            disabled={deleteInput !== deleteKeyword}
-                            className="w-full md:w-auto whitespace-nowrap !py-3 !px-6 shadow-lg shadow-rose-900/20"
+                            onClick={handleDeleteAccount} 
+                            className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold"
                         >
-                            <Trash2 size={18} className="mr-2"/> {language === 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account'}
+                            <Trash2 size={20} className="mr-2"/> {t('delete_user')}
                         </Button>
                     </div>
                 </section>
@@ -9922,13 +9787,13 @@ export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
 ```tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    collection, addDoc, query, where, orderBy, onSnapshot, updateDoc, doc 
+    collection, addDoc, query, where, orderBy, onSnapshot, updateDoc, doc, deleteDoc, arrayUnion 
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserProfile, Ticket, TicketMessage } from '../types';
 import { 
-    LifeBuoy, Plus, Send, CheckCircle, Lock, X, Pill, FlaskConical, User, 
-    Stethoscope, ChevronRight, Loader2, AlertCircle, MessageSquare, Mail
+    LifeBuoy, Send, CheckCircle, Lock, User, 
+    ChevronRight, Loader2, MessageSquareWarning, Inbox, Trash2, ShieldAlert, X
 } from 'lucide-react';
 
 // المكونات
@@ -9946,6 +9811,7 @@ interface SupportViewProps {
 
 export const SupportView = ({ user }: SupportViewProps) => {
     const { t, language, dir } = useLanguage();
+    const isAdmin = user.role === 'admin' || user.email === 'admin@islamguide.com';
     
     // -- State --
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -9959,26 +9825,17 @@ export const SupportView = ({ user }: SupportViewProps) => {
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // -- 1. Fetch User Tickets --
+    // -- 1. Fetch Data --
     useEffect(() => {
         if (!user.uid) return;
         
         let q;
-        
-        // IF ADMIN: Fetch ALL tickets
-        if (user.role === 'admin') {
-            q = query(
-                collection(db, "tickets"), 
-                orderBy("lastUpdate", "desc")
-            );
-        } 
-        // IF USER: Fetch OWN tickets
-        else {
-            q = query(
-                collection(db, "tickets"), 
-                where("userId", "==", user.uid), 
-                orderBy("lastUpdate", "desc")
-            );
+        if (isAdmin) {
+            // Admin sees ALL tickets
+            q = query(collection(db, "tickets"), orderBy("lastUpdate", "desc"));
+        } else {
+            // User sees OWN tickets
+            q = query(collection(db, "tickets"), where("userId", "==", user.uid), orderBy("lastUpdate", "desc"));
         }
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -9988,7 +9845,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             } as Ticket));
             setTickets(fetchedTickets);
             
-            // Real-time update for active ticket
+            // Sync active ticket if open
             if (activeTicket) {
                 const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
                 if (updatedActive) setActiveTicket(updatedActive);
@@ -9996,20 +9853,20 @@ export const SupportView = ({ user }: SupportViewProps) => {
         });
         
         return () => unsubscribe();
-    }, [user.uid, user.role, activeTicket?.id]);
+    }, [user.uid, isAdmin, activeTicket?.id]);
 
-    // Scroll to bottom on new message
+    // Auto-scroll
     useEffect(() => {
         if (activeTicket) {
             setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 100);
         }
-    }, [activeTicket?.messages, activeTicket]);
+    }, [activeTicket?.messages]);
 
     // -- 2. Actions --
     
-    const createTicket = async () => {
+    const sendComplaint = async () => {
         if (!user.uid) return;
         if (!newSubject.trim() || !newMessage.trim()) return;
         
@@ -10017,9 +9874,9 @@ export const SupportView = ({ user }: SupportViewProps) => {
         const initialMsg: TicketMessage = {
             senderId: user.uid,
             senderName: user.name,
-            text: newMessage.trim().slice(0, 1000), // Max length check
+            text: newMessage.trim().slice(0, 1000),
             timestamp: Date.now(),
-            isAdmin: user.role === 'admin'
+            isAdmin: false
         };
 
         try {
@@ -10035,9 +9892,10 @@ export const SupportView = ({ user }: SupportViewProps) => {
             setShowCreateModal(false);
             setNewSubject("");
             setNewMessage("");
+            alert(language === 'ar' ? "تم إرسال شكواك بنجاح." : "Complaint sent successfully.");
         } catch (e) {
             console.error("Error creating ticket:", e);
-            alert("Failed to create ticket.");
+            alert("Failed to send complaint.");
         } finally {
             setIsSubmitting(false);
         }
@@ -10053,31 +9911,30 @@ export const SupportView = ({ user }: SupportViewProps) => {
             senderName: user.name,
             text: newMessage.trim().slice(0, 1000),
             timestamp: Date.now(),
-            isAdmin: user.role === 'admin' // Dynamic check for admin role
+            isAdmin: isAdmin
         };
 
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
-            const currentMessages = activeTicket.messages || [];
             
-            // If admin replies, status might be 'pending' (waiting for user) or keep 'open'.
-            // If user replies, status 'open'. 
-            // For simplicity, we keep 'open' or set 'resolved' manually later.
+            // Use arrayUnion to safely append message without reading first
+            // This ensures data consistency and immediate UI updates via listener
             await updateDoc(ticketRef, {
-                messages: [...currentMessages, newMsg],
+                messages: arrayUnion(newMsg),
                 lastUpdate: Date.now(),
                 status: 'open' 
             });
             setNewMessage("");
         } catch (e) {
             console.error("Error sending reply:", e);
+            alert("Failed to send reply. Check connection.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Mark ticket as resolved/closed (Admin or User)
     const toggleResolve = async () => {
+        if (!isAdmin) return; // Guard for non-admins
         if (!activeTicket || !activeTicket.id) return;
         const newStatus = activeTicket.status === 'resolved' ? 'open' : 'resolved';
         try {
@@ -10085,13 +9942,47 @@ export const SupportView = ({ user }: SupportViewProps) => {
         } catch(e) { console.error(e); }
     };
 
-    // Helper for translation keys
+    // --- NEW: Delete Ticket (Admin) ---
+    const handleDeleteTicket = async (ticketId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent opening the ticket
+        if (!window.confirm(language === 'ar' ? "حذف هذه التذكرة نهائياً؟" : "Delete this ticket permanently?")) return;
+        
+        try {
+            await deleteDoc(doc(db, "tickets", ticketId));
+            if (activeTicket?.id === ticketId) setActiveTicket(null);
+        } catch (e) {
+            console.error("Error deleting ticket:", e);
+            alert("Failed to delete ticket.");
+        }
+    };
+
+    // --- NEW: Delete User (Admin) ---
+    const handleDeleteSender = async () => {
+        if (!activeTicket || !activeTicket.userId) return;
+        const confirmMsg = language === 'ar' 
+            ? "تحذير: هل أنت متأكد من حذف حساب هذا المستخدم نهائياً؟ سيتم مسح جميع بياناته." 
+            : "Warning: Permanently delete this user account? All data will be wiped.";
+            
+        if (window.confirm(confirmMsg)) {
+            try {
+                // Delete the user document
+                await deleteDoc(doc(db, "users", activeTicket.userId));
+                // Optionally delete the ticket too or mark it
+                alert(language === 'ar' ? "تم حذف المستخدم." : "User deleted.");
+                setActiveTicket(null);
+            } catch (e) {
+                console.error("Error deleting user:", e);
+                alert("Failed to delete user.");
+            }
+        }
+    };
+
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'open': return t('status_open') || 'Open';
-            case 'pending': return t('status_pending') || 'Pending';
-            case 'resolved': return t('status_resolved') || 'Resolved';
-            case 'closed': return t('status_closed') || 'Closed';
+            case 'open': return language === 'ar' ? 'مفتوح' : 'Open';
+            case 'pending': return language === 'ar' ? 'قيد المراجعة' : 'Pending';
+            case 'resolved': return language === 'ar' ? 'تم الحل' : 'Resolved';
+            case 'closed': return language === 'ar' ? 'مغلق' : 'Closed';
             default: return status;
         }
     };
@@ -10099,77 +9990,62 @@ export const SupportView = ({ user }: SupportViewProps) => {
     return (
         <LayoutContainer>
             <PageHeader 
-                title={user.role === 'admin' ? (language === 'ar' ? 'مركز دعم العملاء' : 'Support Center') : t('nav_support')} 
-                subtitle={user.role === 'admin' ? (language === 'ar' ? 'إدارة التذاكر والردود' : 'Manage tickets and replies') : (t('support_desc') || "Contact the support team directly.")}
+                title={isAdmin ? (language === 'ar' ? 'صندوق الشكاوى' : 'Complaints Inbox') : (language === 'ar' ? 'تقديم شكوى' : 'Contact Support')} 
+                subtitle={isAdmin ? (language === 'ar' ? 'متابعة مشاكل المستخدمين' : 'Manage user complaints') : (language === 'ar' ? 'أرسل شكواك مباشرة للإدارة' : 'Send complaints directly to admin')}
                 action={
-                    // Only show Create Ticket button if NOT admin, or keep it if admin wants to create internal tickets
-                    <Button onClick={() => setShowCreateModal(true)} variant="primary" className="!rounded-xl shadow-indigo-500/20" aria-label={t('new_ticket')}>
-                        <Plus size={18} aria-hidden="true" /> {t('new_ticket') || "New Ticket"}
-                    </Button>
+                    !isAdmin ? (
+                        <Button onClick={() => setShowCreateModal(true)} variant="danger" className="!rounded-xl shadow-rose-500/20" aria-label="New Complaint">
+                            <MessageSquareWarning size={18} aria-hidden="true" /> {language === 'ar' ? 'شكوى جديدة' : 'New Complaint'}
+                        </Button>
+                    ) : (
+                        <div className="flex items-center gap-2 bg-slate-900/50 px-4 py-2 rounded-xl border border-white/10 text-xs text-slate-400">
+                            <Inbox size={16} />
+                            {language === 'ar' ? 'وضع الاستقبال' : 'Inbox Mode'}
+                        </div>
+                    )
                 }
             />
 
-            {/* Context Banner - Semantic Header Info */}
-            <section aria-label="User Context" className="mb-8 bg-gradient-to-r from-slate-900/80 to-slate-800/80 border border-white/10 p-5 rounded-3xl flex items-center justify-between backdrop-blur-xl shadow-xl animate-in slide-in-from-top-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-900/20" aria-hidden="true">
-                        {user.role === 'doctor' ? <Stethoscope size={24}/> : 
-                         user.role === 'admin' ? <Lock size={24} /> :
-                         user.medForm === 'liquid' ? <FlaskConical size={24} /> : 
-                         user.medForm === 'tablet' ? <Pill size={24} /> : <User size={24}/>}
-                    </div>
-                    <div>
-                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">{t('current_account') || "Current Account"}</p>
-                        <p className="text-white font-bold text-lg flex items-center gap-2">
-                            {user.name} 
-                            <Badge color="blue" className="!py-0.5 !px-2 !text-[10px] shadow-none">{user.role.toUpperCase()}</Badge>
-                        </p>
-                    </div>
-                </div>
-                {user.role === 'normal_user' && user.planType === 'algorithm' && (
-                    <Badge color="indigo" className="hidden md:flex">Smart Algorithm</Badge>
-                )}
-            </section>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
-                {/* LIST COLUMN */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+                
+                {/* LEFT COLUMN: LIST */}
                 <Card className={`md:col-span-4 flex flex-col overflow-hidden bg-slate-900/80 border-white/10 !p-0 ${activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/50 backdrop-blur-md">
                         <h3 className="font-bold text-white text-lg">
-                            {user.role === 'admin' ? (language === 'ar' ? 'صندوق التذاكر' : 'Ticket Inbox') : (t('my_tickets') || "My Tickets")}
+                            {language === 'ar' ? 'الرسائل الواردة' : 'Inbox'}
                         </h3>
-                        <Badge color="indigo">{tickets.length}</Badge>
+                        <Badge color={isAdmin ? 'rose' : 'indigo'}>{tickets.length}</Badge>
                     </div>
                     
                     <ul className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2" role="list">
                         {tickets.length === 0 && (
                             <li className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-2xl m-2 flex flex-col items-center">
                                 <LifeBuoy className="mb-3 opacity-30" size={32} aria-hidden="true"/>
-                                {t('no_tickets') || "No tickets found."}
+                                {language === 'ar' ? 'لا توجد رسائل.' : 'No messages found.'}
                             </li>
                         )}
                         {tickets.map(ticket => (
-                            <li key={ticket.id}>
+                            <li key={ticket.id} className="relative group">
                                 <button 
                                     onClick={() => setActiveTicket(ticket)}
-                                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                                         activeTicket?.id === ticket.id 
                                         ? 'bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-900/20' 
-                                        : 'bg-slate-950/30 border-transparent hover:bg-slate-800 hover:border-white/5'
+                                        : 'bg-slate-900/30 border-transparent hover:bg-slate-800 hover:border-white/5'
                                     }`}
-                                    aria-current={activeTicket?.id === ticket.id ? 'true' : undefined}
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="max-w-[70%]">
-                                            {/* Show user email if Admin */}
-                                            {user.role === 'admin' && (
-                                                <p className="text-[10px] text-indigo-400 font-mono mb-1 truncate">{ticket.userEmail || ticket.userId}</p>
+                                            {isAdmin && (
+                                                <p className="text-[10px] text-indigo-400 font-mono mb-1 truncate flex items-center gap-1">
+                                                    <User size={10} /> {ticket.userEmail || 'User'}
+                                                </p>
                                             )}
                                             <h4 className={`font-bold text-sm truncate ${activeTicket?.id === ticket.id ? 'text-indigo-300' : 'text-slate-200'}`}>
                                                 {ticket.subject}
                                             </h4>
                                         </div>
-                                        <Badge color={ticket.status === 'resolved' ? 'green' : ticket.status === 'open' ? 'rose' : 'amber'} className="!text-[9px] !px-2 !py-0.5">
+                                        <Badge color={ticket.status === 'resolved' ? 'green' : 'rose'} className="!text-[9px] !px-2 !py-0.5">
                                             {getStatusLabel(ticket.status)}
                                         </Badge>
                                     </div>
@@ -10178,72 +10054,90 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         <ChevronRight size={14} className={`transition-transform duration-300 ${activeTicket?.id === ticket.id ? 'text-indigo-400 translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} aria-hidden="true"/>
                                     </div>
                                 </button>
+                                
+                                {/* ADMIN DELETE TICKET BUTTON */}
+                                {isAdmin && ticket.id && (
+                                    <button 
+                                        onClick={(e) => handleDeleteTicket(ticket.id!, e)}
+                                        className="absolute top-2 right-2 p-1.5 bg-slate-800 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                                        title={language === 'ar' ? 'حذف التذكرة' : 'Delete Ticket'}
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
                             </li>
                         ))}
                     </ul>
                 </Card>
 
-                {/* CHAT COLUMN */}
+                {/* RIGHT COLUMN: CHAT */}
                 <Card className={`md:col-span-8 flex flex-col overflow-hidden bg-slate-900/60 border-white/10 relative !p-0 ${!activeTicket ? 'hidden md:flex' : 'flex'}`}>
                     {!activeTicket ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
                             <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 opacity-50 shadow-inner border border-white/5">
                                 <LifeBuoy size={48} aria-hidden="true"/>
                             </div>
-                            <p className="text-lg font-medium">{t('select_ticket_prompt') || "Select a ticket to view details"}</p>
+                            <p className="text-lg font-medium">{language === 'ar' ? 'اختر رسالة لعرض التفاصيل' : 'Select a message to view details'}</p>
                         </div>
                     ) : (
                         <>
-                            {/* Ticket Header */}
+                            {/* Header */}
                             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-20">
-                                <div className="flex-1 mr-4">
+                                <div className="flex-1 mr-4 overflow-hidden">
                                     <button 
                                         type="button" 
                                         onClick={() => setActiveTicket(null)} 
-                                        className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs hover:text-white transition-colors focus:outline-none focus:text-white"
-                                        aria-label={t('close')}
+                                        className="md:hidden text-slate-400 mr-2 mb-2 flex items-center gap-1 text-xs hover:text-white transition-colors"
                                     >
                                         <ChevronRight size={14} className={language === 'ar' ? 'rotate-180' : 'rotate-0'}/> {t('close')}
                                     </button>
                                     <h3 className="font-bold text-white flex items-center gap-3 text-lg truncate">
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg shrink-0"><Lock size={16} className="text-emerald-500" aria-hidden="true"/></div>
+                                        <div className="p-1.5 bg-rose-500/10 rounded-lg shrink-0"><Lock size={16} className="text-rose-500" aria-hidden="true"/></div>
                                         {activeTicket.subject}
                                     </h3>
-                                    {user.role === 'admin' && (
-                                        <div className="flex items-center gap-2 mt-1 ml-9">
-                                            <Mail size={10} className="text-slate-500"/>
-                                            <p className="text-[10px] text-slate-400 font-mono">{activeTicket.userEmail}</p>
+                                    {isAdmin && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-xs text-slate-400">{activeTicket.userEmail}</p>
+                                            <span className="text-slate-600">|</span>
+                                            {/* DELETE USER BUTTON */}
+                                            <button 
+                                                onClick={handleDeleteSender}
+                                                className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
+                                            >
+                                                <ShieldAlert size={10} /> {language === 'ar' ? 'حذف المرسل نهائياً' : 'Delete User Account'}
+                                            </button>
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {activeTicket.status === 'resolved' ? (
-                                        <button onClick={toggleResolve} className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-emerald-500/20 transition-colors">
-                                            <CheckCircle size={14} aria-hidden="true"/> {t('status_resolved') || "Resolved"}
+                                <div>
+                                    {isAdmin ? (
+                                        <button onClick={toggleResolve} className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 transition-colors ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800 border-white/10 text-slate-400 hover:text-white'}`}>
+                                            {activeTicket.status === 'resolved' ? <CheckCircle size={14}/> : null}
+                                            {activeTicket.status === 'resolved' ? (language === 'ar' ? 'تم الحل' : 'Resolved') : (language === 'ar' ? 'تحديد كمحلول' : 'Mark Resolved')}
                                         </button>
                                     ) : (
-                                        <button onClick={toggleResolve} className="px-3 py-1 bg-slate-800 border border-white/10 text-slate-400 rounded-full text-xs font-bold hover:bg-slate-700 hover:text-white transition-colors">
-                                            Mark Resolved
-                                        </button>
+                                        // Normal User: Read Only Status
+                                        <div className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800/50 border-white/5 text-slate-500'}`}>
+                                            {activeTicket.status === 'resolved' && <CheckCircle size={14}/>}
+                                            {getStatusLabel(activeTicket.status)}
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Messages Area (Live Region) */}
+                            {/* Messages */}
                             <div 
-                                className="flex-1 overflow-y-auto p-6 pt-32 space-y-6 custom-scrollbar bg-slate-900/30"
+                                className="flex-1 overflow-y-auto p-6 pt-28 space-y-6 custom-scrollbar bg-slate-900/30"
                                 role="log"
                                 aria-live="polite"
-                                aria-label="Ticket Conversation"
                             >
                                 {activeTicket.messages?.map((msg, idx) => {
-                                    // If user is Admin, they are "Me" (right side) if msg.isAdmin is true.
-                                    // If user is User, they are "Me" (right side) if msg.isAdmin is false.
+                                    // Logic: "Me" is always on the right side.
+                                    const isMe = (isAdmin && msg.isAdmin) || (!isAdmin && !msg.isAdmin);
                                     
-                                    const isMe = (user.role === 'admin' && msg.isAdmin) || (user.role !== 'admin' && !msg.isAdmin);
                                     const senderLabel = msg.isAdmin 
-                                        ? (user.role === 'admin' ? (t('me') || 'Me') : (t('support_team') || 'Support'))
-                                        : (user.role === 'admin' ? 'User' : (t('me') || 'Me'));
+                                        ? (isAdmin ? (language === 'ar' ? 'أنا (إدارة)' : 'Me (Admin)') : (language === 'ar' ? 'الدعم الفني' : 'Support Team'))
+                                        : (isAdmin ? (language === 'ar' ? 'المستخدم' : 'User') : (language === 'ar' ? 'أنا' : 'Me'));
 
                                     return (
                                         <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in slide-in-from-bottom-2`}>
@@ -10263,106 +10157,66 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Reply Input */}
+                            {/* Input */}
                             <div className="p-4 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl z-20">
-                                {activeTicket.status === 'resolved' && user.role !== 'admin' ? (
-                                    <div className="text-center text-sm text-emerald-400 font-bold bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 shadow-lg flex items-center justify-center gap-2">
-                                        <CheckCircle size={16} aria-hidden="true"/>
-                                        {t('ticket_closed_msg') || "This ticket is closed."}
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-3">
-                                        <label htmlFor="reply-input" className="sr-only">{t('write_reply') || "Write your reply"}</label>
-                                        <input 
-                                            id="reply-input"
-                                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 focus:bg-slate-900 outline-none transition-all placeholder-slate-600 shadow-inner disabled:opacity-50"
-                                            placeholder={t('write_reply') || "Write your reply..."}
-                                            value={newMessage}
-                                            onChange={e => setNewMessage(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && !isSubmitting && sendReply()}
-                                            disabled={isSubmitting}
-                                            maxLength={1000}
-                                        />
-                                        <button 
-                                            onClick={sendReply} 
-                                            disabled={!newMessage.trim() || isSubmitting}
-                                            className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                            aria-label={language === 'ar' ? 'إرسال الرد' : 'Send Reply'}
-                                        >
-                                            {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="flex gap-3">
+                                    <input 
+                                        className="flex-1 bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 focus:bg-slate-900 outline-none transition-all placeholder-slate-600 shadow-inner disabled:opacity-50"
+                                        placeholder={language === 'ar' ? 'اكتب ردك هنا...' : 'Write your reply...'}
+                                        value={newMessage}
+                                        onChange={e => setNewMessage(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && !isSubmitting && sendReply()}
+                                        disabled={isSubmitting || (activeTicket.status === 'resolved' && !isAdmin)}
+                                    />
+                                    <button 
+                                        onClick={sendReply} 
+                                        disabled={!newMessage.trim() || isSubmitting || (activeTicket.status === 'resolved' && !isAdmin)}
+                                        className="p-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                                    </button>
+                                </div>
                             </div>
                         </>
                     )}
                 </Card>
             </div>
 
-            {/* Create Ticket Modal */}
-            {showCreateModal && (
-                <div 
-                    className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="new-ticket-title"
-                >
-                    <Card className="w-full max-w-md bg-slate-900 border-white/10 relative shadow-2xl overflow-hidden">
-                        {/* Header Background */}
-                        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-600/20 to-transparent pointer-events-none"></div>
+            {/* Create Complaint Modal (User Only) */}
+            {showCreateModal && !isAdmin && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in" role="dialog" aria-modal="true">
+                    <Card className="w-full max-w-md bg-slate-900 border-rose-500/20 relative shadow-2xl overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-orange-500"></div>
+                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
                         
-                        <button 
-                            type="button" 
-                            onClick={() => setShowCreateModal(false)} 
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-all z-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            aria-label={t('close')}
-                        >
-                            <X size={20}/>
-                        </button>
-                        
-                        <div className="relative z-10 p-2">
-                            <h3 id="new-ticket-title" className="text-2xl font-black text-white mb-8 flex items-center gap-3">
-                                <div className="p-3 bg-indigo-500/20 rounded-xl"><LifeBuoy className="text-indigo-400" size={24} aria-hidden="true"/></div>
-                                {t('new_ticket_title') || "New Request"}
+                        <div className="p-2">
+                            <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
+                                <MessageSquareWarning className="text-rose-500" size={28}/>
+                                {language === 'ar' ? 'رفع شكوى للإدارة' : 'Submit Complaint'}
                             </h3>
-                            
-                            <div className="space-y-5">
-                                <div className="group">
-                                    <label htmlFor="ticket-subject" className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_subject') || "Subject"}</label>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{language === 'ar' ? 'عنوان الشكوى' : 'Subject'}</label>
                                     <input 
-                                        id="ticket-subject"
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-indigo-500" 
-                                        value={newSubject} 
-                                        onChange={e => setNewSubject(e.target.value)} 
-                                        placeholder="Briefly describe the issue..." 
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none"
+                                        value={newSubject}
+                                        onChange={e => setNewSubject(e.target.value)}
+                                        placeholder={language === 'ar' ? 'اختصار المشكلة...' : 'Brief summary...'}
                                         maxLength={100}
-                                        disabled={isSubmitting}
                                     />
                                 </div>
-                                <div className="group">
-                                    <label htmlFor="ticket-details" className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1 group-focus-within:text-indigo-400 transition-colors">{t('ticket_details') || "Details"}</label>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{language === 'ar' ? 'التفاصيل' : 'Details'}</label>
                                     <textarea 
-                                        id="ticket-details"
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none h-40 resize-none transition-all placeholder-slate-700 focus:ring-1 focus:ring-indigo-500" 
-                                        value={newMessage} 
-                                        onChange={e => setNewMessage(e.target.value)} 
-                                        placeholder="Provide more details here..." 
+                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-rose-500 outline-none h-32 resize-none"
+                                        value={newMessage}
+                                        onChange={e => setNewMessage(e.target.value)}
+                                        placeholder={language === 'ar' ? 'اشرح المشكلة بالتفصيل...' : 'Explain the issue...'}
                                         maxLength={1000}
-                                        disabled={isSubmitting}
                                     />
-                                    <p className="text-right text-[10px] text-slate-600 mt-1">{newMessage.length}/1000</p>
                                 </div>
-                                <Button 
-                                    onClick={createTicket} 
-                                    variant="primary" 
-                                    className="w-full py-4 text-lg shadow-lg shadow-indigo-500/20" 
-                                    disabled={!newSubject || !newMessage || isSubmitting}
-                                >
-                                    {isSubmitting ? (
-                                        <><Loader2 size={20} className="animate-spin mr-2"/> Sending...</>
-                                    ) : (
-                                        t('send_request') || "Submit Request"
-                                    )}
+                                <Button onClick={sendComplaint} variant="danger" className="w-full py-4 text-lg shadow-lg shadow-rose-900/20" disabled={!newSubject || !newMessage || isSubmitting}>
+                                    {isSubmitting ? <Loader2 className="animate-spin"/> : (language === 'ar' ? 'إرسال الشكوى' : 'Send Complaint')}
                                 </Button>
                             </div>
                         </div>
@@ -11803,5 +11657,5 @@ export default defineConfig({
 
 ## 📊 Stats
 - Total Files: 57
-- Total Characters: 602783
-- Estimated Tokens: ~150.696 (GPT-4 Context)
+- Total Characters: 585502
+- Estimated Tokens: ~146.376 (GPT-4 Context)
