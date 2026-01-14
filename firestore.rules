@@ -61,7 +61,9 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         (isOwner(userId) && 
-         notUpdating('role') && 
+         // ✅ FIX: Allow user to change role ONLY to 'doctor', 'patient', or 'normal_user' during onboarding
+         // Strictly forbid upgrading self to 'admin'
+         (!('role' in incomingData()) || incomingData().role in ['doctor', 'patient', 'normal_user']) &&
          notUpdating('isBanned')
         ) ||
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
@@ -75,7 +77,6 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow delete: if isAdmin();
 
-      // ✅ FIX: Explicitly allow Admin to read ALL rooms
       allow read: if isSignedIn() && (
         isAdmin() || 
         resource.data.isDoctorRoom == false ||
@@ -90,7 +91,6 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
       
       match /messages/{msgId} {
-        // ✅ FIX: Admin can read messages in any room they can access
         allow read: if isSignedIn();
         
         allow create: if isSignedIn() && 

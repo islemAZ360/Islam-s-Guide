@@ -32,7 +32,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         items.push(
             { id: AppView.DOCTOR_DASHBOARD, icon: LayoutDashboard, label: 'Dash' },
             { id: AppView.DOCTOR_PATIENTS, icon: Users, label: 'Patients' },
-            { id: AppView.ARTICLES, icon: BookOpen, label: 'Articles' }, // Added for Doctors
+            { id: AppView.ARTICLES, icon: BookOpen, label: 'Articles' },
             { id: AppView.COMMUNITY, icon: MessageSquare, label: 'Chat' },
         );
     } 
@@ -41,7 +41,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
         if (role === 'patient' && !userProfile?.patientData?.isPlanAssigned) {
              items.push(
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
-                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') }, // Added for new Patients
+                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
                 { id: AppView.SUPPORT, icon: LifeBuoy, label: t('nav_support') },
              );
         } else {
@@ -49,11 +49,7 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
                 { id: AppView.DASHBOARD, icon: LayoutDashboard, label: t('nav_dashboard') },
                 { id: AppView.CALENDAR, icon: CalendarIcon, label: t('nav_calendar') },
                 { id: AppView.STATS, icon: Activity, label: t('nav_stats') },
-                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') }, // Added for Active Users
-                // Community is still accessible but maybe deprioritized if space is tight, 
-                // but let's keep it if we can fit 5 items + Settings = 6.
-                // If 6 is too many, we might swap Community/Articles or Stats/Articles.
-                // Given labels hide on inactive, 6 items fits on modern phones.
+                { id: AppView.ARTICLES, icon: BookOpen, label: t('nav_articles') },
                 { id: AppView.COMMUNITY, icon: Users, label: t('nav_community') },
              );
         }
@@ -69,50 +65,63 @@ export const MobileNav = ({ currentView, setCurrentView, userProfile }: MobileNa
 
   return (
     <nav 
-      className="md:hidden fixed bottom-5 left-4 right-4 h-[70px] glass rounded-[2rem] z-50 animate-in slide-in-from-bottom-8 shadow-2xl shadow-black/50 overflow-hidden"
+      className="md:hidden fixed bottom-6 left-6 right-6 h-[80px] bg-[#0f172a]/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] z-50 shadow-2xl shadow-black/50 overflow-hidden ring-1 ring-white/5"
       aria-label={language === 'ar' ? 'القائمة الرئيسية للجوال' : 'Mobile Main Navigation'}
     >
-      <ul className="flex items-center justify-between h-full px-1 m-0 list-none w-full">
+      {/* Glossy Reflection Effect */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+
+      <ul className="flex items-center justify-between h-full px-2 m-0 list-none w-full relative z-10">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
           return (
-            <li key={item.id} className="flex-1 h-full min-w-0">
+            <li key={item.id} className="flex-1 h-full min-w-0 flex items-center justify-center">
               <button
                 onClick={() => setCurrentView(item.id)}
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={item.label}
                 className={`
-                  w-full h-full flex flex-col items-center justify-center gap-1 relative group transition-all duration-500 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
-                  ${isActive ? '-translate-y-1' : ''}
+                  relative flex flex-col items-center justify-center gap-1 transition-all duration-300 w-full h-full focus:outline-none group
                 `}
               >
-                {/* Active Glow Background */}
+                {/* Active Indicator Backdrop */}
                 <div className={`
-                  absolute top-2 w-10 h-10 rounded-full blur-lg transition-all duration-500 pointer-events-none
+                  absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl transition-all duration-500
+                  ${isActive ? 'bg-indigo-500/20 scale-100 rotate-0' : 'bg-transparent scale-50 rotate-45'}
+                `}></div>
+
+                {/* Glow behind icon when active */}
+                <div className={`
+                  absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full blur-xl transition-all duration-300
                   ${isActive ? 'bg-indigo-500/40 opacity-100' : 'opacity-0'}
                 `}></div>
 
-                {/* Icon Container */}
+                {/* Icon */}
                 <div className={`
-                  relative z-10 p-2.5 rounded-full transition-all duration-300
+                  relative z-10 p-2 rounded-xl transition-all duration-300 ease-out transform
                   ${isActive 
-                    ? 'bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-[#020617]' 
-                    : 'text-slate-500 hover:text-slate-300'}
+                    ? '-translate-y-1' 
+                    : 'translate-y-0 text-slate-500 group-hover:text-slate-300'}
                 `}>
-                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+                    <item.icon 
+                        size={24} 
+                        strokeWidth={isActive ? 2.5 : 2} 
+                        className={`transition-colors duration-300 ${isActive ? 'text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : ''}`}
+                        aria-hidden="true" 
+                    />
                 </div>
                 
-                {/* Label (Visible when active) */}
+                {/* Label (Dynamic Visibility) */}
                 <span className={`
-                  text-[9px] font-bold tracking-wide transition-all duration-300 absolute bottom-1 whitespace-nowrap
-                  ${isActive ? 'opacity-100 text-white translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}
+                  text-[10px] font-bold tracking-wide transition-all duration-300 absolute bottom-3 whitespace-nowrap
+                  ${isActive ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 translate-y-2 pointer-events-none'}
                 `}>
                     {item.label}
                 </span>
                 
-                {/* Inactive Dot Indicator */}
-                {!isActive && (
-                     <span className="w-1 h-1 rounded-full bg-slate-700 absolute bottom-2 transition-all duration-300 group-hover:bg-slate-500" aria-hidden="true"></span>
+                {/* Active Dot (Small Detail) */}
+                {isActive && (
+                    <span className="absolute bottom-1 w-1 h-1 rounded-full bg-indigo-400 shadow-[0_0_5px_#818cf8]"></span>
                 )}
               </button>
             </li>

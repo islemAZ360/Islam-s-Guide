@@ -1,16 +1,22 @@
 import React, { useMemo } from 'react';
 import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine, ComposedChart, Line, Legend
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+    BarChart, Bar, Cell, ComposedChart, Line, Legend
 } from 'recharts';
-import { Smile, Activity, Zap, Moon, Shield, Award, TrendingUp, Frown, Meh, BarChart2 } from 'lucide-react';
+import { 
+    Activity, Zap, Moon, Shield, BrainCircuit, 
+    TrendingUp, TrendingDown, Dna, Microscope, Sparkles
+} from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { generateSmartAnalytics } from '../services/analyticsEngine';
 
 interface StatsViewProps {
     logs: DailyLog[];
@@ -18,308 +24,245 @@ interface StatsViewProps {
     userProfile?: UserProfile | null;
 }
 
+// مكون فرعي لبطاقة القياس (Metric Card)
+const MetricCard = ({ title, value, unit, icon: Icon, trend, color, subtext }: any) => {
+    // Dynamic color mapping
+    const colorClasses: Record<string, string> = {
+        indigo: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/40',
+        blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20 group-hover:bg-blue-500/20 group-hover:border-blue-500/40',
+        emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40',
+        rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40',
+        amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500/20 group-hover:border-amber-500/40',
+    };
+
+    const activeColor = colorClasses[color] || colorClasses.indigo;
+    const barColor = color === 'rose' ? 'bg-rose-500' : color === 'emerald' ? 'bg-emerald-500' : color === 'amber' ? 'bg-amber-500' : 'bg-indigo-500';
+
+    return (
+        <div className="relative overflow-hidden p-6 rounded-[2rem] bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-white/5 group hover:-translate-y-1 transition-all duration-500 shadow-lg hover:shadow-2xl">
+            {/* Background Glow */}
+            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 transition-colors ${barColor}`}></div>
+            
+            <div className="relative z-10 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start mb-6">
+                    <div className={`p-3.5 rounded-2xl border transition-colors ${activeColor}`}>
+                        <Icon size={24} strokeWidth={2.5} />
+                    </div>
+                    {trend && (
+                        <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${trend === 'up' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                            {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            {trend === 'up' ? 'Pos' : 'Neg'}
+                        </div>
+                    )}
+                </div>
+                
+                <div>
+                    <h4 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</h4>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-4xl font-black text-white tracking-tight">{value}</span>
+                        <span className="text-sm text-slate-500 font-bold">{unit}</span>
+                    </div>
+                    {subtext && <p className="text-[10px] text-slate-500 mt-2 font-mono flex items-center gap-1 opacity-70">{subtext}</p>}
+                </div>
+            </div>
+
+            {/* Progress Bar at bottom */}
+            <div className="absolute bottom-0 left-0 w-full h-1.5 bg-black/20">
+                <div className={`h-full ${barColor} transition-all duration-1000 ease-out`} style={{ width: `${Math.min(100, typeof value === 'number' ? value : 0)}%` }}></div>
+            </div>
+        </div>
+    );
+};
+
 export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     const { t, language } = useLanguage();
-    const unitLabel = userProfile?.medUnit || 'mg';
-
-    // 1. بيانات الحالة المزاجية (Pie Chart)
-    const moodData = useMemo(() => [
-        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, 
-        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, 
-        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    
-    ].filter(d => d.value > 0), [logs, t]);
-
-    // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
-    // FIX: Sort logs by date first to ensure we get the actual *latest* 14 days, not just the last 14 in the array
-    const recentLogs = useMemo(() => {
-        return [...logs]
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(-14);
-    }, [logs]);
     
-    const correlationData = useMemo(() => {
-        return recentLogs.map(log => ({
-            date: log.date,
-            displayDate: log.date.slice(5), // YYYY-MM-DD -> MM-DD
-            dose: log.doseTaken,
-            sleep: log.sleepHours || 0,
-            moodLabel: log.mood
-        }));
-    }, [recentLogs]);
+    // --- استدعاء المحرك الذكي ---
+    const analytics = useMemo(() => {
+        return generateSmartAnalytics(userProfile || null, logs, plan);
+    }, [logs, plan, userProfile]);
 
-    // 3. منطق الأوسمة (Gamification)
-    // FIX: Also ensure badges use the sorted recent logs logic where applicable
-    const badges = [
-        {
-            id: 'warrior',
-            title: t('badge_7days'),
-            icon: Shield,
-            color: 'indigo',
-            achieved: logs.length >= 7, // Basic check on count is fine
-            desc: "7 أيام متواصلة"
-        },
-        {
-            id: 'halfway',
-            title: t('badge_halfway'),
-            icon: Zap,
-            color: 'amber',
-            achieved: logs.length > 0 && plan.length > 0 && recentLogs[recentLogs.length-1]?.doseTaken <= (plan[0].plannedDose / 2),
-            desc: "نصف الكمية"
-        },
-        {
-            id: 'sleep',
-            title: t('badge_sleep'),
-            icon: Moon,
-            color: 'blue',
-            achieved: recentLogs.length >= 3 && (recentLogs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
-            desc: "نوم منتظم"
-        },
-        {
-            id: 'stable',
-            title: t('badge_stable'),
-            icon: Smile,
-            color: 'emerald',
-            achieved: recentLogs.length >= 3 && recentLogs.slice(-3).every(l => l.mood === 'good'),
-            desc: "مزاج ممتاز"
-        }
-    ];
+    const hasData = logs.length >= 2;
+
+    // دمج البيانات للرسم البياني المركب
+    const comboChartData = analytics.chartData.dates.map((date, i) => ({
+        date: date.slice(5), // MM-DD
+        wellness: analytics.chartData.wellness[i],
+        dose: analytics.chartData.dose[i],
+        sleep: analytics.chartData.sleep[i]
+    }));
 
     return (
       <LayoutContainer>
           <PageHeader 
-            title={t('nav_stats')}
-            subtitle={language === 'ar' ? "تحليل عميق لأدائك الحيوي ومسار التعافي." : "Deep analysis of your vitals and recovery path."}
+            title={language === 'ar' ? "غرفة التحليل العصبي" : "Neuro-Analytics Cockpit"}
+            subtitle={language === 'ar' ? "نظام تحليل البيانات الحيوية المتقدم." : "Advanced biometric data processing unit."}
+            action={
+                <Badge color="emerald" className="py-2 px-4 text-xs shadow-lg shadow-emerald-500/20 bg-emerald-500/10 border-emerald-500/20">
+                    <Microscope size={14} className="mr-2 animate-pulse"/> 
+                    {language === 'ar' ? "المحرك الذكي: نشط" : "NEURO-ENGINE: ACTIVE"}
+                </Badge>
+            }
           />
 
-          {/* Badges Section */}
-          <section aria-labelledby="badges-heading" className="mb-8">
-              <h2 id="badges-heading" className="sr-only">{t('badges_title')}</h2>
-              <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {badges.map((badge) => (
-                      <li key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group list-none ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30 shadow-lg shadow-${badge.color}-900/20` : 'bg-slate-900/40 border-white/5 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`}>
-                          {/* Background Glow */}
-                          <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-                          
-                          <div className="relative z-10 flex flex-col items-center text-center gap-4">
-                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110 group-hover:rotate-6 ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-600 to-${badge.color}-400` : 'bg-slate-800'}`}>
-                                  <badge.icon size={28} strokeWidth={1.5} aria-hidden="true" />
+          {!hasData ? (
+              <div className="min-h-[500px] flex flex-col items-center justify-center text-center p-8 border border-white/5 rounded-[3rem] bg-gradient-to-b from-[#0f172a] to-[#020617] animate-in fade-in relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+                  <div className="w-24 h-24 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 ring-4 ring-slate-800/30 relative z-10">
+                      <Activity size={40} className="text-slate-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-3 relative z-10">
+                      {language === 'ar' ? "بانتظار تدفق البيانات..." : "Awaiting Data Stream..."}
+                  </h3>
+                  <p className="text-slate-400 max-w-md relative z-10">
+                      {language === 'ar' 
+                        ? "نحتاج لبيانات يومين على الأقل لتفعيل الخوارزميات وبدء التحليل العصبي." 
+                        : "Requires at least 2 days of logs to initialize the neural analysis algorithms."}
+                  </p>
+              </div>
+          ) : (
+              <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700">
+                  
+                  {/* 1. Top Metrics Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <MetricCard 
+                          title={language === 'ar' ? "مؤشر العافية" : "Wellness Score"}
+                          value={analytics.recoveryScore}
+                          unit="/100"
+                          icon={BrainCircuit}
+                          color="indigo"
+                          trend={analytics.trend === 'improving' ? 'up' : analytics.trend === 'declining' ? 'down' : null}
+                          subtext={language === 'ar' ? "حالة التعافي العصبية" : "Neuro-Recovery Status"}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "المرونة البيولوجية" : "Bio-Resilience"}
+                          value={analytics.bioScore}
+                          unit="/100"
+                          icon={Dna}
+                          color="blue"
+                          subtext={language === 'ar' ? "قدرة الجسم الأيضية" : "Metabolic Capacity"}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "جودة النوم" : "Sleep Quality"}
+                          value={analytics.sleepAnalysis.average}
+                          unit="hrs"
+                          icon={Moon}
+                          color={analytics.sleepAnalysis.average >= 7 ? 'emerald' : 'rose'}
+                          subtext={analytics.sleepAnalysis.quality}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "الاستقرار المتوقع" : "Stability Index"}
+                          value={analytics.predictedStability}
+                          unit="%"
+                          icon={Shield}
+                          color="amber"
+                          subtext={language === 'ar' ? "مخاطر الانتكاس: منخفضة" : "Relapse Risk: Calculated"}
+                      />
+                  </div>
+
+                  {/* 2. Main Analytics Chart */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      {/* Changed section to div to avoid potential namespace collision */}
+                      <div className="lg:col-span-2 h-full">
+                          <Card className="h-full bg-[#0f172a] border-white/5 relative overflow-hidden flex flex-col min-h-[500px] rounded-[2.5rem] shadow-2xl">
+                              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+                                  <TrendingUp size={150} className="text-white" />
                               </div>
-                              <div>
-                                  <span className={`text-sm font-bold block mb-1 ${badge.achieved ? 'text-white' : 'text-slate-400'}`}>{badge.title}</span>
-                                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider bg-slate-950/50 px-2 py-1 rounded-lg">
-                                      {badge.achieved ? badge.desc : (language === 'ar' ? "مغلق" : "Locked")}
-                                  </span>
+                              
+                              <div className="relative z-10 mb-8 p-2">
+                                  <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                                      <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400"><Activity size={20} /></div>
+                                      {language === 'ar' ? "تحليل الارتباط الحيوي" : "Bio-Correlation Analysis"}
+                                  </h3>
+                                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2 ml-12">
+                                      Dose vs. Sleep vs. Wellness
+                                  </p>
                               </div>
-                          </div>
-                          
-                          {badge.achieved && (
-                              <div className="absolute top-3 right-3 text-yellow-400 animate-pulse" aria-label={language === 'ar' ? 'تم الإنجاز' : 'Achieved'}>
-                                  <Award size={16} />
+
+                              <div className="flex-1 w-full min-h-[350px]">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                      <ComposedChart data={comboChartData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
+                                          <defs>
+                                              <linearGradient id="colorWellness" x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                              </linearGradient>
+                                          </defs>
+                                          <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} opacity={0.4} />
+                                          <XAxis dataKey="date" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} dy={15} />
+                                          <YAxis yAxisId="left" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} />
+                                          <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} domain={[0, 100]} />
+                                          
+                                          <Tooltip 
+                                              contentStyle={{backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
+                                              itemStyle={{fontSize: '12px', fontWeight: 'bold', padding: '2px 0'}}
+                                              labelStyle={{color: '#94a3b8', fontSize: '10px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px'}}
+                                              cursor={{stroke: '#ffffff10', strokeWidth: 2}}
+                                          />
+                                          <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{paddingBottom: '20px'}} />
+
+                                          <Area yAxisId="right" type="monotone" dataKey="wellness" name={language === 'ar' ? "مؤشر العافية" : "Wellness Score"} stroke="#10b981" fill="url(#colorWellness)" strokeWidth={3} />
+                                          <Bar yAxisId="left" dataKey="dose" name={language === 'ar' ? "الجرعة" : "Dose"} barSize={20} fill="#6366f1" radius={[6, 6, 0, 0]} />
+                                          <Line yAxisId="left" type="monotone" dataKey="sleep" name={language === 'ar' ? "النوم" : "Sleep"} stroke="#f59e0b" strokeWidth={3} dot={{r: 4, strokeWidth: 2, fill: '#0f172a'}} />
+                                      </ComposedChart>
+                                  </ResponsiveContainer>
                               </div>
-                          )}
-                      </li>
-                  ))}
-              </ul>
-          </section>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* 1. Correlation Chart (Dose vs Sleep) */}
-              <section aria-labelledby="correlation-heading" className="lg:col-span-2">
-                  <Card className="min-h-[400px] flex flex-col border-white/10 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
-                      
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10">
-                          <h3 id="correlation-heading" className="text-xl font-bold text-white flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
-                                  <Activity className="w-5 h-5" aria-hidden="true"/>
-                              </div>
-                               {language === 'ar' ? 'تأثير الجرعة على النوم' : 'Dose Impact on Sleep'}
-                          </h3>
-                          <div className="flex gap-4 text-xs font-bold mt-4 md:mt-0 bg-slate-950/50 p-2 rounded-xl border border-white/5" aria-hidden="true">
-                              <span className="flex items-center gap-2 text-indigo-300"><span className="w-3 h-3 rounded bg-indigo-500"></span> {t('dose')} ({unitLabel})</span>
-                              <span className="flex items-center gap-2 text-emerald-300"><span className="w-3 h-3 rounded-full bg-emerald-400"></span> {t('sleep_label')}</span>
-                          </div>
-                      </div>
-                      
-                      <div className="flex-1 h-[300px] w-full" aria-hidden="true">
-                          {correlationData.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  <ComposedChart data={correlationData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                                      <defs>
-                                        <linearGradient id="colorDoseBar" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
-                                        </linearGradient>
-                                      </defs>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                                      <XAxis dataKey="displayDate" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                      <YAxis yAxisId="left" stroke="#6366f1" fontSize={10} axisLine={false} tickLine={false} />
-                                      <YAxis yAxisId="right" orientation="right" stroke="#34d399" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
-                                      <Tooltip 
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
-                                          itemStyle={{color: '#fff', fontSize: '12px'}}
-                                          labelStyle={{color: '#94a3b8', marginBottom: '8px', fontSize: '10px'}}
-                                      />
-                                      <Bar yAxisId="left" dataKey="dose" barSize={20} fill="url(#colorDoseBar)" radius={[4, 4, 0, 0]} animationDuration={1500} name={t('dose')} />
-                                      <Line yAxisId="right" type="monotone" dataKey="sleep" stroke="#34d399" strokeWidth={3} dot={{r: 4, fill: '#0f172a', strokeWidth: 2}} activeDot={{r: 6}} animationDuration={2000} name={t('sleep_label')} />
-                                  </ComposedChart>
-                              </ResponsiveContainer>
-                          ) : (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                                  <TrendingUp size={48} className="opacity-20 mb-4"/>
-                                  <p>{language === 'ar' ? 'سجل بياناتك لمدة 3 أيام لتبدأ التحليلات الذكية بالعمل.' : 'Log data for 3 days to see analytics.'}</p>
-                              </div>
-                          )}
+                          </Card>
                       </div>
 
-                      {/* Screen Reader Table for Correlation Chart */}
-                      <div className="sr-only">
-                          <table>
-                              <caption>{language === 'ar' ? 'جدول بيانات الجرعة مقابل النوم' : 'Data table: Dose vs Sleep'}</caption>
-                              <thead>
-                                  <tr>
-                                      <th scope="col">{language === 'ar' ? 'التاريخ' : 'Date'}</th>
-                                      <th scope="col">{t('dose')}</th>
-                                      <th scope="col">{t('sleep_label')}</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {correlationData.map((row, i) => (
-                                      <tr key={i}>
-                                          <td>{row.date}</td>
-                                          <td>{row.dose} {unitLabel}</td>
-                                          <td>{row.sleep} hours</td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
-                  </Card>
-              </section>
-
-              {/* 2. Mood Distribution (Pie Chart) */}
-              <section aria-labelledby="mood-heading">
-                  <Card className="min-h-[350px] flex flex-col border-white/10">
-                      <h3 id="mood-heading" className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
-                              <Smile className="w-5 h-5" aria-hidden="true"/>
-                          </div>
-                          {language === 'ar' ? 'الحالة المزاجية العامة' : 'Mood Distribution'}
-                      </h3>
-                      <div className="flex-1 relative" aria-hidden="true">
-                           {moodData.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  <PieChart>
-                                      <Pie
-                                          data={moodData}
-                                          cx="50%"
-                                          cy="50%"
-                                          innerRadius={60}
-                                          outerRadius={100}
-                                          paddingAngle={5}
-                                          dataKey="value"
-                                          stroke="none"
-                                          cornerRadius={6}
-                                      >
-                                          {moodData.map((entry, index) => (
-                                              <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                          ))}
-                                      </Pie>
-                                      <Tooltip 
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                          itemStyle={{fontWeight: 'bold', color: '#fff'}}
-                                      />
-                                      <Legend 
-                                        verticalAlign="bottom" 
-                                        height={36} 
-                                        iconType="circle"
-                                        formatter={(value) => <span className="text-slate-400 text-xs font-bold mx-2">{value}</span>}
-                                      />
-                                  </PieChart>
-                              </ResponsiveContainer>
-                           ) : (
-                               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 font-medium">
-                                   <Meh size={40} className="mb-2 opacity-20"/>
-                                   {language === 'ar' ? 'لا توجد بيانات كافية' : 'Insufficient Data'}
-                               </div>
-                           )}
-                      </div>
-
-                      {/* Screen Reader List for Mood */}
-                      <div className="sr-only">
-                          <h4>{language === 'ar' ? 'ملخص المزاج' : 'Mood Summary'}</h4>
-                          <ul>
-                              {moodData.map((item, i) => (
-                                  <li key={i}>{item.name}: {item.value} {language === 'ar' ? 'أيام' : 'days'}</li>
-                              ))}
-                          </ul>
-                      </div>
-                  </Card>
-              </section>
-
-              {/* 3. Sleep Quality Histogram */}
-              <section aria-labelledby="sleep-heading">
-                  <Card className="min-h-[350px] flex flex-col border-white/10">
-                      <h3 id="sleep-heading" className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                              <Moon className="w-5 h-5" aria-hidden="true"/>
-                          </div>
-                           {language === 'ar' ? 'استقرار النوم (آخر 7 أيام)' : 'Sleep Stability (Last 7 Days)'}
-                      </h3>
-                      <div className="flex-1 mt-4" aria-hidden="true">
-                          {recentLogs.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  {/* Using recentLogs.slice(-7) ensures we use the sorted latest days */}
-                                  <BarChart data={recentLogs.slice(-7)}> 
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                                      <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                      <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
-                                      <Tooltip 
-                                          cursor={{fill: '#1e293b', opacity: 0.5}}
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                          itemStyle={{color: '#fff'}}
-                                          formatter={(val) => [`${val} h`, t('sleep_label')]}
-                                      />
-                                      <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
-                                      <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
-                                        {recentLogs.slice(-7).map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
-                                        ))}
-                                      </Bar>
-                                  </BarChart>
-                              </ResponsiveContainer>
-                          ) : (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                                  <BarChart2 size={40} className="mb-2 opacity-20"/>
-                                  <p>{language === 'ar' ? 'لا توجد سجلات للنوم.' : 'No sleep logs.'}</p>
+                      {/* 3. AI Insights Panel (Feed Style) */}
+                      {/* Changed section to div to avoid potential namespace collision */}
+                      <div className="h-full">
+                          <Card className="h-full bg-gradient-to-b from-[#0f172a] to-[#020617] border-white/5 p-0 overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl">
+                              <div className="p-8 border-b border-white/5 flex justify-between items-center">
+                                  <h3 className="text-white font-bold flex items-center gap-3 text-lg">
+                                      <div className="p-2 bg-amber-500/10 rounded-xl text-amber-400"><Zap size={20} /></div>
+                                      {language === 'ar' ? "تحليلات الذكاء" : "AI Insights"}
+                                  </h3>
+                                  <Sparkles size={16} className="text-amber-400 animate-pulse" />
                               </div>
-                          )}
-                      </div>
+                              
+                              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-4">
+                                  {analytics.insights.length > 0 ? (
+                                      analytics.insights.map((insight, idx) => (
+                                          <div key={idx} className="flex gap-4 p-5 rounded-[1.5rem] bg-[#1e293b]/30 border border-white/5 hover:border-indigo-500/30 transition-all group hover:bg-[#1e293b]/50">
+                                              <div className="shrink-0 mt-1">
+                                                  <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_#6366f1] group-hover:animate-pulse"></div>
+                                                  <div className="w-0.5 h-full bg-gradient-to-b from-indigo-500/50 to-transparent mx-auto mt-2"></div>
+                                              </div>
+                                              <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                                                  {insight}
+                                              </p>
+                                          </div>
+                                      ))
+                                  ) : (
+                                      <div className="text-center py-16 text-slate-500 text-sm flex flex-col items-center">
+                                          <BrainCircuit size={32} className="mb-4 opacity-20" />
+                                          {language === 'ar' ? "جاري معالجة البيانات..." : "Processing neural data..."}
+                                      </div>
+                                  )}
 
-                      {/* Screen Reader Table for Sleep */}
-                      <div className="sr-only">
-                          <table>
-                              <caption>{language === 'ar' ? 'سجل النوم للأسبوع الماضي' : 'Past week sleep log'}</caption>
-                              <thead>
-                                  <tr>
-                                      <th scope="col">{language === 'ar' ? 'التاريخ' : 'Date'}</th>
-                                      <th scope="col">{t('sleep_label')}</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {recentLogs.slice(-7).map((log, i) => (
-                                      <tr key={i}>
-                                          <td>{log.date}</td>
-                                          <td>{log.sleepHours || 0} {language === 'ar' ? 'ساعات' : 'hours'}</td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
+                                  {/* Symptom Burden Widget */}
+                                  <div className="mt-8 pt-6 border-t border-white/5 px-2">
+                                      <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                                          <span>{language === 'ar' ? "عبء الأعراض" : "Symptom Load"}</span>
+                                          <span className={analytics.symptomBurden > 50 ? "text-rose-400" : "text-emerald-400"}>
+                                              {analytics.symptomBurden > 50 ? (language === 'ar' ? "مرتفع" : "HIGH") : (language === 'ar' ? "طبيعي" : "NORMAL")}
+                                          </span>
+                                      </div>
+                                      <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                                          <div 
+                                              className={`h-full transition-all duration-1000 ${analytics.symptomBurden > 50 ? 'bg-gradient-to-r from-rose-600 to-pink-500' : 'bg-gradient-to-r from-emerald-600 to-teal-500'}`} 
+                                              style={{ width: `${analytics.symptomBurden}%` }}
+                                          ></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </Card>
                       </div>
-                  </Card>
-              </section>
-          </div>
+                  </div>
+              </div>
+          )}
       </LayoutContainer>
     );
 };

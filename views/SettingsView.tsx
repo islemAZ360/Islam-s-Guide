@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload, Ruler, Weight, Calendar
+    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload, Ruler, Weight, Calendar, Lock
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -269,6 +269,9 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         </>
     );
 
+    // Helper: Is this a supervised patient?
+    const isSupervisedPatient = userProfile.role === 'patient';
+
     return (
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
@@ -321,7 +324,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                     <label htmlFor="docName" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_fullname')}</label>
                                     <input id="docName" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" value={doctorFormData.name} onChange={e => setDoctorFormData({...doctorFormData, name: e.target.value})} />
                                 </div>
-                                {/* Removed Photo URL Input */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="phone" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_phone')}</label>
@@ -455,48 +457,50 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                         </section>
                     </Card>
 
-                    {/* Inventory Management */}
-                    <Card className="mb-8 border-white/10">
-                        <section aria-labelledby="inventory-settings">
-                            <h2 id="inventory-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <Package className="text-blue-400" /> {t('inventory_title')}
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invBoxes" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                        <input id="invBoxes" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.boxes} onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                    {/* Inventory Management - HIDDEN for Patients */}
+                    {userProfile.role === 'normal_user' && (
+                        <Card className="mb-8 border-white/10">
+                            <section aria-labelledby="inventory-settings">
+                                <h2 id="inventory-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                    <Package className="text-blue-400" /> {t('inventory_title')}
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invBoxes" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                            <input id="invBoxes" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.boxes} onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invPills" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
+                                            <input id="invPills" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.pillsPerBox} onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invLoose" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                            <input id="invLoose" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.loosePills} onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invPills" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
-                                        <input id="invPills" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.pillsPerBox} onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
+                                    <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
+                                        <span className="text-slate-500">{t('total_balance')}: </span>
+                                        <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
+                                            {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
+                                        </span>
                                     </div>
+                                    <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
+                                        <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
+                                    </Button>
                                 </div>
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invLoose" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                        <input id="invLoose" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.loosePills} onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
-                                <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
-                                    <span className="text-slate-500">{t('total_balance')}: </span>
-                                    <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
-                                        {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
-                                    </span>
-                                </div>
-                                <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
-                                    <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
-                                </Button>
-                            </div>
-                        </section>
-                    </Card>
+                            </section>
+                        </Card>
+                    )}
                 </>
             )}
 
@@ -528,13 +532,28 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                             <h2 id="danger-zone" className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                                 <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
                             </h2>
-                            <p className="text-rose-200/60 text-sm max-w-md">
-                                {language === 'ar' ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' : 'This action permanently deletes your account and all data. This cannot be undone.'}
-                            </p>
+                            {isSupervisedPatient ? (
+                                <p className="text-rose-200/60 text-sm max-w-md font-medium">
+                                    {language === 'ar'
+                                        ? 'لا يمكنك حذف حسابك لأنك تخضع لإشراف طبي. يرجى التواصل مع طبيبك أو الإدارة لإغلاق الملف.'
+                                        : 'Account deletion is restricted while under medical supervision. Please contact your doctor or admin.'}
+                                </p>
+                            ) : (
+                                <p className="text-rose-200/60 text-sm max-w-md">
+                                    {language === 'ar' ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' : 'This action permanently deletes your account and all data. This cannot be undone.'}
+                                </p>
+                            )}
                         </div>
-                        <Button variant="danger" onClick={handleDeleteAccount} className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold">
-                            <Trash2 size={20} className="mr-2"/> {t('delete_user')}
-                        </Button>
+                        
+                        {isSupervisedPatient ? (
+                            <div className="flex items-center gap-2 px-6 py-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 font-bold text-sm cursor-not-allowed opacity-80">
+                                <Lock size={18} /> {language === 'ar' ? 'محظور' : 'Locked'}
+                            </div>
+                        ) : (
+                            <Button variant="danger" onClick={handleDeleteAccount} className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold">
+                                <Trash2 size={20} className="mr-2"/> {t('delete_user')}
+                            </Button>
+                        )}
                     </div>
                 </section>
             </Card>

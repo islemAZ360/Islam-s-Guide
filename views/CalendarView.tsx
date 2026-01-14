@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair, ChevronLeft, ChevronRight, Edit2, Save } from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 
 import { PlanDay, DailyLog, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext';
 
 interface CalendarViewProps {
     plan: PlanDay[];
@@ -20,14 +21,18 @@ interface CalendarViewProps {
 
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
     const { t, language, dir } = useLanguage();
+    const { setPlan } = useData(); // Import setPlan to save changes
     const todayRef = useRef<HTMLDivElement>(null);
 
     const unitLabel = userProfile?.medUnit || 'mg';
     const isDoctorPlan = userProfile?.planType === 'manual';
 
     // State for Month Navigation
-    // Default to current month or the first month of the plan if current date is far off
     const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
+
+    // State for Editing
+    const [editingDate, setEditingDate] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
 
     // Effect to scroll to today on initial load if it's in the view
     useEffect(() => {
@@ -58,14 +63,9 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         // Get number of days in month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // Generate all days for this month (even if not in plan, to show complete calendar)
-        // or just map the plan days that fall in this month?
-        // Better approach: Create a grid for the month, fill with plan data if exists.
-        
         const monthDays: Array<{ date: string, planDay?: PlanDay }> = [];
         for(let d = 1; d <= daysInMonth; d++) {
             // Construct YYYY-MM-DD
-            // Note: Month is 0-indexed in JS Date, but we need 1-indexed for string
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const planItem = plan.find(p => p.date === dateStr);
             monthDays.push({ date: dateStr, planDay: planItem });
@@ -73,10 +73,6 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
 
         // Calculate padding blanks for the first row (based on 1st of month)
         const firstDayOfMonth = new Date(year, month, 1);
-        // Adjust getDay() to match Saturday start (0=Sat in this logic)
-        // Standard getDay(): 0=Sun, 1=Mon... 6=Sat
-        // We want Sat=0, Sun=1... Fri=6
-        // (day + 1) % 7 gives: Sat(6)->0, Sun(0)->1 ... Fri(5)->6
         const startDayIndex = (firstDayOfMonth.getDay() + 1) % 7; 
         const blanks = Array.from({ length: startDayIndex });
 
@@ -99,6 +95,42 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
     const jumpToToday = () => {
         const now = new Date();
         setCurrentMonthDate(now);
+    };
+
+    // Edit Handlers
+    const startEditing = (date: string, currentDose: number) => {
+        setEditingDate(date);
+        setEditValue(currentDose.toString());
+    };
+
+    const cancelEditing = () => {
+        setEditingDate(null);
+        setEditValue('');
+    };
+
+    const saveEdit = () => {
+        if (!editingDate) return;
+        const newDose = parseFloat(editValue);
+        
+        if (isNaN(newDose) || newDose < 0) {
+            alert(language === 'ar' ? 'يرجى إدخال قيمة صحيحة' : 'Please enter a valid dose');
+            return;
+        }
+
+        // Update the plan array
+        const updatedPlan = plan.map(day => {
+            if (day.date === editingDate) {
+                return { ...day, plannedDose: newDose };
+            }
+            return day;
+        });
+
+        // Save to Context (which syncs to DB)
+        setPlan(updatedPlan);
+        
+        // Reset edit state
+        setEditingDate(null);
+        setEditValue('');
     };
 
     // Helper to generate accessible label
@@ -174,15 +206,15 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
 
               {/* Legend */}
               <div className="flex flex-wrap justify-center gap-4 text-[10px] md:text-xs font-bold text-slate-400" role="list" aria-label="Status Legend">
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'التزام تام' : 'Completed'}
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'تجاوز / تعثر' : 'Missed/Over'}
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'اليوم الحالي' : 'Today'}
                   </div>
@@ -212,6 +244,7 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
               const log = logs.find(l => l.date === item.date);
               const isPast = item.date < todayDate;
               const hasPlan = !!item.planDay;
+              const isEditing = editingDate === item.date;
               
               // Dynamic Styling
               let containerClass = hasPlan 
@@ -263,16 +296,45 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                         )}
                    </div>
                   
-                  {/* Dose Info */}
+                  {/* Dose Info & Editing */}
                   {hasPlan ? (
                       <>
-                        <div className="text-center my-1 md:my-2">
-                            <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
-                            {item.planDay!.plannedDose}
-                            </span>
-                            <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
-                                {unitLabel}
-                            </span>
+                        <div className="text-center my-1 md:my-2 relative group/edit">
+                            {isEditing ? (
+                                <div className="flex flex-col items-center gap-1 animate-in zoom-in">
+                                    <input 
+                                        type="number" 
+                                        value={editValue} 
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="w-full bg-slate-950/80 border border-indigo-500 rounded px-1 py-0.5 text-center font-black text-sm text-white focus:outline-none"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-1 justify-center">
+                                        <button onClick={saveEdit} className="p-1 bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors"><Check size={12}/></button>
+                                        <button onClick={cancelEditing} className="p-1 bg-rose-500/20 text-rose-400 rounded hover:bg-rose-500 hover:text-white transition-colors"><X size={12}/></button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
+                                        {item.planDay!.plannedDose}
+                                    </span>
+                                    <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
+                                        {unitLabel}
+                                    </span>
+                                    
+                                    {/* Edit Button for Normal Users Only */}
+                                    {!isDoctorPlan && !isPast && (
+                                        <button 
+                                            onClick={() => startEditing(item.date, item.planDay!.plannedDose)}
+                                            className="absolute -top-1 -right-1 p-1 bg-slate-800 rounded-full text-indigo-400 opacity-0 group-hover/edit:opacity-100 transition-opacity hover:bg-indigo-500 hover:text-white border border-white/5"
+                                            aria-label="Edit dose"
+                                        >
+                                            <Edit2 size={10} />
+                                        </button>
+                                    )}
+                                </>
+                            )}
                         </div>
 
                         {/* Mood Bar (Footer) */}

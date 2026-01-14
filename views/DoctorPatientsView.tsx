@@ -5,7 +5,7 @@ import {
 import { db, auth } from '../services/firebase';
 import { UserProfile, DailyLog } from '../types';
 import { 
-    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock, BarChart2
+    Users, Search, UserPlus, FileText, Activity, Moon, Smile, Frown, Meh, Calendar, ChevronLeft, X, UserCheck, UserX, Clock, BarChart2, TrendingUp
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -61,7 +61,7 @@ export const DoctorPatientsView = () => {
         fetchData();
     }, []);
 
-    // -- Memoized Filters (Performance Optimization) --
+    // -- Memoized Filters --
     const filteredAvailable = useMemo(() => {
         return availableUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [availableUsers, searchTerm]);
@@ -76,7 +76,6 @@ export const DoctorPatientsView = () => {
     }, [patientLogs]);
 
     // -- Actions --
-
     const handleAcceptRequest = async (patient: UserProfile) => {
         if (!patient.uid) return;
         if (!confirm(`Accept ${patient.name} as your patient?`)) return;
@@ -170,12 +169,23 @@ export const DoctorPatientsView = () => {
         <LayoutContainer>
             <PageHeader 
                 title={t('manage_patients_title')} 
-                subtitle="Track progress and manage your clinic."
+                subtitle={language === 'ar' ? "متابعة التقدم وإدارة الملفات الطبية" : "Track progress and manage clinical files"}
                 action={
                     viewMode === 'LIST' ? (
-                        <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary" className="!rounded-xl shadow-indigo-500/20">
-                            <UserPlus size={18} aria-hidden="true" /> {t('add_patient_btn')}
-                        </Button>
+                        <div className="flex gap-3">
+                            <div className="relative group hidden md:block">
+                                <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400" size={16} />
+                                <input 
+                                    className="bg-slate-900/50 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all w-64 placeholder-slate-600"
+                                    placeholder={language === 'ar' ? "بحث عن مريض..." : "Search patients..."}
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Button onClick={() => { setViewMode('ADD_NEW'); fetchAvailableUsers(); }} variant="primary" className="!rounded-xl shadow-lg shadow-indigo-500/20 !py-2.5 !text-xs">
+                                <UserPlus size={16} aria-hidden="true" /> {t('add_patient_btn')}
+                            </Button>
+                        </div>
                     ) : (
                         <Button onClick={() => setViewMode('LIST')} variant="secondary" className="!rounded-xl">
                             <ChevronLeft size={18} aria-hidden="true" /> {t('back_list_btn')}
@@ -187,34 +197,35 @@ export const DoctorPatientsView = () => {
             {/* --- ADD NEW PATIENT MODE --- */}
             {viewMode === 'ADD_NEW' && (
                 <div className="animate-in fade-in slide-in-from-right-4">
-                    <Card className="bg-slate-900/80 border-white/10 mb-6 backdrop-blur-xl">
-                        <h3 className="text-xl font-bold text-white mb-6">Find Users</h3>
-                        <div className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-2xl border border-white/5 mb-6 group focus-within:border-indigo-500/50 transition-colors">
+                    <Card className="bg-[#0f172a]/80 border-white/10 mb-6 backdrop-blur-xl">
+                        <h3 className="text-xl font-bold text-white mb-6">Find & Add Users</h3>
+                        <div className="flex items-center gap-4 bg-[#020617] p-4 rounded-2xl border border-white/5 mb-6 group focus-within:border-indigo-500/50 transition-colors">
                             <label htmlFor="user-search" className="sr-only">Search Users</label>
                             <Search className="text-slate-500 group-focus-within:text-indigo-400" aria-hidden="true" />
                             <input 
                                 id="user-search"
-                                className="bg-transparent w-full text-white outline-none placeholder-slate-600"
+                                className="bg-transparent w-full text-white outline-none placeholder-slate-600 font-medium"
                                 placeholder={t('search_available_placeholder')}
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 autoFocus
                             />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar" role="list">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar" role="list">
                             {filteredAvailable.map(user => (
-                                <div key={user.uid} className="flex justify-between items-center p-5 rounded-2xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-800/60 transition-all group" role="listitem">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5 group-hover:scale-110 transition-transform">
+                                <div key={user.uid} className="flex flex-col justify-between p-5 rounded-3xl border border-white/5 bg-[#1e293b]/30 hover:border-indigo-500/30 hover:bg-[#1e293b]/50 transition-all group relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
+                                    <div className="flex items-center gap-4 mb-4 relative z-10">
+                                        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-400 font-bold border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
                                             {user.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white text-lg">{user.name}</h4>
-                                            <p className="text-xs text-slate-500 font-mono">{user.email}</p>
+                                            <h4 className="font-bold text-white text-base">{user.name}</h4>
+                                            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">{user.email}</p>
                                         </div>
                                     </div>
-                                    <Button onClick={() => handleManualAdd(user)} variant="success" className="!py-2 !px-4 !text-xs !rounded-xl shadow-emerald-500/10">
-                                        <UserPlus size={16} className="mr-2" aria-hidden="true"/> {t('add_btn')}
+                                    <Button onClick={() => handleManualAdd(user)} variant="success" className="w-full !py-2.5 !text-xs !rounded-xl shadow-none border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white">
+                                        <UserPlus size={14} className="mr-2" aria-hidden="true"/> {t('add_btn')}
                                     </Button>
                                 </div>
                             ))}
@@ -226,63 +237,76 @@ export const DoctorPatientsView = () => {
             {/* --- LIST MODE --- */}
             {viewMode === 'LIST' && (
                 <div className="animate-in fade-in">
-                    {/* TABS */}
-                    <div className="flex p-1.5 bg-slate-900/50 rounded-2xl border border-white/10 mb-8 w-fit backdrop-blur-md" role="tablist">
-                        <button 
-                            onClick={() => setActiveTab('MY_PATIENTS')}
-                            role="tab"
-                            aria-selected={activeTab === 'MY_PATIENTS'}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${activeTab === 'MY_PATIENTS' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                        >
-                            {t('stat_total_patients')}
-                            <Badge color="blue" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent">{myPatients.length}</Badge>
-                        </button>
-                        
-                        <button 
-                            onClick={() => setActiveTab('REQUESTS')}
-                            role="tab"
-                            aria-selected={activeTab === 'REQUESTS'}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-amber-500 ${activeTab === 'REQUESTS' ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                        >
-                            {t('patient_requests_title')}
-                            {pendingRequests.length > 0 && <Badge color="red" className="!py-0 !px-1.5 bg-white/20 text-white border-transparent animate-pulse">{pendingRequests.length}</Badge>}
-                        </button>
+                    {/* TABS (Floating Island) */}
+                    <div className="flex justify-center mb-8">
+                        <div className="flex p-1.5 bg-[#0f172a] rounded-full border border-white/10 shadow-xl" role="tablist">
+                            <button 
+                                onClick={() => setActiveTab('MY_PATIENTS')}
+                                role="tab"
+                                aria-selected={activeTab === 'MY_PATIENTS'}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 focus:outline-none ${activeTab === 'MY_PATIENTS' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            >
+                                {t('stat_total_patients')}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${activeTab === 'MY_PATIENTS' ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-400'}`}>{myPatients.length}</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => setActiveTab('REQUESTS')}
+                                role="tab"
+                                aria-selected={activeTab === 'REQUESTS'}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 focus:outline-none ${activeTab === 'REQUESTS' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            >
+                                {t('patient_requests_title')}
+                                {pendingRequests.length > 0 && <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500 text-white animate-pulse">{pendingRequests.length}</span>}
+                            </button>
+                        </div>
                     </div>
 
                     {/* TAB: REQUESTS */}
                     {activeTab === 'REQUESTS' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-left-4">
                             {pendingRequests.length === 0 && (
-                                <div className="col-span-full text-center py-16 bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-800 text-slate-500">
-                                    <Clock size={48} className="mx-auto mb-4 opacity-20"/> {t('no_requests')}
+                                <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-[3rem]">
+                                    <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-white/5">
+                                        <Clock size={24} className="opacity-50"/>
+                                    </div>
+                                    <p className="font-medium">{t('no_requests')}</p>
                                 </div>
                             )}
                             {pendingRequests.map(patient => (
-                                <div key={patient.uid} className="bg-slate-900/80 backdrop-blur-xl border border-amber-500/20 p-6 rounded-[2rem] relative shadow-lg hover:shadow-amber-900/10 transition-all">
-                                    <Badge color="amber" className="absolute top-6 right-6 !py-1 !px-3 shadow-none bg-amber-500/10 border-amber-500/20">Pending</Badge>
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 font-bold text-xl border border-white/5">
-                                            {patient.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-white text-lg">{patient.name}</h3>
-                                            <p className="text-xs text-slate-500 font-mono">{patient.email}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2 text-xs text-slate-400 bg-slate-950/50 p-4 rounded-xl mb-6 border border-white/5">
-                                        <div className="flex-1 text-center border-r border-white/10">
-                                            <span className="block font-bold text-white text-base mb-1">{patient.medType}</span>Type
-                                        </div>
-                                        <div className="flex-1 text-center">
-                                            <span className="block font-bold text-white text-base mb-1">{patient.medForm}</span>Form
+                                <div key={patient.uid} className="bg-[#0f172a] border border-amber-500/20 p-6 rounded-[2.5rem] relative shadow-lg hover:shadow-amber-900/10 transition-all group overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600"></div>
+                                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors pointer-events-none"></div>
+                                    
+                                    <div className="flex justify-between items-start mb-6 relative z-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-[#1e293b] rounded-2xl flex items-center justify-center text-slate-400 font-bold text-xl border border-white/5 shadow-inner">
+                                                {patient.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-white text-lg">{patient.name}</h3>
+                                                <p className="text-xs text-slate-500 font-mono">{patient.email}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-3 !text-xs shadow-emerald-500/10">
-                                            <UserCheck size={16} className="mr-2" aria-hidden="true"/> {t('accept_patient')}
+
+                                    <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                                        <div className="bg-[#020617]/50 p-3 rounded-2xl border border-white/5 text-center">
+                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Med Type</span>
+                                            <span className="block font-bold text-amber-200 text-sm">{patient.medType}</span>
+                                        </div>
+                                        <div className="bg-[#020617]/50 p-3 rounded-2xl border border-white/5 text-center">
+                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Form</span>
+                                            <span className="block font-bold text-white text-sm">{patient.medForm}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 relative z-10">
+                                        <Button onClick={() => handleAcceptRequest(patient)} variant="success" className="flex-1 !py-3 !text-xs !rounded-xl shadow-lg shadow-emerald-500/10">
+                                            <UserCheck size={16} className="mr-2" /> {t('accept_patient')}
                                         </Button>
-                                        <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-3 !text-xs shadow-rose-500/10">
-                                            <UserX size={16} className="mr-2" aria-hidden="true"/> {t('reject_patient')}
+                                        <Button onClick={() => handleRejectRequest(patient)} variant="danger" className="flex-1 !py-3 !text-xs !rounded-xl shadow-none bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white">
+                                            <UserX size={16} />
                                         </Button>
                                     </div>
                                 </div>
@@ -292,49 +316,58 @@ export const DoctorPatientsView = () => {
 
                     {/* TAB: MY PATIENTS */}
                     {activeTab === 'MY_PATIENTS' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-right-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 animate-in slide-in-from-right-4">
                             {filteredMyPatients.map(patient => (
                                 <div 
                                     key={patient.uid} 
                                     onClick={() => openPatientDetails(patient)}
-                                    className="bg-slate-900/60 border border-white/5 p-6 rounded-[2rem] hover:border-indigo-500/30 hover:bg-slate-900/80 cursor-pointer transition-all group relative overflow-hidden backdrop-blur-md shadow-lg focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none"
+                                    className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-white/5 p-6 rounded-[2.5rem] hover:border-indigo-500/30 cursor-pointer transition-all group relative overflow-hidden shadow-2xl hover:shadow-indigo-900/20 group outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                                     tabIndex={0}
                                     role="button"
                                     aria-label={`View details for ${patient.name}`}
                                 >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
+                                    {/* Background Glow */}
+                                    <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
                                     
                                     <div className="flex justify-between items-start mb-6 relative z-10">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500/10 to-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-2xl border border-white/5 shadow-inner group-hover:scale-105 transition-transform">
+                                            <div className="w-16 h-16 bg-[#020617] rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-2xl border border-white/5 shadow-inner group-hover:scale-105 transition-transform group-hover:border-indigo-500/30">
                                                 {patient.name.charAt(0)}
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">{patient.name}</h3>
-                                                <p className="text-sm text-slate-500 font-mono">{patient.email}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {patient.patientData?.isRecovered ? (
+                                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Recovered</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Active</span>
+                                                    )}
+                                                    {patient.patientData?.isPlanAssigned && !patient.patientData?.isRecovered && (
+                                                        <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Plan Set</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <Badge color={patient.patientData?.isRecovered ? 'green' : patient.patientData?.isPlanAssigned ? 'indigo' : 'amber'} className="shadow-none">
-                                            {patient.patientData?.isRecovered ? 'Recovered' : patient.patientData?.isPlanAssigned ? 'Active' : 'Needs Plan'}
-                                        </Badge>
                                     </div>
                                     
-                                    <div className="grid grid-cols-3 gap-3 relative z-10">
-                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
-                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Progress</span>
-                                            <span className="block font-black text-indigo-400 text-lg">{Math.round(patient.progress || 0)}%</span>
+                                    {/* Progress Bar */}
+                                    <div className="relative z-10 mb-6">
+                                        <div className="flex justify-between text-xs font-bold text-slate-400 mb-2">
+                                            <span>Progress</span>
+                                            <span className="text-white">{Math.round(patient.progress || 0)}%</span>
                                         </div>
-                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
-                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Status</span>
-                                            <span className={`block font-bold text-sm mt-1 ${patient.patientData?.isPlanAssigned ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                                {patient.patientData?.isPlanAssigned ? 'On Track' : 'Waiting'}
-                                            </span>
+                                        <div className="w-full h-2 bg-[#020617] rounded-full overflow-hidden border border-white/5">
+                                            <div className="h-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-all duration-1000" style={{ width: `${patient.progress || 0}%` }}></div>
                                         </div>
-                                        <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-center group-hover:border-white/10 transition-colors">
-                                            <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Last Active</span>
-                                            <span className="block font-bold text-slate-300 text-xs mt-1.5 font-mono">
-                                                {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
-                                            </span>
+                                    </div>
+
+                                    {/* Footer Info */}
+                                    <div className="flex justify-between items-center text-xs relative z-10 pt-4 border-t border-white/5">
+                                        <div className="text-slate-500 font-mono">
+                                            Last: {patient.lastActive ? new Date(patient.lastActive).toLocaleDateString() : 'N/A'}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-slate-400 group-hover:text-indigo-400 transition-colors font-bold uppercase tracking-wider">
+                                            View Profile <ChevronLeft size={12} className="rotate-180" />
                                         </div>
                                     </div>
                                 </div>
@@ -344,133 +377,150 @@ export const DoctorPatientsView = () => {
                 </div>
             )}
 
-            {/* --- PATIENT DETAILS MODAL --- */}
+            {/* --- PATIENT DETAILS MODAL (Full Screen Panel) --- */}
             {selectedPatient && (
                 <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]/95 backdrop-blur-xl p-0 md:p-6 animate-in zoom-in duration-300"
                     role="dialog"
                     aria-modal="true"
-                    aria-labelledby="modal-title"
                 >
-                    <div className="w-full max-w-6xl h-[90vh] flex flex-col bg-slate-900 border border-white/10 shadow-2xl relative rounded-[2.5rem] overflow-hidden">
+                    <div className="w-full h-full max-w-7xl bg-[#0f172a] border border-white/10 shadow-2xl relative rounded-none md:rounded-[3rem] overflow-hidden flex flex-col">
                         
                         {/* Header */}
-                        <div className="p-8 bg-slate-950/80 border-b border-white/5 flex justify-between items-center backdrop-blur-md">
+                        <div className="p-6 md:p-8 bg-[#0f172a] border-b border-white/5 flex justify-between items-center shrink-0 relative z-20">
                             <div className="flex items-center gap-6">
-                                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-500/30">
+                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-indigo-500/30">
                                     {selectedPatient.name.charAt(0)}
                                 </div>
                                 <div>
-                                    <h2 id="modal-title" className="text-3xl font-black text-white mb-1">{selectedPatient.name}</h2>
+                                    <h2 className="text-2xl md:text-4xl font-black text-white mb-1 tracking-tight">{selectedPatient.name}</h2>
                                     <div className="flex items-center gap-3 text-sm text-slate-400">
-                                        <FileText size={16} className="text-indigo-400" aria-hidden="true"/> 
-                                        <span className="text-white font-bold">{selectedPatient.medType || 'General'}</span> 
-                                        <span aria-hidden="true">•</span>
-                                        <span>{selectedPatient.medForm}</span>
-                                        <span aria-hidden="true">•</span>
-                                        <span className="bg-slate-800 px-2 py-0.5 rounded text-xs">{selectedPatient.medUnit}</span>
+                                        <span className="flex items-center gap-1 text-indigo-300 font-bold bg-indigo-500/10 px-2 py-0.5 rounded"><FileText size={12}/> {selectedPatient.medType || 'General'}</span> 
+                                        <span className="hidden md:inline">•</span>
+                                        <span className="font-mono">{selectedPatient.medForm}</span>
+                                        <span className="hidden md:inline">•</span>
+                                        <span className="bg-slate-900 px-2 py-0.5 rounded text-xs border border-white/10 font-bold text-slate-300">{selectedPatient.medUnit}</span>
                                     </div>
                                 </div>
                             </div>
                             <button 
                                 onClick={() => setSelectedPatient(null)} 
-                                className="p-3 bg-slate-800/50 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-all border border-white/5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                aria-label="Close details"
+                                className="p-4 bg-slate-900 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-all border border-white/5 focus:outline-none focus:ring-2 focus:ring-indigo-500 group"
                             >
-                                <X size={24} />
+                                <X size={24} className="group-hover:rotate-90 transition-transform"/>
                             </button>
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 custom-scrollbar bg-slate-900/30">
-                            
-                            {/* Charts Area */}
-                            <div className="lg:col-span-2 space-y-8">
-                                <Card className="bg-slate-900/60 border-white/5 p-6 h-[400px] flex flex-col shadow-inner">
-                                    <h3 className="text-white font-bold mb-6 flex items-center gap-3 text-lg">
-                                        <div className="p-2 bg-indigo-500/20 rounded-lg"><Activity size={20} className="text-indigo-400" aria-hidden="true"/></div>
-                                        Adherence & Dosage
-                                    </h3>
-                                    <div className="flex-1 w-full" role="img" aria-label="Adherence Chart">
-                                        {sortedPatientLogs.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={sortedPatientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
-                                                    <defs>
-                                                        <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                                                    <XAxis dataKey="date" hide />
-                                                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                                                    <Tooltip 
-                                                        contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                                        itemStyle={{color: '#fff'}}
-                                                    />
-                                                    <Area type="monotone" dataKey="doseTaken" stroke="#6366f1" strokeWidth={3} fill="url(#colorDoseP)" animationDuration={1500} />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-2xl">
-                                                <BarChart2 size={40} className="mb-2 opacity-20"/> No data available
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
-                            </div>
-
-                            {/* Stats & Logs */}
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
-                                         <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('sleep_label')}</span>
-                                         <span className="text-2xl font-black text-white flex items-center justify-center gap-2">
-                                             <Moon size={20} className="text-blue-400" aria-hidden="true"/> 
-                                             {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'} <span className="text-sm text-slate-600">h</span>
-                                         </span>
-                                     </div>
-                                     <div className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 text-center shadow-lg">
-                                         <span className="text-xs text-slate-500 uppercase font-bold tracking-wider block mb-2">{t('mood')}</span>
-                                         <span className="text-xl font-bold text-white flex items-center justify-center gap-2 mt-1">
-                                             <Smile size={24} className="text-emerald-400" aria-hidden="true"/> Good
-                                         </span>
-                                     </div>
-                                </div>
+                        {/* Content Grid */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]">
+                            <div className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 
-                                <Card className="bg-slate-900/60 border-white/5 flex-1 max-h-[500px] overflow-hidden flex flex-col !p-0 shadow-lg">
-                                    <div className="p-6 border-b border-white/5 bg-slate-900/40">
-                                        <h3 className="text-white font-bold flex items-center gap-3">
-                                            <Calendar size={20} className="text-amber-400" aria-hidden="true"/> Recent Logs
+                                {/* LEFT: Charts & Key Metrics */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    
+                                    {/* Main Chart Card */}
+                                    <div className="bg-[#0f172a]/50 border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden shadow-2xl">
+                                        <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                                            <Activity size={120} />
+                                        </div>
+                                        <div className="flex justify-between items-end mb-8 relative z-10">
+                                            <div>
+                                                <h3 className="text-white font-bold text-xl flex items-center gap-3 mb-2">
+                                                    <TrendingUp className="text-emerald-400" /> Adherence History
+                                                </h3>
+                                                <p className="text-slate-500 text-sm">Dosage intake over time</p>
+                                            </div>
+                                            <Badge color="indigo" className="animate-pulse">Live Data</Badge>
+                                        </div>
+                                        
+                                        <div className="h-80 w-full" role="img" aria-label="Adherence Chart">
+                                            {sortedPatientLogs.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={sortedPatientLogs.slice(-30)} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                                                        <defs>
+                                                            <linearGradient id="colorDoseP" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.2} />
+                                                        <XAxis dataKey="date" hide />
+                                                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip 
+                                                            contentStyle={{backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                                            itemStyle={{color: '#fff', fontWeight: 'bold'}}
+                                                            labelStyle={{color: '#94a3b8', fontSize: '10px', marginBottom: '5px'}}
+                                                        />
+                                                        <Area type="monotone" dataKey="doseTaken" stroke="#6366f1" strokeWidth={4} fill="url(#colorDoseP)" animationDuration={1500} />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="h-full flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-3xl">
+                                                    <BarChart2 size={48} className="mb-4 opacity-20"/> 
+                                                    <span>No log data available yet</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Mini Metrics */}
+                                    <div className="grid grid-cols-2 gap-6">
+                                         <div className="bg-[#0f172a] p-6 rounded-[2rem] border border-white/5 flex items-center gap-5 shadow-lg">
+                                             <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-400 border border-blue-500/20">
+                                                 <Moon size={28} />
+                                             </div>
+                                             <div>
+                                                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('sleep_label')}</p>
+                                                 <p className="text-3xl font-black text-white">
+                                                     {patientLogs.length > 0 ? (patientLogs.reduce((a,b) => a + (b.sleepHours || 0), 0) / patientLogs.length).toFixed(1) : '-'} <span className="text-sm text-slate-600 font-medium">avg</span>
+                                                 </p>
+                                             </div>
+                                         </div>
+                                         <div className="bg-[#0f172a] p-6 rounded-[2rem] border border-white/5 flex items-center gap-5 shadow-lg">
+                                             <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">
+                                                 <Smile size={28} />
+                                             </div>
+                                             <div>
+                                                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{t('mood')}</p>
+                                                 <p className="text-xl font-bold text-white">Mostly Good</p>
+                                             </div>
+                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT: Scrollable Logs */}
+                                <div className="bg-[#0f172a] rounded-[2.5rem] border border-white/5 flex flex-col overflow-hidden shadow-2xl h-[600px] lg:h-auto">
+                                    <div className="p-6 border-b border-white/5 bg-[#1e293b]/30">
+                                        <h3 className="text-white font-bold flex items-center gap-3 text-lg">
+                                            <Calendar size={20} className="text-amber-400" /> Recent Logs
                                         </h3>
                                     </div>
-                                    <div className="overflow-y-auto custom-scrollbar flex-1 p-4 space-y-2">
-                                        <table className="w-full text-left border-collapse">
-                                            <caption className="sr-only">Patient Daily Logs</caption>
-                                            <thead className="sr-only">
-                                                <tr>
-                                                    <th scope="col">Date</th>
-                                                    <th scope="col">Dose</th>
-                                                    <th scope="col">Mood</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                            {/* Using sortedPatientLogs for consistency in the list too, but reversing for latest first */}
-                                            {[...sortedPatientLogs].reverse().map((log, i) => (
-                                                <tr key={i} className="flex justify-between items-center p-4 rounded-xl bg-slate-950/50 border border-white/5 text-sm hover:bg-slate-800/50 transition-colors mb-2">
-                                                    <td className="text-slate-400 font-mono">{log.date}</td>
-                                                    <td className="font-bold text-white text-base">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></td>
-                                                    <td>
-                                                        {log.mood === 'good' ? <Smile size={18} className="text-emerald-500" aria-label="Good"/> : 
-                                                         log.mood === 'bad' ? <Frown size={18} className="text-rose-500" aria-label="Bad"/> : 
-                                                         <Meh size={18} className="text-amber-500" aria-label="Average"/>}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            </tbody>
-                                        </table>
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                                        {sortedPatientLogs.length === 0 && (
+                                            <div className="text-center py-10 text-slate-500">No logs recorded.</div>
+                                        )}
+                                        {[...sortedPatientLogs].reverse().map((log, i) => (
+                                            <div key={i} className="flex justify-between items-center p-5 rounded-2xl bg-[#020617] border border-white/5 text-sm hover:border-indigo-500/30 transition-colors group">
+                                                <div>
+                                                    <p className="text-slate-400 font-mono text-xs mb-1">{new Date(log.date).toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'})}</p>
+                                                    <p className="font-black text-white text-lg">{log.doseTaken} <span className="text-xs text-slate-500 font-normal">{selectedPatient.medUnit}</span></p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {log.sleepHours && (
+                                                        <span className="text-xs font-bold text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">{log.sleepHours}h</span>
+                                                    )}
+                                                    <div className={`p-2 rounded-xl ${
+                                                        log.mood === 'good' ? 'bg-emerald-500/10 text-emerald-400' : 
+                                                        log.mood === 'bad' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
+                                                    }`}>
+                                                        {log.mood === 'good' ? <Smile size={20} /> : log.mood === 'bad' ? <Frown size={20} /> : <Meh size={20} />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </Card>
+                                </div>
+
                             </div>
                         </div>
                     </div>

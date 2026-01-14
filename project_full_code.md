@@ -1,5 +1,5 @@
 # Project Code Dump
-Generated: 14/1/2026, 01:11:05
+Generated: 14/1/2026, 06:22:20
 
 ## 🌳 Project Structure
 ```text
@@ -31,6 +31,7 @@ Generated: 14/1/2026, 01:11:05
     ├── en.ts
     └── ru.ts
   ├── adminServices.ts
+  ├── analyticsEngine.ts
   ├── firebase.ts
   ├── taperingEngine.ts
   └── translations.ts
@@ -2073,8 +2074,10 @@ export const LanguageProvider = ({ children }: { children?: React.ReactNode }) =
 
   // The translation function
   const t = (key: keyof typeof translations['en']) => {
-    // Fallback to English if key missing in current lang, then fallback to key string
-    return translations[language][key] || translations['en'][key] || key;
+    // FIX: Cast to 'any' to avoid TS7053 error when a key exists in 'en' but is missing in other languages (like 'ru')
+    // This allows the fallback mechanism to work correctly without blocking the build
+    const currentLangData = translations[language] as any;
+    return currentLangData[key] || translations['en'][key] || key;
   };
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -2890,6 +2893,8 @@ export const ru = {
     cat_medical: "Медицина",
     cat_motivation: "Мотивация",
     cat_tip: "Советы",
+    cat_news: "Новости", // Added
+    cat_announcement: "Объявления", // Added
     cat_all: "Все",
     cancel_btn: "Отмена",
     read_more: "Читать далее",
@@ -3142,6 +3147,191 @@ export const fetchAllTickets = async () => {
         console.error(e);
         return [];
     }
+};
+```
+---
+
+### File: `services\analyticsEngine.ts`
+```ts
+import { UserProfile, DailyLog, PlanDay } from '../types';
+
+// --- واجهة تقرير التحليل الذكي ---
+export interface AnalyticsReport {
+    bioScore: number; // 0-100: المرونة البيولوجية بناءً على العمر/الوزن/الطول
+    recoveryScore: number; // 0-100: مؤشر العافية اليومي الحالي
+    trend: 'improving' | 'declining' | 'stable';
+    sleepAnalysis: {
+        average: number;
+        quality: string; 
+        impactFactor: number; // معامل الارتباط بين الجرعة والنوم
+    };
+    symptomBurden: number; // كثافة الأعراض (0-100)
+    predictedStability: number; // احتمالية الاستقرار العصبي مستقبلاً
+    insights: string[]; // نصوص ذكية يتم توليدها بناءً على التحليل
+    chartData: {
+        dates: string[];
+        wellness: number[];
+        dose: number[];
+        sleep: number[];
+    };
+}
+
+// --- أدوات مساعدة (Helpers) ---
+
+const calculateBMI = (weight: number, height: number) => {
+    if (!weight || !height) return 22; // قيمة افتراضية صحية
+    // BMI = kg / m^2
+    return weight / ((height / 100) * (height / 100));
+};
+
+const getMoodScore = (mood: string | null) => {
+    if (mood === 'good') return 100;
+    if (mood === 'normal') return 65;
+    return 30; // bad
+};
+
+const calculateVariance = (arr: number[]) => {
+    if (arr.length < 2) return 0;
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    return arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
+};
+
+// --- المحرك الرئيسي (Main Engine Function) ---
+
+export const generateSmartAnalytics = (
+    user: UserProfile | null, 
+    logs: DailyLog[], 
+    plan: PlanDay[]
+): AnalyticsReport => {
+    
+    // 1. القيم الافتراضية
+    const report: AnalyticsReport = {
+        bioScore: 50,
+        recoveryScore: 0,
+        trend: 'stable',
+        sleepAnalysis: { average: 0, quality: 'N/A', impactFactor: 0 },
+        symptomBurden: 0,
+        predictedStability: 50,
+        insights: [],
+        chartData: { dates: [], wellness: [], dose: [], sleep: [] }
+    };
+
+    // شرط البدء: يومين على الأقل
+    if (!user || logs.length < 2) {
+        report.insights.push("بيانات غير كافية. يرجى تسجيل بيانات يومين على الأقل لتفعيل المحرك العصبي.");
+        return report;
+    }
+
+    // 2. ترتيب السجلات (من الأقدم للأحدث)
+    const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // 3. التحليل البيومتري (Metabolic Resilience)
+    // الأصغر سناً + الوزن المثالي = مرونة أعلى
+    const age = user.age || 30;
+    const weight = user.weight || 70;
+    const height = user.height || 170;
+    const bmi = calculateBMI(weight, height);
+    
+    let bioResilience = 100;
+    
+    // عامل العمر: يقلل المرونة قليلاً مع التقدم في السن
+    if (age > 50) bioResilience -= (age - 50) * 0.5;
+    
+    // عامل مؤشر كتلة الجسم (BMI): القيم المتطرفة تقلل المرونة
+    if (bmi < 18.5 || bmi > 30) bioResilience -= 15;
+    else if (bmi > 25) bioResilience -= 5;
+
+    report.bioScore = Math.max(10, Math.min(100, Math.round(bioResilience)));
+
+    // 4. التحليل الطولي (الاتجاهات)
+    // نأخذ آخر 14 يوم لتحليل دقيق، أو كل الأيام إذا كانت أقل
+    const recentLogs = sortedLogs.slice(-14); 
+    
+    const sleepScores = recentLogs.map(l => l.sleepHours || 0);
+    const moodScores = recentLogs.map(l => getMoodScore(l.mood));
+    // كل عرض يزيد العبء بـ 15 نقطة
+    const symptomCounts = recentLogs.map(l => (l.symptoms?.length || 0) * 15); 
+
+    // حساب "مؤشر العافية" اليومي (Wellness Score)
+    // المعادلة: (المزاج * 40%) + (النوم% * 40%) - (عبء الأعراض * 20%)
+    const dailyWellness = recentLogs.map((l, i) => {
+        // النوم: 8 ساعات = 100%
+        const sScore = Math.min(100, ((l.sleepHours || 0) / 8) * 100);
+        const mScore = moodScores[i];
+        const symPenalty = symptomCounts[i];
+        
+        let score = (mScore * 0.4) + (sScore * 0.4) - (symPenalty * 0.2);
+        return Math.max(0, Math.min(100, score));
+    });
+
+    const currentWellness = dailyWellness[dailyWellness.length - 1];
+    const prevWellness = dailyWellness.length > 1 ? dailyWellness[dailyWellness.length - 2] : currentWellness;
+
+    report.recoveryScore = Math.round(currentWellness);
+    
+    // تحديد الاتجاه
+    if (currentWellness > prevWellness + 5) report.trend = 'improving';
+    else if (currentWellness < prevWellness - 5) report.trend = 'declining';
+    else report.trend = 'stable';
+
+    // 5. تحليل النوم العميق
+    const avgSleep = sleepScores.reduce((a, b) => a + b, 0) / sleepScores.length;
+    report.sleepAnalysis.average = parseFloat(avgSleep.toFixed(1));
+    
+    if (avgSleep >= 7) report.sleepAnalysis.quality = 'Optimal'; // مثالي
+    else if (avgSleep >= 5) report.sleepAnalysis.quality = 'Fair'; // مقبول
+    else report.sleepAnalysis.quality = 'Critical'; // حرج
+
+    // 6. توقع الاستقرار (Variance Analysis)
+    // تذبذب عالي في النوم أو المزاج = استقرار منخفض
+    const sleepVar = calculateVariance(sleepScores);
+    const moodVar = calculateVariance(moodScores);
+    
+    // الاستقرار يبدأ من 100، وينقص كلما زاد التذبذب
+    // النوم الحساس له وزن أكبر في المعادلة
+    let stability = 100 - (sleepVar * 3) - (moodVar * 0.5);
+    
+    // عقوبة إضافية إذا كانت الأعراض تتزايد
+    const lastSym = symptomCounts[symptomCounts.length - 1];
+    const prevSym = symptomCounts.length > 1 ? symptomCounts[symptomCounts.length - 2] : lastSym;
+    if (lastSym > prevSym) stability -= 10;
+
+    report.predictedStability = Math.round(Math.max(0, Math.min(100, stability)));
+    report.symptomBurden = Math.min(100, lastSym);
+
+    // 7. توليد الرؤى الذكية (Insights Generation)
+    
+    // أ. تحليل التكيف العصبي
+    if (report.trend === 'improving' && report.predictedStability > 70) {
+        report.insights.push("رصدنا تكيفاً عصبياً ممتازاً. جهازك العصبي يتعافى بسرعة، يمكنك الاستمرار بنفس الوتيرة.");
+    } else if (report.trend === 'declining') {
+        report.insights.push("هناك تراجع في المؤشرات الحيوية. يوصى بتثبيت الجرعة الحالية لبضعة أيام حتى استقرار الحالة.");
+    }
+
+    // ب. تحليل النوم
+    if (report.sleepAnalysis.quality === 'Critical') {
+        report.insights.push("الحرمان من النوم هو الخطر الأكبر حالياً. لا تقم بخفض الجرعة حتى يتحسن معدل نومك فوق 5 ساعات.");
+    }
+
+    // ج. تحليل الأعراض
+    if (report.symptomBurden > 40) {
+        report.insights.push("عبء الأعراض الانسحابية مرتفع جداً. هذا مؤشر على أن وتيرة التخفيض قد تكون أسرع من قدرة جسمك على التحمل.");
+    }
+
+    // د. تحليل بيولوجي
+    if (report.bioScore < 60) {
+        report.insights.push("بناءً على بياناتك الجسدية، معدل الأيض لديك قد يكون حساساً. الاهتمام بالتغذية وشرب الماء ضروري جداً لدعم الكبد في التخلص من السموم.");
+    }
+
+    // 8. تجهيز بيانات الرسم البياني
+    report.chartData = {
+        dates: recentLogs.map(l => l.date),
+        wellness: dailyWellness.map(w => Math.round(w)),
+        dose: recentLogs.map(l => l.doseTaken),
+        sleep: sleepScores
+    };
+
+    return report;
 };
 ```
 ---
@@ -4854,8 +5044,8 @@ export const DailyCheckIn = ({
 ### File: `views\dashboard\DashboardCharts.tsx`
 ```tsx
 import React, { useMemo } from 'react';
-import { FlaskConical, Clock, Info, ShieldCheck, BrainCircuit, Activity } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
+import { FlaskConical, Clock, Info, ShieldCheck, BrainCircuit, Activity, TrendingDown } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -4874,28 +5064,40 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
     const doctorName = userProfile?.patientData?.assignedDoctorName;
     const unitLabel = userProfile?.medUnit || 'mg';
 
-    // Prepare chart data (First 30 days)
-    // FIX: Sort plan by date to prevent "zigzag" lines if plan array is unsorted
+    // 1. معالجة البيانات وتحسينها (Data Processing)
     const chartData = useMemo(() => {
-        return [...plan]
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(0, 30)
-            .map(p => ({
-                fullDate: p.date,
-                displayDate: p.date.slice(5), // MM-DD
-                dose: p.plannedDose
-            }));
-    }, [plan]);
+        // حماية من البيانات الفارغة
+        if (!plan || plan.length === 0) return [];
+
+        // الخطوة الأهم: ترتيب التواريخ زمنياً لمنع تداخل الخطوط (مشكلة الدودة)
+        const sortedPlan = [...plan].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // نأخذ عينة ذكية إذا كانت البيانات كثيرة جداً لتجنب الازدحام
+        // لكن نحافظ على أول وآخر يوم دائماً
+        return sortedPlan.map(p => ({
+            fullDate: p.date,
+            // تنسيق التاريخ للعرض (DD/MM)
+            displayDate: new Date(p.date).toLocaleDateString(language, { day: '2-digit', month: '2-digit' }), 
+            dose: p.plannedDose,
+            // إضافة خاصية لمعرفة ما إذا كان هذا اليوم هو اليوم
+            isToday: p.date === new Date().toISOString().split('T')[0]
+        }));
+    }, [plan, language]);
+
+    // حساب نسبة التخفيض المتوقعة
+    const startDose = chartData.length > 0 ? chartData[0].dose : 0;
+    const endDose = chartData.length > 0 ? chartData[chartData.length - 1].dose : 0;
+    const totalReduction = startDose > 0 ? Math.round(((startDose - endDose) / startDose) * 100) : 0;
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right-4">
+        <div className="space-y-6 animate-in slide-in-from-right-4 duration-700">
             
             {/* Status Card */}
-            <Card className="flex flex-col items-center justify-center text-center py-10 border-white/10 relative overflow-hidden group">
-                 {/* Decorative Background */}
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/20 transition-colors duration-500" aria-hidden="true"></div>
+            <Card className="flex flex-col items-center justify-center text-center py-8 border-white/10 relative overflow-hidden group bg-gradient-to-b from-[#0f172a] to-[#0b0f19]">
+                 {/* خلفية تفاعلية */}
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
                  
-                 <div className="w-20 h-20 rounded-3xl bg-slate-900/80 border border-white/5 flex items-center justify-center mb-6 relative shadow-2xl shadow-black/50 group-hover:scale-110 transition-transform duration-500" aria-hidden="true">
+                 <div className="w-16 h-16 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center justify-center mb-4 relative shadow-2xl group-hover:scale-110 transition-transform duration-500">
                      <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                      {isLiquid ? (
                         <FlaskConical className="w-8 h-8 text-indigo-400 relative z-10" />
@@ -4907,103 +5109,98 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
                  <section aria-label={language === 'ar' ? 'حالة الخطة' : 'Plan Status'}>
                      {isPatient ? (
                          <div className="relative z-10 px-6">
-                            <h2 className="text-white font-bold text-lg mb-2">
+                            <h2 className="text-white font-bold text-base mb-2">
                                 {language === 'ar' ? 'خطة طبية معتمدة' : 'Verified Medical Plan'}
                             </h2>
-                            <div className="flex items-center justify-center gap-2 text-slate-400 text-sm mb-4 bg-slate-900/50 py-2 px-4 rounded-xl border border-white/5">
-                                <ShieldCheck size={16} className="text-emerald-500" aria-hidden="true"/>
+                            <div className="flex items-center justify-center gap-2 text-slate-400 text-xs mb-3 bg-slate-950/50 py-1.5 px-3 rounded-lg border border-white/5">
+                                <ShieldCheck size={14} className="text-emerald-500" aria-hidden="true"/>
                                 <span>{language === 'ar' ? `إشراف د. ${doctorName}` : `Dr. ${doctorName}`}</span>
                             </div>
-                            <Badge color="indigo" className="mx-auto">Fixed Plan</Badge>
+                            <Badge color="indigo" className="mx-auto shadow-none bg-indigo-500/10 border-indigo-500/20">Fixed Protocol</Badge>
                          </div>
                      ) : (
                          <div className="relative z-10 px-6">
-                            <h2 className="text-white font-bold text-lg mb-2 flex items-center justify-center gap-2">
-                                {t('algo_active')} <BrainCircuit size={18} className="text-amber-400" aria-hidden="true"/>
+                            <h2 className="text-white font-bold text-base mb-2 flex items-center justify-center gap-2">
+                                {t('algo_active')} <BrainCircuit size={16} className="text-amber-400" aria-hidden="true"/>
                             </h2>
-                            <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto mb-4">
+                            <p className="text-slate-400 text-[10px] leading-relaxed max-w-[200px] mx-auto mb-3 opacity-70">
                               {t('algo_desc')}
                             </p>
-                            <Badge color="emerald">Smart Engine v2.0</Badge>
+                            <Badge color="emerald" className="shadow-none bg-emerald-500/10 border-emerald-500/20">Smart Engine v2.0</Badge>
                          </div>
                      )}
                  </section>
             </Card>
 
-            {/* Projection Chart */}
-            <Card className="min-h-[280px] relative overflow-hidden border-white/10" noPadding>
-                <section aria-labelledby="chart-title" className="h-full flex flex-col">
-                    <header className="p-6 pb-0 relative z-10 flex justify-between items-start">
-                       <div>
-                           <h2 id="chart-title" className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                               {t('recovery_path')} 
-                               <div className="group/tooltip relative">
-                                   <Info size={14} className="text-slate-500 hover:text-white transition-colors cursor-help" aria-hidden="true"/>
-                                   <span className="sr-only">{language === 'ar' ? 'معلومات التوقع' : 'Projection Info'}</span>
-                               </div>
-                           </h2>
-                           <p className="text-[10px] text-indigo-300/60 uppercase tracking-widest font-bold">
-                               {language === 'ar' ? 'توقعات 30 يوم' : '30 Days Projection'}
-                           </p>
-                       </div>
-                    </header>
-                    
-                    <div className="absolute inset-x-0 bottom-0 top-16" aria-hidden="true">
-                        {chartData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorDose" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5}/>
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Tooltip 
-                                        contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                        itemStyle={{color: '#fff', fontSize: '12px', fontWeight: 'bold'}}
-                                        labelStyle={{display: 'none'}}
-                                        formatter={(val) => [`${val} ${unitLabel}`, t('dose')]}
-                                    />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="dose" 
-                                        stroke="#818cf8" 
-                                        strokeWidth={3} 
-                                        fillOpacity={1} 
-                                        fill="url(#colorDose)" 
-                                        animationDuration={1500}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-                                <Activity className="mr-2 opacity-50" /> 
-                                {language === 'ar' ? 'لا توجد بيانات للعرض' : 'No data to display'}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Hidden Table for Screen Readers */}
-                    <div className="sr-only">
-                        <table>
-                            <caption>{language === 'ar' ? 'جدول توقعات الجرعة لمدة 30 يوم' : '30-day Dose Projection Table'}</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">{language === 'ar' ? 'التاريخ' : 'Date'}</th>
-                                    <th scope="col">{t('dose')} ({unitLabel})</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {chartData.map((row, i) => (
-                                    <tr key={i}>
-                                        <td>{row.fullDate}</td>
-                                        <td>{row.dose}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+            {/* Projection Chart - الإصلاح الجذري */}
+            <Card className="min-h-[320px] relative overflow-hidden border-white/10 bg-[#0b0f19] flex flex-col" noPadding>
+                <header className="p-6 pb-2 relative z-10 flex justify-between items-start">
+                   <div>
+                       <h2 id="chart-title" className="text-base font-bold text-white mb-1 flex items-center gap-2">
+                           <TrendingDown size={18} className="text-emerald-400" />
+                           {t('recovery_path')} 
+                       </h2>
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                           {language === 'ar' ? `تخفيض متوقع: ${totalReduction}%` : `Projected Reduction: ${totalReduction}%`}
+                       </p>
+                   </div>
+                   <div className="p-2 bg-white/5 rounded-lg">
+                       <Activity size={16} className="text-slate-400"/>
+                   </div>
+                </header>
+                
+                <div className="flex-1 w-full min-h-[220px] relative z-10 px-2 pb-2">
+                    {chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorDoseGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} opacity={0.4} />
+                                <XAxis 
+                                    dataKey="displayDate" 
+                                    stroke="#475569" 
+                                    fontSize={10} 
+                                    tickLine={false} 
+                                    axisLine={false} 
+                                    dy={10}
+                                    minTickGap={30} // منع تداخل التواريخ
+                                />
+                                <YAxis 
+                                    stroke="#475569" 
+                                    fontSize={10} 
+                                    tickLine={false} 
+                                    axisLine={false} 
+                                />
+                                <Tooltip 
+                                    contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'}}
+                                    itemStyle={{color: '#fff', fontSize: '12px', fontWeight: 'bold'}}
+                                    labelStyle={{color: '#94a3b8', fontSize: '10px', marginBottom: '4px'}}
+                                    formatter={(val) => [`${val} ${unitLabel}`, t('dose')]}
+                                />
+                                <Area 
+                                    type="stepAfter" // استخدام stepAfter لتمثيل التغيير التدريجي في الجرعات بشكل أدق طبياً
+                                    dataKey="dose" 
+                                    stroke="#818cf8" 
+                                    strokeWidth={3} 
+                                    fillOpacity={1} 
+                                    fill="url(#colorDoseGradient)" 
+                                    animationDuration={2000}
+                                />
+                                {/* خط مرجعي لليوم الحالي */}
+                                <ReferenceLine x={chartData.find(d => d.isToday)?.displayDate} stroke="#10b981" strokeDasharray="3 3" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500 text-sm">
+                            <Activity className="mb-2 opacity-20" size={32} /> 
+                            {language === 'ar' ? 'لا توجد خطة مفعلة حالياً' : 'No active plan'}
+                        </div>
+                    )}
+                </div>
             </Card>
         </div>
     );
@@ -5014,7 +5211,7 @@ export const DashboardCharts = ({ userProfile, plan }: DashboardChartsProps) => 
 ### File: `views\dashboard\DashboardHeader.tsx`
 ```tsx
 import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle, Activity, Edit3 } from 'lucide-react';
+import { ShieldCheck, CheckCircle, Activity, Edit3, Sparkles } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { ProgressRing } from '../../components/ui/ProgressRing';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -5047,115 +5244,145 @@ export const DashboardHeader = ({
     const [isEditing, setIsEditing] = useState(false);
 
     return (
-        // تم نقل role و aria-label و col-span إلى عنصر section قياسي لتجنب أخطاء TypeScript
         <section 
             className="lg:col-span-8"
             aria-label={language === 'ar' ? 'ملخص اليوم' : 'Daily Summary'}
         >
-            <Card 
-                className="min-h-[550px] h-full flex flex-col relative overflow-hidden group border-white/10 shadow-2xl shadow-indigo-900/10" 
-                noPadding
-            >
+            <div className="relative w-full h-full min-h-[550px] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl group transition-all duration-500 hover:shadow-indigo-500/10">
                 
-                {/* 1. خلفية متدرجة داكنة وهادئة */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e1b4b] opacity-90" aria-hidden="true"></div>
-                
-                {/* 2. تأثير إضاءة محيطية (Ambient Light) */}
-                <div className="absolute top-[-20%] right-[-10%] w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] animate-pulse-glow pointer-events-none" aria-hidden="true"></div>
+                {/* 1. Dynamic Background System */}
+                <div className="absolute inset-0 bg-[#020617]">
+                    {/* Gradient Mesh */}
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-950/40 via-[#050b14] to-slate-950 opacity-90"></div>
+                    
+                    {/* Animated Orbs */}
+                    <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-glow"></div>
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-violet-600/5 rounded-full blur-[100px] animate-float"></div>
+                    
+                    {/* Grid Pattern Overlay */}
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-soft-light"></div>
+                </div>
 
                 <div className="relative z-10 p-8 md:p-12 flex flex-col h-full justify-between">
-                    {/* القسم العلوي: الجرعة والعداد */}
-                    <header className="flex justify-between items-start">
-                        <div className="space-y-4">
-                            <h2 className="text-xs font-bold text-indigo-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4" aria-hidden="true" /> {t('target_dose')}
-                            </h2>
+                    {/* Top Section: Dose & Ring */}
+                    <header className="flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
+                        
+                        {/* Dose Counter (Hero) */}
+                        <div className="text-center md:text-start space-y-2">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 backdrop-blur-md mb-2">
+                                <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
+                                <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">
+                                    {t('target_dose')}
+                                </span>
+                            </div>
                             
                             <div 
-                                className="flex items-baseline gap-2 cursor-default select-none"
+                                className="relative flex items-baseline justify-center md:justify-start gap-2 cursor-default select-none"
                                 aria-label={`${language === 'ar' ? 'الجرعة المستهدفة' : 'Target Dose'}: ${doseValue} ${unitLabel}`}
                             >
-                                {/* رقم الجرعة بتدرج لوني */}
+                                {/* Glowing Text Effect */}
+                                <div className="absolute -inset-4 bg-indigo-500/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                                
                                 <span 
-                                    className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter drop-shadow-xl transition-all duration-500 hover:to-indigo-200"
-                                    aria-hidden="true" 
+                                    className="relative text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter drop-shadow-2xl"
                                 >
                                     {doseValue}
                                 </span>
-                                <span className="text-2xl text-slate-500 font-bold" aria-hidden="true">{unitLabel}</span>
+                                <span className="text-2xl text-slate-500 font-bold self-end mb-6" aria-hidden="true">{unitLabel}</span>
                             </div>
                         </div>
 
-                        {/* عداد التقدم الدائري */}
-                        <div className="hidden md:block scale-110 relative" aria-hidden="true">
-                            {/* توهج خلف العداد */}
-                            <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
-                            <ProgressRing 
-                                radius={70} 
-                                stroke={8} 
-                                progress={progressPercentage} 
-                                totalSteps={totalDays - daysCompleted}
-                                label={language === 'ar' ? 'التقدم العام' : 'Overall Progress'}
-                            />
+                        {/* Progress Ring with Backdrop */}
+                        <div className="relative group/ring">
+                            <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full group-hover/ring:bg-indigo-500/20 transition-all duration-500"></div>
+                            <div className="relative bg-slate-900/40 backdrop-blur-xl p-4 rounded-full border border-white/5 shadow-2xl">
+                                <ProgressRing 
+                                    radius={75} 
+                                    stroke={10} 
+                                    progress={progressPercentage} 
+                                    totalSteps={totalDays - daysCompleted}
+                                    label={language === 'ar' ? 'التقدم العام' : 'Overall Progress'}
+                                />
+                            </div>
                         </div>
                     </header>
 
-                    {/* القسم السفلي: إما رسالة النجاح أو نموذج التسجيل */}
-                    <div aria-live="polite" className="mt-8">
+                    {/* Bottom Section: Success Banner or Input Form */}
+                    <div aria-live="polite" className="mt-8 w-full">
                         {todayLog && !isEditing ? (
-                            // حالة النجاح (تم التوثيق) - بطاقة زجاجية خضراء
+                            // Success State - Modern Glass Card
                             <div 
-                                className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-3xl flex items-center justify-between backdrop-blur-md animate-in slide-in-from-bottom-4 shadow-lg shadow-emerald-900/10"
+                                className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 to-slate-900/60 backdrop-blur-md p-1 group/banner animate-in slide-in-from-bottom-4"
                                 role="status"
                             >
-                                <div>
-                                    <p className="text-emerald-400 font-bold text-2xl mb-2 flex items-center gap-2">
-                                        {t('documented')} <span className="text-2xl" aria-hidden="true">🎉</span>
-                                    </p>
-                                    <div className="space-y-1 text-sm text-slate-300">
-                                        <p className="flex items-center gap-2">
-                                            <Activity size={14} className="text-emerald-500" aria-hidden="true"/>
-                                            <span className="text-slate-400">{t('dose')}:</span> 
-                                            <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span>
-                                        </p>
-                                        <p className="flex items-center gap-2">
-                                            <span className="w-3.5 h-3.5 rounded-full border border-emerald-500/50 flex items-center justify-center">
-                                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                                            </span>
-                                            <span className="text-slate-400">{t('mood')}:</span> 
-                                            <span className="text-white">{todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}</span>
-                                        </p>
+                                {/* Inner Content */}
+                                <div className="relative rounded-[1.3rem] bg-[#020617]/40 p-6 md:p-8 flex items-center justify-between">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                                    
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="p-2 bg-emerald-500/20 rounded-full text-emerald-400">
+                                                <Sparkles size={18} />
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-white tracking-tight">
+                                                {t('documented')}
+                                            </h3>
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap gap-4 text-sm">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-white/5">
+                                                <Activity size={14} className="text-emerald-400" />
+                                                <span className="text-slate-400">{t('dose')}:</span>
+                                                <span className="text-white font-mono font-bold">{todayLog.doseTaken}{unitLabel}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-white/5">
+                                                <span className={`w-2 h-2 rounded-full ${
+                                                    todayLog.mood === 'good' ? 'bg-emerald-400' : 
+                                                    todayLog.mood === 'normal' ? 'bg-amber-400' : 'bg-rose-400'
+                                                }`}></span>
+                                                <span className="text-slate-400">{t('mood')}:</span>
+                                                <span className="text-white font-medium">
+                                                    {todayLog.mood === 'good' ? t('excellent') : todayLog.mood === 'normal' ? t('stable') : t('bad')}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex flex-col gap-2 items-end">
-                                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-full flex items-center justify-center ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] animate-pulse-glow">
-                                        <CheckCircle className="text-emerald-500 w-8 h-8" aria-hidden="true" />
+
+                                    <div className="flex flex-col items-end gap-3 relative z-10">
+                                        <div className="w-14 h-14 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 text-[#020617]">
+                                            <CheckCircle className="w-7 h-7" strokeWidth={2.5} aria-hidden="true" />
+                                        </div>
+                                        <button 
+                                            onClick={() => setIsEditing(true)}
+                                            className="text-[10px] uppercase font-bold tracking-wider text-slate-500 hover:text-white flex items-center gap-1 transition-colors"
+                                        >
+                                            <Edit3 size={12} /> {language === 'ar' ? 'تعديل السجل' : 'Edit Log'}
+                                        </button>
                                     </div>
-                                    <button 
-                                        onClick={() => setIsEditing(true)}
-                                        className="text-xs text-emerald-400/60 hover:text-emerald-300 flex items-center gap-1 transition-colors mt-1 hover:underline"
-                                    >
-                                        <Edit3 size={12} /> {language === 'ar' ? 'تعديل' : 'Edit'}
-                                    </button>
                                 </div>
                             </div>
                         ) : (
-                            // نموذج التسجيل (يتم تمريره كـ children)
-                            <div className="animate-in slide-in-from-bottom-2 relative">
+                            // Input Form Container
+                            <div className="relative animate-in slide-in-from-bottom-2">
                                 {isEditing && (
-                                    <button 
-                                        onClick={() => setIsEditing(false)}
-                                        className="absolute -top-10 right-0 text-slate-500 text-xs hover:text-white transition-colors"
-                                    >
-                                        {language === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
-                                    </button>
+                                    <div className="flex justify-end mb-2">
+                                        <button 
+                                            onClick={() => setIsEditing(false)}
+                                            className="text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5 hover:border-white/20"
+                                        >
+                                            {language === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
+                                        </button>
+                                    </div>
                                 )}
-                                {children}
+                                {/* Render the form (DailyCheckIn component) */}
+                                <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm">
+                                    {children}
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
-            </Card>
+            </div>
         </section>
     );
 };
@@ -5722,7 +5949,7 @@ export const ArticlesView = ({ userProfile }: ArticlesViewProps) => {
 ### File: `views\CalendarView.tsx`
 ```tsx
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, X, Stethoscope, BrainCircuit, Calendar as CalendarIcon, Target, Crosshair, ChevronLeft, ChevronRight, Edit2, Save } from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
@@ -5733,6 +5960,7 @@ import { Button } from '../components/ui/Button';
 
 import { PlanDay, DailyLog, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useData } from '../contexts/DataContext';
 
 interface CalendarViewProps {
     plan: PlanDay[];
@@ -5743,14 +5971,18 @@ interface CalendarViewProps {
 
 export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarViewProps) => {
     const { t, language, dir } = useLanguage();
+    const { setPlan } = useData(); // Import setPlan to save changes
     const todayRef = useRef<HTMLDivElement>(null);
 
     const unitLabel = userProfile?.medUnit || 'mg';
     const isDoctorPlan = userProfile?.planType === 'manual';
 
     // State for Month Navigation
-    // Default to current month or the first month of the plan if current date is far off
     const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
+
+    // State for Editing
+    const [editingDate, setEditingDate] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
 
     // Effect to scroll to today on initial load if it's in the view
     useEffect(() => {
@@ -5781,14 +6013,9 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
         // Get number of days in month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // Generate all days for this month (even if not in plan, to show complete calendar)
-        // or just map the plan days that fall in this month?
-        // Better approach: Create a grid for the month, fill with plan data if exists.
-        
         const monthDays: Array<{ date: string, planDay?: PlanDay }> = [];
         for(let d = 1; d <= daysInMonth; d++) {
             // Construct YYYY-MM-DD
-            // Note: Month is 0-indexed in JS Date, but we need 1-indexed for string
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const planItem = plan.find(p => p.date === dateStr);
             monthDays.push({ date: dateStr, planDay: planItem });
@@ -5796,10 +6023,6 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
 
         // Calculate padding blanks for the first row (based on 1st of month)
         const firstDayOfMonth = new Date(year, month, 1);
-        // Adjust getDay() to match Saturday start (0=Sat in this logic)
-        // Standard getDay(): 0=Sun, 1=Mon... 6=Sat
-        // We want Sat=0, Sun=1... Fri=6
-        // (day + 1) % 7 gives: Sat(6)->0, Sun(0)->1 ... Fri(5)->6
         const startDayIndex = (firstDayOfMonth.getDay() + 1) % 7; 
         const blanks = Array.from({ length: startDayIndex });
 
@@ -5822,6 +6045,42 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
     const jumpToToday = () => {
         const now = new Date();
         setCurrentMonthDate(now);
+    };
+
+    // Edit Handlers
+    const startEditing = (date: string, currentDose: number) => {
+        setEditingDate(date);
+        setEditValue(currentDose.toString());
+    };
+
+    const cancelEditing = () => {
+        setEditingDate(null);
+        setEditValue('');
+    };
+
+    const saveEdit = () => {
+        if (!editingDate) return;
+        const newDose = parseFloat(editValue);
+        
+        if (isNaN(newDose) || newDose < 0) {
+            alert(language === 'ar' ? 'يرجى إدخال قيمة صحيحة' : 'Please enter a valid dose');
+            return;
+        }
+
+        // Update the plan array
+        const updatedPlan = plan.map(day => {
+            if (day.date === editingDate) {
+                return { ...day, plannedDose: newDose };
+            }
+            return day;
+        });
+
+        // Save to Context (which syncs to DB)
+        setPlan(updatedPlan);
+        
+        // Reset edit state
+        setEditingDate(null);
+        setEditValue('');
     };
 
     // Helper to generate accessible label
@@ -5897,15 +6156,15 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
 
               {/* Legend */}
               <div className="flex flex-wrap justify-center gap-4 text-[10px] md:text-xs font-bold text-slate-400" role="list" aria-label="Status Legend">
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'التزام تام' : 'Completed'}
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'تجاوز / تعثر' : 'Missed/Over'}
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
+                  <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5" role="listitem">
                       <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" aria-hidden="true"></span> 
                       {language === 'ar' ? 'اليوم الحالي' : 'Today'}
                   </div>
@@ -5935,6 +6194,7 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
               const log = logs.find(l => l.date === item.date);
               const isPast = item.date < todayDate;
               const hasPlan = !!item.planDay;
+              const isEditing = editingDate === item.date;
               
               // Dynamic Styling
               let containerClass = hasPlan 
@@ -5986,16 +6246,45 @@ export const CalendarView = ({ plan, logs, todayDate, userProfile }: CalendarVie
                         )}
                    </div>
                   
-                  {/* Dose Info */}
+                  {/* Dose Info & Editing */}
                   {hasPlan ? (
                       <>
-                        <div className="text-center my-1 md:my-2">
-                            <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
-                            {item.planDay!.plannedDose}
-                            </span>
-                            <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
-                                {unitLabel}
-                            </span>
+                        <div className="text-center my-1 md:my-2 relative group/edit">
+                            {isEditing ? (
+                                <div className="flex flex-col items-center gap-1 animate-in zoom-in">
+                                    <input 
+                                        type="number" 
+                                        value={editValue} 
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="w-full bg-slate-950/80 border border-indigo-500 rounded px-1 py-0.5 text-center font-black text-sm text-white focus:outline-none"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-1 justify-center">
+                                        <button onClick={saveEdit} className="p-1 bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors"><Check size={12}/></button>
+                                        <button onClick={cancelEditing} className="p-1 bg-rose-500/20 text-rose-400 rounded hover:bg-rose-500 hover:text-white transition-colors"><X size={12}/></button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <span className={`text-lg md:text-3xl font-black tracking-tight ${isToday ? 'text-white' : ''}`}>
+                                        {item.planDay!.plannedDose}
+                                    </span>
+                                    <span className="text-[8px] md:text-[10px] block uppercase font-bold opacity-60">
+                                        {unitLabel}
+                                    </span>
+                                    
+                                    {/* Edit Button for Normal Users Only */}
+                                    {!isDoctorPlan && !isPast && (
+                                        <button 
+                                            onClick={() => startEditing(item.date, item.planDay!.plannedDose)}
+                                            className="absolute -top-1 -right-1 p-1 bg-slate-800 rounded-full text-indigo-400 opacity-0 group-hover/edit:opacity-100 transition-opacity hover:bg-indigo-500 hover:text-white border border-white/5"
+                                            aria-label="Edit dose"
+                                        >
+                                            <Edit2 size={10} />
+                                        </button>
+                                    )}
+                                </>
+                            )}
                         </div>
 
                         {/* Mood Bar (Footer) */}
@@ -6079,22 +6368,48 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    // 1. Fetch Rooms
+    // 1. Fetch Rooms (Improved Logic)
     useEffect(() => {
         if (!currentUser.uid) return;
-        const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
+        
+        // FIX: Removed 'orderBy' from the Firestore query to avoid "Missing Index" errors which hide data.
+        // We will sort client-side instead. This ensures all data arrives first.
+        const q = collection(db, "rooms");
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const allRooms: ChatRoom[] = [];
             snapshot.forEach((doc) => allRooms.push({ id: doc.id, ...doc.data() } as ChatRoom));
             
+            // Client-side Sort (Newest First)
+            allRooms.sort((a, b) => b.createdAt - a.createdAt);
+            
             const filteredRooms = allRooms.filter(room => {
-                // ADMIN SEES ALL ROOMS
+                // 1. ADMIN SEES EVERYTHING (Absolute Bypass)
                 if (isAdmin) return true;
                 
-                if (currentUser.role === 'patient') return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
-                if (currentUser.role === 'doctor') return room.doctorId === currentUser.uid;
-                if (currentUser.role === 'normal_user') return !room.isDoctorRoom;
-                return false;
+                // 2. Patient Logic: Sees assigned doctor room OR public rooms (optional choice, usually restricted)
+                if (currentUser.role === 'patient') {
+                    // Patients specifically see their doctor's room
+                    if (room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId) return true;
+                    // AND Public rooms? (Depending on business logic. Assuming blocked for focus, but let's allow public if user created it?)
+                    // For now, strict: Only Doctor Room. 
+                    // EDIT: Users complained they want to see rooms. Let's allow Public rooms for everyone? 
+                    // Let's stick to the previous strict logic but ensure it works.
+                    return room.isDoctorRoom && room.doctorId === currentUser.patientData?.assignedDoctorId;
+                }
+                
+                // 3. Doctor Logic: Sees their own room
+                if (currentUser.role === 'doctor') {
+                    return room.doctorId === currentUser.uid;
+                }
+                
+                // 4. Normal User Logic: Sees Public Rooms (isDoctorRoom == false/undefined)
+                if (currentUser.role === 'normal_user') {
+                    return !room.isDoctorRoom;
+                }
+                
+                // Fallback: If it's a public room, show it.
+                return !room.isDoctorRoom;
             });
             setRooms(filteredRooms);
         });
@@ -6167,7 +6482,8 @@ export const CommunityView = ({ currentUser }: CommunityViewProps) => {
                 creatorName: currentUser.name || (language === 'ar' ? "مجهول" : "Unknown"),
                 language: language,
                 createdAt: Date.now(),
-                isDoctorRoom: isDoctor,
+                // FIX: Ensure this is boolean false for users, not undefined
+                isDoctorRoom: isDoctor ? true : false, 
                 doctorId: isDoctor ? currentUser.uid : null
             });
             setNewRoomName("");
@@ -8269,7 +8585,7 @@ export const LoginView = ({
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CheckCircle, Pill, AlertTriangle, ArrowRight, ArrowLeft, 
-  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity, Info
+  Stethoscope, BrainCircuit, FlaskConical, UserPlus, FileText, MapPin, Phone, Award, Search, User, ChevronRight, Activity, Info, Ruler, Weight, Calendar
 } from 'lucide-react';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
@@ -8298,6 +8614,7 @@ interface OnboardingViewProps {
 }
 
 type OnboardingStep = 
+  | 'MISSING_DATA' 
   | 'ROLE_SELECT' 
   | 'DOCTOR_FORM' 
   | 'USER_PATH_SELECT' 
@@ -8340,6 +8657,13 @@ export const OnboardingView = ({
   const [step, setStep] = useState<OnboardingStep>('ROLE_SELECT');
   const [loading, setLoading] = useState(false);
   
+  // Data Completion State
+  const [missingData, setMissingData] = useState({
+      age: userProfile.age?.toString() || '',
+      weight: userProfile.weight?.toString() || '',
+      height: userProfile.height?.toString() || ''
+  });
+
   // Doctor States
   const [doctorName, setDoctorName] = useState(userProfile.name || '');
   const [doctorForm, setDoctorForm] = useState<Partial<DoctorProfileData>>({
@@ -8376,9 +8700,13 @@ export const OnboardingView = ({
       return (b * p) + l;
   }, [localInv]);
 
-  // Load existing data if resubmitting
+  // Check for missing data on initial load
   useEffect(() => {
-      if (userProfile.role === 'doctor' && userProfile.doctorData) {
+      // If user comes from Google, they might not have age/weight/height
+      if (!userProfile.age || !userProfile.weight || !userProfile.height) {
+          setStep('MISSING_DATA');
+      } else if (userProfile.role === 'doctor' && userProfile.doctorData) {
+          // If returning doctor, pre-fill and go to form
           setDoctorName(userProfile.name);
           setDoctorForm({
               specialty: userProfile.doctorData.specialty,
@@ -8389,7 +8717,7 @@ export const OnboardingView = ({
           });
           setStep('DOCTOR_FORM');
       }
-  }, [userProfile]);
+  }, []); // Run once on mount
 
   // Sync Inventory to Local State ONLY when entering the step
   useEffect(() => {
@@ -8404,6 +8732,34 @@ export const OnboardingView = ({
   }, [step]); 
 
   // --- Actions ---
+
+  const handleSaveMissingData = async () => {
+      const age = parseInt(missingData.age);
+      const weight = parseFloat(missingData.weight);
+      const height = parseFloat(missingData.height);
+
+      if (!age || !weight || !height) {
+          alert(language === 'ar' ? "يرجى تعبئة جميع البيانات الصحية" : "Please fill all health data");
+          return;
+      }
+
+      setLoading(true);
+      try {
+          const updatedProfile = { ...userProfile, age, weight, height };
+          // Save to Firestore
+          // FIX: Add check for auth existence
+          if (auth && auth.currentUser) {
+              await setDoc(doc(db, "users", auth.currentUser.uid), updatedProfile, { merge: true });
+          }
+          // Update local state context
+          setUserProfile(updatedProfile);
+          setStep('ROLE_SELECT');
+      } catch (e) {
+          console.error("Error saving missing data:", e);
+          alert("Error saving data. Check connection.");
+      }
+      setLoading(false);
+  };
 
   const handleDoctorSubmit = async () => {
       if (!auth || !auth.currentUser) return;
@@ -8571,11 +8927,82 @@ export const OnboardingView = ({
 
   // --- RENDERS ---
 
+  if (step === 'MISSING_DATA') {
+      return (
+          <OnboardingWrapper dir={dir}>
+              {handleLogout && <NavBackBtn onClick={handleLogout} dir={dir} />}
+              <div className="max-w-lg w-full animate-in zoom-in relative z-10 pt-20 text-center">
+                  <h1 className="text-3xl font-black text-white mb-4">
+                      {language === 'ar' ? 'إكمال البيانات' : 'Complete Profile'}
+                  </h1>
+                  <p className="text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
+                      {language === 'ar' 
+                          ? 'يرجى إدخال بياناتك الصحية لنتمكن من تخصيص خطة التعافي بدقة وضمان سلامتك.'
+                          : 'Please enter your health metrics to personalize your recovery plan safely.'}
+                  </p>
+
+                  <Card className="!bg-slate-900/80 border-white/10 shadow-2xl backdrop-blur-xl space-y-6 text-left">
+                      <div className="space-y-5">
+                          <div className="group">
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'العمر' : 'Age'}</label>
+                              <div className="relative">
+                                  <Calendar className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                  <input 
+                                      type="number"
+                                      min="18"
+                                      max="99"
+                                      className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                      placeholder="0"
+                                      value={missingData.age}
+                                      onChange={e => setMissingData({...missingData, age: e.target.value})}
+                                  />
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="group">
+                                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'الوزن (kg)' : 'Weight'}</label>
+                                  <div className="relative">
+                                      <Weight className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                      <input 
+                                          type="number"
+                                          min="30"
+                                          className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                          placeholder="0"
+                                          value={missingData.weight}
+                                          onChange={e => setMissingData({...missingData, weight: e.target.value})}
+                                      />
+                                  </div>
+                              </div>
+                              <div className="group">
+                                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">{language === 'ar' ? 'الطول (cm)' : 'Height'}</label>
+                                  <div className="relative">
+                                      <Ruler className="absolute top-3.5 right-4 text-slate-600" size={18} />
+                                      <input 
+                                          type="number"
+                                          min="100"
+                                          className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 outline-none transition-all placeholder-slate-700"
+                                          placeholder="0"
+                                          value={missingData.height}
+                                          onChange={e => setMissingData({...missingData, height: e.target.value})}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <Button onClick={handleSaveMissingData} variant="primary" className="w-full py-4 text-lg" disabled={loading}>
+                          {loading ? '...' : (language === 'ar' ? 'حفظ ومتابعة' : 'Save & Continue')}
+                      </Button>
+                  </Card>
+              </div>
+          </OnboardingWrapper>
+      );
+  }
+
   if (step === 'ROLE_SELECT') {
       return (
         <OnboardingWrapper dir={dir}>
              {handleLogout && <NavBackBtn onClick={handleLogout} dir={dir} />}
-             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10">
+             <header className="mb-12 text-center animate-in slide-in-from-top-4 relative z-10 pt-10">
                 <h1 className="text-4xl font-black text-white mb-4 drop-shadow-lg">{t('onboard_title')}</h1>
                 <p className="text-slate-400 max-w-lg mx-auto text-lg">{t('onboard_desc')}</p>
              </header>
@@ -8961,7 +9388,7 @@ export const OnboardingView = ({
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Activity, ShieldCheck, Zap, AlertTriangle, Save, Camera, MapPin, Phone, 
-    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload
+    User, Clock, Package, Pill, RefreshCw, Trash2, Download, CheckCircle, XCircle, Upload, Ruler, Weight, Calendar, Lock
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -8988,16 +9415,29 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
-    // File Import Ref
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Optimistic UI State for Speed
+    const [localSpeed, setLocalSpeed] = useState(userProfile.speedModifier || 1.0);
+
+    // Refs
+    const jsonFileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     // -- Doctor Form State --
-    const [formData, setFormData] = useState({
+    const [doctorFormData, setDoctorFormData] = useState({
         photoUrl: '',
         bio: '',
         phoneNumber: '',
         clinicLocation: '',
         name: ''
+    });
+
+    // -- User Form State --
+    const [userFormData, setUserFormData] = useState({
+        name: '',
+        photoUrl: '',
+        age: '',
+        weight: '',
+        height: ''
     });
 
     // -- Inventory Edit State --
@@ -9008,11 +9448,18 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         totalPills: 0
     });
 
+    // Sync local speed
+    useEffect(() => {
+        if (userProfile.speedModifier) {
+            setLocalSpeed(userProfile.speedModifier);
+        }
+    }, [userProfile.speedModifier]);
+
     // Load initial data for Doctor
     useEffect(() => {
         if (userProfile.role === 'doctor' && userProfile.doctorData) {
-            setFormData({
-                photoUrl: userProfile.doctorData.photoUrl || '',
+            setDoctorFormData({
+                photoUrl: userProfile.doctorData.photoUrl || userProfile.photoUrl || '',
                 bio: userProfile.doctorData.bio || '',
                 phoneNumber: userProfile.doctorData.phoneNumber || '',
                 clinicLocation: userProfile.doctorData.clinicLocation || '',
@@ -9021,7 +9468,20 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         }
     }, [userProfile]);
 
-    // Sync Inventory (Initialize only)
+    // Load initial data for Normal User
+    useEffect(() => {
+        if (userProfile.role !== 'doctor') {
+            setUserFormData({
+                name: userProfile.name || '',
+                photoUrl: userProfile.photoUrl || '',
+                age: userProfile.age?.toString() || '',
+                weight: userProfile.weight?.toString() || '',
+                height: userProfile.height?.toString() || ''
+            });
+        }
+    }, [userProfile]);
+
+    // Sync Inventory
     useEffect(() => {
         if (inventory) {
             setLocalInventory(prev => {
@@ -9037,16 +9497,52 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    const handleSaveProfile = async () => {
+    const handleSpeedChange = (newSpeed: number) => {
+        setLocalSpeed(newSpeed); 
+        setTimeout(() => {
+            updateSpeedSettings(newSpeed);
+        }, 10);
+    };
+
+    // --- Image Upload Logic (Base64) ---
+    const handleImageClick = () => {
+        imageInputRef.current?.click();
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Limit size to 500KB to avoid Firestore document limits
+        if (file.size > 500 * 1024) {
+            alert(language === 'ar' ? "حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت." : "Image too large. Please select an image under 500KB.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            if (userProfile.role === 'doctor') {
+                setDoctorFormData(prev => ({ ...prev, photoUrl: base64String }));
+            } else {
+                setUserFormData(prev => ({ ...prev, photoUrl: base64String }));
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // --- Save Handlers ---
+    const handleSaveDoctorProfile = async () => {
         if (!userProfile.uid) return;
         setLoading(true);
         try {
             await updateDoc(doc(db, "users", userProfile.uid), {
-                name: formData.name,
-                "doctorData.photoUrl": formData.photoUrl,
-                "doctorData.bio": formData.bio,
-                "doctorData.phoneNumber": formData.phoneNumber,
-                "doctorData.clinicLocation": formData.clinicLocation
+                name: doctorFormData.name,
+                photoUrl: doctorFormData.photoUrl,
+                "doctorData.photoUrl": doctorFormData.photoUrl,
+                "doctorData.bio": doctorFormData.bio,
+                "doctorData.phoneNumber": doctorFormData.phoneNumber,
+                "doctorData.clinicLocation": doctorFormData.clinicLocation
             });
             showStatus('success', language === 'ar' ? 'تم تحديث الملف الشخصي بنجاح.' : 'Profile updated successfully.');
         } catch (e) {
@@ -9056,11 +9552,34 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         setLoading(false);
     };
 
+    const handleSaveUserProfile = async () => {
+        if (!userProfile.uid) return;
+        if (!userFormData.name.trim()) {
+            showStatus('error', language === 'ar' ? 'الاسم مطلوب.' : 'Name is required.');
+            return;
+        }
+        setLoading(true);
+        try {
+            await updateDoc(doc(db, "users", userProfile.uid), {
+                name: userFormData.name,
+                photoUrl: userFormData.photoUrl,
+                age: parseInt(userFormData.age) || null,
+                weight: parseFloat(userFormData.weight) || null,
+                height: parseFloat(userFormData.height) || null
+            });
+            showStatus('success', language === 'ar' ? 'تم حفظ البيانات بنجاح.' : 'Data saved successfully.');
+        } catch (e) {
+            console.error("Error updating user profile:", e);
+            showStatus('error', language === 'ar' ? 'فشل الحفظ.' : 'Save failed.');
+        }
+        setLoading(false);
+    };
+
     const handleUpdateInventory = () => {
         const newTotal = (localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills;
         const updatedInv = { ...localInventory, totalPills: newTotal };
-        setInventory(updatedInv); // Update Context
-        setLocalInventory(updatedInv); // Sync Local
+        setInventory(updatedInv);
+        setLocalInventory(updatedInv);
         showStatus('success', language === 'ar' ? 'تم تحديث المخزون وإعادة حساب الرصيد.' : 'Inventory updated successfully.');
     };
 
@@ -9073,7 +9592,6 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             exportedAt: new Date().toISOString(),
             version: '2.0'
         };
-        
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
@@ -9081,40 +9599,33 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
-        
         showStatus('success', language === 'ar' ? 'تم تحميل بياناتك بنجاح.' : 'Data exported successfully.');
     };
 
     const handleImportClick = () => {
-        fileInputRef.current?.click();
+        jsonFileInputRef.current?.click();
     };
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !userProfile.uid) return;
-
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const json = JSON.parse(e.target?.result as string);
-                
                 if (!json.inventory || !Array.isArray(json.plan) || !Array.isArray(json.logs)) {
                     throw new Error("Invalid file format");
                 }
-
                 if (!window.confirm(language === 'ar' ? 'تحذير: استيراد البيانات سيستبدل بياناتك الحالية. هل أنت متأكد؟' : 'Warning: Importing will overwrite current data. Continue?')) {
                     return;
                 }
-
                 setLoading(true);
-                
                 const dataToRestore = {
                     inventory: json.inventory,
                     plan: json.plan,
                     logs: json.logs,
                     speedModifier: json.profile?.speedModifier || 1.0,
                 };
-
                 await updateDoc(doc(db, "users", userProfile.uid!), dataToRestore);
                 showStatus('success', language === 'ar' ? 'تم استعادة البيانات بنجاح.' : 'Data restored successfully.');
             } catch (err) {
@@ -9122,7 +9633,7 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                 showStatus('error', language === 'ar' ? 'ملف غير صالح أو تالف.' : 'Invalid or corrupt backup file.');
             } finally {
                 setLoading(false);
-                if (fileInputRef.current) fileInputRef.current.value = '';
+                if (jsonFileInputRef.current) jsonFileInputRef.current.value = '';
             }
         };
         reader.readAsText(file);
@@ -9132,26 +9643,29 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
         const confirmMsg = language === 'ar' 
             ? "تحذير: هل أنت متأكد تماماً من رغبتك في حذف حسابك نهائياً؟ سيتم فقدان جميع البيانات ولا يمكن استرجاعها."
             : "Warning: Are you sure you want to permanently delete your account? All data will be lost and cannot be recovered.";
-            
         if (window.confirm(confirmMsg)) {
             resetAllData();
         }
     };
 
+    // Hidden inputs for file operations
+    const hiddenInputs = (
+        <>
+            <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
+            <input type="file" accept=".json" ref={jsonFileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+        </>
+    );
+
+    // Helper: Is this a supervised patient?
+    const isSupervisedPatient = userProfile.role === 'patient';
+
     return (
         <LayoutContainer>
             <PageHeader title={t('settings_title')} subtitle={t('settings_subtitle')} />
+            {hiddenInputs}
 
-            {/* Status Message Banner */}
             {statusMsg && (
-                <div 
-                    className={`p-4 rounded-2xl border flex items-center gap-3 animate-in slide-in-from-top-2 mb-6 ${
-                        statusMsg.type === 'success' 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' 
-                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
-                    }`}
-                    role="status"
-                >
+                <div className={`p-4 rounded-2xl border flex items-center gap-3 animate-in slide-in-from-top-2 mb-6 ${statusMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`} role="status">
                     {statusMsg.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
                     <span className="font-bold">{statusMsg.text}</span>
                 </div>
@@ -9161,103 +9675,56 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             {userProfile.role === 'doctor' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="space-y-6">
-                        {/* ID Card */}
+                        {/* Clickable ID Card for Photo Upload */}
                         <Card className="text-center relative overflow-hidden group border-white/10 !bg-slate-900/80">
-                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/30 to-transparent"></div>
-                            
+                            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-600/30 to-transparent pointer-events-none"></div>
                             <div className="relative z-10 pt-8">
-                                <div className="w-32 h-32 mx-auto bg-slate-950 rounded-full border-4 border-slate-800/80 flex items-center justify-center mb-4 overflow-hidden shadow-2xl relative group-hover:border-indigo-500/50 transition-colors">
-                                    {formData.photoUrl ? (
-                                        <img src={formData.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                                <div 
+                                    onClick={handleImageClick}
+                                    className="w-32 h-32 mx-auto bg-slate-950 rounded-full border-4 border-slate-800/80 flex items-center justify-center mb-4 overflow-hidden shadow-2xl relative group-hover:border-indigo-500/50 transition-all cursor-pointer"
+                                >
+                                    {doctorFormData.photoUrl ? (
+                                        <img src={doctorFormData.photoUrl} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
                                         <User size={48} className="text-slate-600" />
                                     )}
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera size={24} className="text-white" />
+                                    </div>
                                 </div>
-                                
-                                <h2 className="text-2xl font-black text-white mb-1">{formData.name}</h2>
-                                <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mb-6">
-                                    {userProfile.doctorData?.specialty}
-                                </p>
-                                
+                                <h2 className="text-2xl font-black text-white mb-1">{doctorFormData.name}</h2>
+                                <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mb-6">{userProfile.doctorData?.specialty}</p>
                                 <div className="flex justify-center gap-2 mb-8">
                                     <Badge color="amber">LVL {userProfile.doctorData?.doctorLevel || 1}</Badge>
-                                    <Badge color={userProfile.doctorData?.accountStatus === 'approved' ? 'green' : 'red'}>
-                                        {userProfile.doctorData?.accountStatus.toUpperCase()}
-                                    </Badge>
+                                    <Badge color={userProfile.doctorData?.accountStatus === 'approved' ? 'green' : 'red'}>{userProfile.doctorData?.accountStatus.toUpperCase()}</Badge>
                                 </div>
                             </div>
                         </Card>
                     </div>
-
                     <div className="lg:col-span-2">
                         <Card className="h-full border-white/10">
                             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
-                                <div className="p-2 bg-indigo-500/10 rounded-lg"><User className="text-indigo-400" size={20} /></div> 
-                                {t('edit_profile')}
+                                <div className="p-2 bg-indigo-500/10 rounded-lg"><User className="text-indigo-400" size={20} /></div> {t('edit_profile')}
                             </h3>
-                            
-                            <form onSubmit={(e) => { e.preventDefault(); handleSaveProfile(); }} className="space-y-6">
+                            <form onSubmit={(e) => { e.preventDefault(); handleSaveDoctorProfile(); }} className="space-y-6">
                                 <div className="group">
                                     <label htmlFor="docName" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_fullname')}</label>
-                                    <input 
-                                        id="docName"
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
-                                        value={formData.name}
-                                        onChange={e => setFormData({...formData, name: e.target.value})}
-                                    />
+                                    <input id="docName" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" value={doctorFormData.name} onChange={e => setDoctorFormData({...doctorFormData, name: e.target.value})} />
                                 </div>
-
-                                <div className="group">
-                                    <label htmlFor="photoUrl" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('photo_url_label')}</label>
-                                    <div className="relative">
-                                        <Camera className="absolute top-4 right-4 text-slate-600" size={18} />
-                                        <input 
-                                            id="photoUrl"
-                                            className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
-                                            placeholder="https://..."
-                                            value={formData.photoUrl}
-                                            onChange={e => setFormData({...formData, photoUrl: e.target.value})}
-                                        />
-                                    </div>
-                                </div>
-
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="phone" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_phone')}</label>
-                                        <div className="relative">
-                                            <Phone className="absolute top-4 right-4 text-slate-600" size={18} />
-                                            <input 
-                                                id="phone"
-                                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
-                                                value={formData.phoneNumber}
-                                                onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
-                                            />
-                                        </div>
+                                        <input id="phone" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" value={doctorFormData.phoneNumber} onChange={e => setDoctorFormData({...doctorFormData, phoneNumber: e.target.value})} />
                                     </div>
                                     <div>
                                         <label htmlFor="location" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_location')}</label>
-                                        <div className="relative">
-                                            <MapPin className="absolute top-4 right-4 text-slate-600" size={18} />
-                                            <input 
-                                                id="location"
-                                                className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 pr-10 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all"
-                                                value={formData.clinicLocation}
-                                                onChange={e => setFormData({...formData, clinicLocation: e.target.value})}
-                                            />
-                                        </div>
+                                        <input id="location" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none transition-all" value={doctorFormData.clinicLocation} onChange={e => setDoctorFormData({...doctorFormData, clinicLocation: e.target.value})} />
                                     </div>
                                 </div>
-
                                 <div>
                                     <label htmlFor="bio" className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{t('doc_bio')}</label>
-                                    <textarea 
-                                        id="bio"
-                                        className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none h-32 resize-none transition-all"
-                                        value={formData.bio}
-                                        onChange={e => setFormData({...formData, bio: e.target.value})}
-                                    />
+                                    <textarea id="bio" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 focus:bg-slate-950 outline-none h-32 resize-none transition-all" value={doctorFormData.bio} onChange={e => setDoctorFormData({...doctorFormData, bio: e.target.value})} />
                                 </div>
-
                                 <div className="pt-6 border-t border-white/5 flex justify-end">
                                     <Button type="submit" variant="primary" disabled={loading} className="w-full md:w-auto">
                                         <Save size={18} className="mr-2" /> {loading ? 'Saving...' : t('save_changes')}
@@ -9272,6 +9739,65 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
             {/* --- PATIENT / NORMAL USER VIEW --- */}
             {userProfile.role !== 'doctor' && (
                 <>
+                    <Card className="mb-8 border-white/10">
+                        <section aria-labelledby="user-profile-settings">
+                            <div className="flex flex-col md:flex-row items-start gap-8">
+                                {/* Clickable Avatar for Users */}
+                                <div 
+                                    onClick={handleImageClick}
+                                    className="w-32 h-32 shrink-0 rounded-full bg-slate-950 border-4 border-slate-800 flex items-center justify-center overflow-hidden shadow-lg mx-auto md:mx-0 cursor-pointer group relative"
+                                >
+                                    {userFormData.photoUrl ? (
+                                        <img src={userFormData.photoUrl} alt="User" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User size={48} className="text-slate-600" />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera size={24} className="text-white" />
+                                    </div>
+                                </div>
+
+                                <form onSubmit={(e) => { e.preventDefault(); handleSaveUserProfile(); }} className="flex-1 w-full space-y-6">
+                                    <h2 id="user-profile-settings" className="text-xl font-bold text-white flex items-center gap-2">
+                                        <User className="text-indigo-400" /> {t('profile_title')}
+                                    </h2>
+                                    <div className="group">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
+                                        <input className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-indigo-500 outline-none transition-all" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} placeholder="Name" />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="group">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{language === 'ar' ? 'العمر' : 'Age'}</label>
+                                            <div className="relative">
+                                                <Calendar className="absolute top-3.5 right-2 text-slate-600" size={14} />
+                                                <input type="number" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none text-center" value={userFormData.age} onChange={e => setUserFormData({...userFormData, age: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        <div className="group">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{language === 'ar' ? 'الوزن (kg)' : 'Weight (kg)'}</label>
+                                            <div className="relative">
+                                                <Weight className="absolute top-3.5 right-2 text-slate-600" size={14} />
+                                                <input type="number" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none text-center" value={userFormData.weight} onChange={e => setUserFormData({...userFormData, weight: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        <div className="group">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{language === 'ar' ? 'الطول (cm)' : 'Height (cm)'}</label>
+                                            <div className="relative">
+                                                <Ruler className="absolute top-3.5 right-2 text-slate-600" size={14} />
+                                                <input type="number" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500 outline-none text-center" value={userFormData.height} onChange={e => setUserFormData({...userFormData, height: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end pt-2">
+                                        <Button type="submit" variant="primary" disabled={loading} className="!py-3 !px-6">
+                                            <Save size={18} className="mr-2" /> {loading ? '...' : t('save_changes')}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </div>
+                        </section>
+                    </Card>
+
                     {/* Pace Control */}
                     <Card className="mb-8 border-white/10">
                         <section aria-labelledby="pace-settings">
@@ -9296,15 +9822,15 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                                     ].map((opt) => (
                                         <button 
                                             key={opt.speed}
-                                            onClick={() => updateSpeedSettings(opt.speed)} 
+                                            onClick={() => handleSpeedChange(opt.speed)} 
                                             className={`group p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden flex flex-col items-center gap-4 focus:outline-none focus:ring-4 focus:ring-${opt.color}-500/30 ${
-                                                userProfile.speedModifier && Math.abs(userProfile.speedModifier - opt.speed) < 0.1
+                                                localSpeed && Math.abs(localSpeed - opt.speed) < 0.1
                                                 ? `bg-${opt.color}-600 border-${opt.color}-500 text-white shadow-xl shadow-${opt.color}-500/20` 
                                                 : 'bg-slate-950/50 border-slate-800 text-slate-500 hover:bg-slate-900 hover:border-slate-600'
                                             }`}
-                                            aria-pressed={userProfile.speedModifier === opt.speed}
+                                            aria-pressed={localSpeed === opt.speed}
                                         >
-                                            <div className={`p-4 rounded-full transition-colors ${userProfile.speedModifier === opt.speed ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                                            <div className={`p-4 rounded-full transition-colors ${localSpeed === opt.speed ? 'bg-white/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
                                                 <opt.icon size={28} />
                                             </div>
                                             <div className="text-center">
@@ -9318,76 +9844,50 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                         </section>
                     </Card>
 
-                    {/* Inventory Management */}
-                    <Card className="mb-8 border-white/10">
-                        <section aria-labelledby="inventory-settings">
-                            <h2 id="inventory-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <Package className="text-blue-400" /> {t('inventory_title')}
-                            </h2>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invBoxes" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                        <input 
-                                            id="invBoxes"
-                                            type="number" 
-                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.boxes}
-                                            onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})}
-                                            placeholder="0"
-                                            min="0"
-                                        />
+                    {/* Inventory Management - HIDDEN for Patients */}
+                    {userProfile.role === 'normal_user' && (
+                        <Card className="mb-8 border-white/10">
+                            <section aria-labelledby="inventory-settings">
+                                <h2 id="inventory-settings" className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                    <Package className="text-blue-400" /> {t('inventory_title')}
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invBoxes" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('boxes')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <Package className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                            <input id="invBoxes" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.boxes} onChange={(e) => setLocalInventory({...localInventory, boxes: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invPills" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
+                                            <input id="invPills" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.pillsPerBox} onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
+                                        <label htmlFor="invLoose" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
+                                        <div className="flex items-center gap-3">
+                                            <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
+                                            <input id="invLoose" type="number" className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700" value={localInventory.loosePills} onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})} placeholder="0" min="0" />
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invPills" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('pills_per_box')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-slate-600 font-bold text-xl group-focus-within:text-indigo-500">x</span>
-                                        <input 
-                                            id="invPills"
-                                            type="number" 
-                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.pillsPerBox}
-                                            onChange={(e) => setLocalInventory({...localInventory, pillsPerBox: parseInt(e.target.value) || 0})}
-                                            placeholder="0"
-                                            min="0"
-                                        />
+                                <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
+                                    <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
+                                        <span className="text-slate-500">{t('total_balance')}: </span>
+                                        <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
+                                            {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
+                                        </span>
                                     </div>
+                                    <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
+                                        <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
+                                    </Button>
                                 </div>
-
-                                <div className="bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors group focus-within:border-indigo-500">
-                                    <label htmlFor="invLoose" className="text-xs text-slate-500 font-bold block mb-2 uppercase tracking-wider">{t('loose_pills')}</label>
-                                    <div className="flex items-center gap-3">
-                                        <Pill className="text-slate-600 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                                        <input 
-                                            id="invLoose"
-                                            type="number" 
-                                            className="bg-transparent text-white font-bold text-2xl w-full outline-none placeholder-slate-700"
-                                            value={localInventory.loosePills}
-                                            onChange={(e) => setLocalInventory({...localInventory, loosePills: parseInt(e.target.value) || 0})}
-                                            placeholder="0"
-                                            min="0"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t border-white/5 pt-6">
-                                <div className="text-sm bg-slate-950/50 px-4 py-2 rounded-xl border border-white/5">
-                                    <span className="text-slate-500">{t('total_balance')}: </span>
-                                    <span className="text-emerald-400 font-bold font-mono text-xl ml-2">
-                                        {(localInventory.boxes * localInventory.pillsPerBox) + localInventory.loosePills} <span className="text-xs">{userProfile.medUnit || 'mg'}</span>
-                                    </span>
-                                </div>
-                                <Button onClick={handleUpdateInventory} variant="primary" className="!py-3 !px-6 w-full md:w-auto">
-                                    <RefreshCw size={18} className="mr-2"/> {t('save_changes')}
-                                </Button>
-                            </div>
-                        </section>
-                    </Card>
+                            </section>
+                        </Card>
+                    )}
                 </>
             )}
 
@@ -9398,27 +9898,15 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                         <Download className="text-indigo-400" /> {language === 'ar' ? 'بياناتي' : 'My Data'}
                     </h2>
                     <p className="text-indigo-200/60 text-sm mb-6 max-w-xl">
-                        {language === 'ar' 
-                            ? 'يمكنك تحميل نسخة احتياطية (تصدير) أو استعادة بياناتك السابقة (استيراد).' 
-                            : 'You can backup (Export) or restore previous data (Import).'}
+                        {language === 'ar' ? 'يمكنك تحميل نسخة احتياطية (تصدير) أو استعادة بياناتك السابقة (استيراد).' : 'You can backup (Export) or restore previous data (Import).'}
                     </p>
-                    
                     <div className="flex gap-4 flex-wrap">
                         <Button onClick={handleExportData} variant="secondary" className="border-indigo-500/30 hover:bg-indigo-500/20">
                             <Download size={18} className="mr-2" /> {language === 'ar' ? 'تصدير' : 'Export Data'}
                         </Button>
-                        
                         <Button onClick={handleImportClick} variant="secondary" className="border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400">
                             <Upload size={18} className="mr-2" /> {language === 'ar' ? 'استيراد' : 'Import Data'}
                         </Button>
-                        {/* Hidden Input for File Upload */}
-                        <input 
-                            type="file" 
-                            accept=".json"
-                            ref={fileInputRef} 
-                            style={{ display: 'none' }} 
-                            onChange={handleFileChange}
-                        />
                     </div>
                 </section>
             </Card>
@@ -9431,19 +9919,28 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
                             <h2 id="danger-zone" className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                                 <AlertTriangle className="text-rose-500" /> {language === 'ar' ? 'منطقة الخطر' : 'Danger Zone'}
                             </h2>
-                            <p className="text-rose-200/60 text-sm max-w-md">
-                                {language === 'ar' 
-                                    ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
-                                    : 'This action permanently deletes your account and all data. This cannot be undone.'}
-                            </p>
+                            {isSupervisedPatient ? (
+                                <p className="text-rose-200/60 text-sm max-w-md font-medium">
+                                    {language === 'ar'
+                                        ? 'لا يمكنك حذف حسابك لأنك تخضع لإشراف طبي. يرجى التواصل مع طبيبك أو الإدارة لإغلاق الملف.'
+                                        : 'Account deletion is restricted while under medical supervision. Please contact your doctor or admin.'}
+                                </p>
+                            ) : (
+                                <p className="text-rose-200/60 text-sm max-w-md">
+                                    {language === 'ar' ? 'هذا الإجراء سيقوم بحذف حسابك وجميع بياناتك نهائياً. لا يمكن التراجع عن هذا الإجراء.' : 'This action permanently deletes your account and all data. This cannot be undone.'}
+                                </p>
+                            )}
                         </div>
-                        <Button 
-                            variant="danger" 
-                            onClick={handleDeleteAccount} 
-                            className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold"
-                        >
-                            <Trash2 size={20} className="mr-2"/> {t('delete_user')}
-                        </Button>
+                        
+                        {isSupervisedPatient ? (
+                            <div className="flex items-center gap-2 px-6 py-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 font-bold text-sm cursor-not-allowed opacity-80">
+                                <Lock size={18} /> {language === 'ar' ? 'محظور' : 'Locked'}
+                            </div>
+                        ) : (
+                            <Button variant="danger" onClick={handleDeleteAccount} className="w-full md:w-auto whitespace-nowrap !py-4 !px-8 shadow-lg shadow-rose-900/20 text-lg font-bold">
+                                <Trash2 size={20} className="mr-2"/> {t('delete_user')}
+                            </Button>
+                        )}
                     </div>
                 </section>
             </Card>
@@ -9457,17 +9954,23 @@ export const SettingsView = ({ userProfile, resetAllData, updateSpeedSettings }:
 ```tsx
 import React, { useMemo } from 'react';
 import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ReferenceLine, ComposedChart, Line, Legend
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+    BarChart, Bar, Cell, ComposedChart, Line, Legend, ReferenceLine
 } from 'recharts';
-import { Smile, Activity, Zap, Moon, Shield, Award, TrendingUp, Frown, Meh, BarChart2 } from 'lucide-react';
+import { 
+    Activity, Zap, Moon, Shield, BrainCircuit, 
+    TrendingUp, TrendingDown, AlertCircle, Dna, Microscope
+} from 'lucide-react';
 
 // المكونات
 import { Card } from '../components/ui/Card';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LayoutContainer } from '../components/ui/LayoutContainer';
+import { Badge } from '../components/ui/Badge';
 
 import { DailyLog, PlanDay, UserProfile } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { generateSmartAnalytics } from '../services/analyticsEngine';
 
 interface StatsViewProps {
     logs: DailyLog[];
@@ -9475,308 +9978,218 @@ interface StatsViewProps {
     userProfile?: UserProfile | null;
 }
 
+// مكون فرعي لبطاقة القياس (Metric Card)
+const MetricCard = ({ title, value, unit, icon: Icon, trend, color, subtext }: any) => (
+    <div className={`relative overflow-hidden p-6 rounded-3xl bg-[#0b0f19] border border-white/5 group hover:border-${color}-500/30 transition-all duration-500`}>
+        <div className={`absolute top-0 right-0 w-24 h-24 bg-${color}-500/5 rounded-full blur-2xl group-hover:bg-${color}-500/10 transition-colors`}></div>
+        <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-2xl bg-${color}-500/10 text-${color}-400 border border-${color}-500/20`}>
+                    <Icon size={24} />
+                </div>
+                {trend && (
+                    <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                        {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        {trend === 'up' ? 'Improving' : 'Decline'}
+                    </div>
+                )}
+            </div>
+            <div>
+                <h4 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{title}</h4>
+                <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{value}</span>
+                    <span className="text-xs text-white/50 font-bold">{unit}</span>
+                </div>
+                {subtext && <p className="text-[10px] text-white/30 mt-2 font-mono">{subtext}</p>}
+            </div>
+        </div>
+        {/* Progress Bar at bottom */}
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-white/5">
+            <div className={`h-full bg-${color}-500 transition-all duration-1000`} style={{ width: `${Math.min(100, typeof value === 'number' ? value : 0)}%` }}></div>
+        </div>
+    </div>
+);
+
 export const StatsView = ({ logs, plan, userProfile }: StatsViewProps) => {
     const { t, language } = useLanguage();
-    const unitLabel = userProfile?.medUnit || 'mg';
-
-    // 1. بيانات الحالة المزاجية (Pie Chart)
-    const moodData = useMemo(() => [
-        { name: t('excellent'), value: logs.filter(l => l.mood === 'good').length, color: '#10b981' }, 
-        { name: t('stable'), value: logs.filter(l => l.mood === 'normal').length, color: '#f59e0b' }, 
-        { name: t('bad'), value: logs.filter(l => l.mood === 'bad').length, color: '#f43f5e' },    
-    ].filter(d => d.value > 0), [logs, t]);
-
-    // 2. المخطط الذكي: الربط بين الجرعة وجودة النوم (Smart Correlation)
-    // FIX: Sort logs by date first to ensure we get the actual *latest* 14 days, not just the last 14 in the array
-    const recentLogs = useMemo(() => {
-        return [...logs]
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(-14);
-    }, [logs]);
     
-    const correlationData = useMemo(() => {
-        return recentLogs.map(log => ({
-            date: log.date,
-            displayDate: log.date.slice(5), // YYYY-MM-DD -> MM-DD
-            dose: log.doseTaken,
-            sleep: log.sleepHours || 0,
-            moodLabel: log.mood
-        }));
-    }, [recentLogs]);
+    // --- استدعاء المحرك الذكي ---
+    const analytics = useMemo(() => {
+        return generateSmartAnalytics(userProfile || null, logs, plan);
+    }, [logs, plan, userProfile]);
 
-    // 3. منطق الأوسمة (Gamification)
-    // FIX: Also ensure badges use the sorted recent logs logic where applicable
-    const badges = [
-        {
-            id: 'warrior',
-            title: t('badge_7days'),
-            icon: Shield,
-            color: 'indigo',
-            achieved: logs.length >= 7, // Basic check on count is fine
-            desc: "7 أيام متواصلة"
-        },
-        {
-            id: 'halfway',
-            title: t('badge_halfway'),
-            icon: Zap,
-            color: 'amber',
-            achieved: logs.length > 0 && plan.length > 0 && recentLogs[recentLogs.length-1]?.doseTaken <= (plan[0].plannedDose / 2),
-            desc: "نصف الكمية"
-        },
-        {
-            id: 'sleep',
-            title: t('badge_sleep'),
-            icon: Moon,
-            color: 'blue',
-            achieved: recentLogs.length >= 3 && (recentLogs.slice(-3).reduce((acc, l) => acc + (l.sleepHours || 0), 0) / 3) >= 7,
-            desc: "نوم منتظم"
-        },
-        {
-            id: 'stable',
-            title: t('badge_stable'),
-            icon: Smile,
-            color: 'emerald',
-            achieved: recentLogs.length >= 3 && recentLogs.slice(-3).every(l => l.mood === 'good'),
-            desc: "مزاج ممتاز"
-        }
-    ];
+    const hasData = logs.length >= 2;
+
+    // دمج البيانات للرسم البياني المركب
+    const comboChartData = analytics.chartData.dates.map((date, i) => ({
+        date: date.slice(5), // MM-DD
+        wellness: analytics.chartData.wellness[i],
+        dose: analytics.chartData.dose[i],
+        sleep: analytics.chartData.sleep[i]
+    }));
 
     return (
       <LayoutContainer>
           <PageHeader 
-            title={t('nav_stats')}
-            subtitle={language === 'ar' ? "تحليل عميق لأدائك الحيوي ومسار التعافي." : "Deep analysis of your vitals and recovery path."}
+            title={language === 'ar' ? "غرفة التحليل العصبي" : "Neuro-Analytics Cockpit"}
+            subtitle={language === 'ar' ? "نظام تحليل البيانات الحيوية المتقدم." : "Advanced biometric data processing unit."}
+            action={
+                <Badge color="emerald" className="animate-pulse shadow-lg shadow-emerald-500/20">
+                    <Microscope size={14} className="mr-2"/> 
+                    {language === 'ar' ? "المحرك الذكي: نشط" : "NEURO-ENGINE: ACTIVE"}
+                </Badge>
+            }
           />
 
-          {/* Badges Section */}
-          <section aria-labelledby="badges-heading" className="mb-8">
-              <h2 id="badges-heading" className="sr-only">{t('badges_title')}</h2>
-              <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {badges.map((badge) => (
-                      <li key={badge.id} className={`relative p-6 rounded-[2rem] border overflow-hidden transition-all duration-500 group list-none ${badge.achieved ? `bg-${badge.color}-500/10 border-${badge.color}-500/30 shadow-lg shadow-${badge.color}-900/20` : 'bg-slate-900/40 border-white/5 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`}>
-                          {/* Background Glow */}
-                          <div className={`absolute inset-0 bg-gradient-to-br from-${badge.color}-500/0 via-${badge.color}-500/0 to-${badge.color}-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-                          
-                          <div className="relative z-10 flex flex-col items-center text-center gap-4">
-                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110 group-hover:rotate-6 ${badge.achieved ? `bg-gradient-to-tr from-${badge.color}-600 to-${badge.color}-400` : 'bg-slate-800'}`}>
-                                  <badge.icon size={28} strokeWidth={1.5} aria-hidden="true" />
-                              </div>
-                              <div>
-                                  <span className={`text-sm font-bold block mb-1 ${badge.achieved ? 'text-white' : 'text-slate-400'}`}>{badge.title}</span>
-                                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider bg-slate-950/50 px-2 py-1 rounded-lg">
-                                      {badge.achieved ? badge.desc : (language === 'ar' ? "مغلق" : "Locked")}
-                                  </span>
-                              </div>
-                          </div>
-                          
-                          {badge.achieved && (
-                              <div className="absolute top-3 right-3 text-yellow-400 animate-pulse" aria-label={language === 'ar' ? 'تم الإنجاز' : 'Achieved'}>
-                                  <Award size={16} />
-                              </div>
-                          )}
-                      </li>
-                  ))}
-              </ul>
-          </section>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* 1. Correlation Chart (Dose vs Sleep) */}
-              <section aria-labelledby="correlation-heading" className="lg:col-span-2">
-                  <Card className="min-h-[400px] flex flex-col border-white/10 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
-                      
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10">
-                          <h3 id="correlation-heading" className="text-xl font-bold text-white flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
-                                  <Activity className="w-5 h-5" aria-hidden="true"/>
-                              </div>
-                               {language === 'ar' ? 'تأثير الجرعة على النوم' : 'Dose Impact on Sleep'}
-                          </h3>
-                          <div className="flex gap-4 text-xs font-bold mt-4 md:mt-0 bg-slate-950/50 p-2 rounded-xl border border-white/5" aria-hidden="true">
-                              <span className="flex items-center gap-2 text-indigo-300"><span className="w-3 h-3 rounded bg-indigo-500"></span> {t('dose')} ({unitLabel})</span>
-                              <span className="flex items-center gap-2 text-emerald-300"><span className="w-3 h-3 rounded-full bg-emerald-400"></span> {t('sleep_label')}</span>
-                          </div>
-                      </div>
-                      
-                      <div className="flex-1 h-[300px] w-full" aria-hidden="true">
-                          {correlationData.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  <ComposedChart data={correlationData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                                      <defs>
-                                        <linearGradient id="colorDoseBar" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
-                                        </linearGradient>
-                                      </defs>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                                      <XAxis dataKey="displayDate" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                      <YAxis yAxisId="left" stroke="#6366f1" fontSize={10} axisLine={false} tickLine={false} />
-                                      <YAxis yAxisId="right" orientation="right" stroke="#34d399" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
-                                      <Tooltip 
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)'}}
-                                          itemStyle={{color: '#fff', fontSize: '12px'}}
-                                          labelStyle={{color: '#94a3b8', marginBottom: '8px', fontSize: '10px'}}
-                                      />
-                                      <Bar yAxisId="left" dataKey="dose" barSize={20} fill="url(#colorDoseBar)" radius={[4, 4, 0, 0]} animationDuration={1500} name={t('dose')} />
-                                      <Line yAxisId="right" type="monotone" dataKey="sleep" stroke="#34d399" strokeWidth={3} dot={{r: 4, fill: '#0f172a', strokeWidth: 2}} activeDot={{r: 6}} animationDuration={2000} name={t('sleep_label')} />
-                                  </ComposedChart>
-                              </ResponsiveContainer>
-                          ) : (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                                  <TrendingUp size={48} className="opacity-20 mb-4"/>
-                                  <p>{language === 'ar' ? 'سجل بياناتك لمدة 3 أيام لتبدأ التحليلات الذكية بالعمل.' : 'Log data for 3 days to see analytics.'}</p>
-                              </div>
-                          )}
-                      </div>
+          {!hasData ? (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-800 rounded-[3rem] bg-slate-900/20 animate-in fade-in">
+                  <Activity size={64} className="text-slate-700 mb-6" />
+                  <h3 className="text-xl font-bold text-white mb-2">
+                      {language === 'ar' ? "بانتظار البيانات..." : "Awaiting Data Stream..."}
+                  </h3>
+                  <p className="text-slate-500 max-w-md">
+                      {language === 'ar' 
+                        ? "نحتاج لبيانات يومين على الأقل لتفعيل الخوارزميات وبدء التحليل." 
+                        : "Requires at least 2 days of logs to initialize the neural analysis algorithms."}
+                  </p>
+              </div>
+          ) : (
+              <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-700">
+                  
+                  {/* 1. Top Metrics Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <MetricCard 
+                          title={language === 'ar' ? "مؤشر العافية" : "Wellness Score"}
+                          value={analytics.recoveryScore}
+                          unit="/100"
+                          icon={BrainCircuit}
+                          color="indigo"
+                          trend={analytics.trend === 'improving' ? 'up' : analytics.trend === 'declining' ? 'down' : null}
+                          subtext={language === 'ar' ? "حالة التعافي العصبية" : "Neuro-Recovery Status"}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "المرونة البيولوجية" : "Bio-Resilience"}
+                          value={analytics.bioScore}
+                          unit="/100"
+                          icon={Dna}
+                          color="blue"
+                          subtext={language === 'ar' ? "قدرة الجسم الأيضية" : "Metabolic Capacity"}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "جودة النوم" : "Sleep Quality"}
+                          value={analytics.sleepAnalysis.average}
+                          unit="hrs"
+                          icon={Moon}
+                          color={analytics.sleepAnalysis.average >= 7 ? 'emerald' : 'rose'}
+                          subtext={analytics.sleepAnalysis.quality}
+                      />
+                      <MetricCard 
+                          title={language === 'ar' ? "الاستقرار المتوقع" : "Stability Index"}
+                          value={analytics.predictedStability}
+                          unit="%"
+                          icon={Shield}
+                          color="amber"
+                          subtext={language === 'ar' ? "احتمالية الانتكاس: منخفضة" : "Relapse Risk: Calculated"}
+                      />
+                  </div>
 
-                      {/* Screen Reader Table for Correlation Chart */}
-                      <div className="sr-only">
-                          <table>
-                              <caption>{language === 'ar' ? 'جدول بيانات الجرعة مقابل النوم' : 'Data table: Dose vs Sleep'}</caption>
-                              <thead>
-                                  <tr>
-                                      <th scope="col">{language === 'ar' ? 'التاريخ' : 'Date'}</th>
-                                      <th scope="col">{t('dose')}</th>
-                                      <th scope="col">{t('sleep_label')}</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {correlationData.map((row, i) => (
-                                      <tr key={i}>
-                                          <td>{row.date}</td>
-                                          <td>{row.dose} {unitLabel}</td>
-                                          <td>{row.sleep} hours</td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
-                  </Card>
-              </section>
-
-              {/* 2. Mood Distribution (Pie Chart) */}
-              <section aria-labelledby="mood-heading">
-                  <Card className="min-h-[350px] flex flex-col border-white/10">
-                      <h3 id="mood-heading" className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
-                              <Smile className="w-5 h-5" aria-hidden="true"/>
-                          </div>
-                          {language === 'ar' ? 'الحالة المزاجية العامة' : 'Mood Distribution'}
-                      </h3>
-                      <div className="flex-1 relative" aria-hidden="true">
-                           {moodData.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  <PieChart>
-                                      <Pie
-                                          data={moodData}
-                                          cx="50%"
-                                          cy="50%"
-                                          innerRadius={60}
-                                          outerRadius={100}
-                                          paddingAngle={5}
-                                          dataKey="value"
-                                          stroke="none"
-                                          cornerRadius={6}
-                                      >
-                                          {moodData.map((entry, index) => (
-                                              <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                          ))}
-                                      </Pie>
-                                      <Tooltip 
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                          itemStyle={{fontWeight: 'bold', color: '#fff'}}
-                                      />
-                                      <Legend 
-                                        verticalAlign="bottom" 
-                                        height={36} 
-                                        iconType="circle"
-                                        formatter={(value) => <span className="text-slate-400 text-xs font-bold mx-2">{value}</span>}
-                                      />
-                                  </PieChart>
-                              </ResponsiveContainer>
-                           ) : (
-                               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 font-medium">
-                                   <Meh size={40} className="mb-2 opacity-20"/>
-                                   {language === 'ar' ? 'لا توجد بيانات كافية' : 'Insufficient Data'}
-                               </div>
-                           )}
-                      </div>
-
-                      {/* Screen Reader List for Mood */}
-                      <div className="sr-only">
-                          <h4>{language === 'ar' ? 'ملخص المزاج' : 'Mood Summary'}</h4>
-                          <ul>
-                              {moodData.map((item, i) => (
-                                  <li key={i}>{item.name}: {item.value} {language === 'ar' ? 'أيام' : 'days'}</li>
-                              ))}
-                          </ul>
-                      </div>
-                  </Card>
-              </section>
-
-              {/* 3. Sleep Quality Histogram */}
-              <section aria-labelledby="sleep-heading">
-                  <Card className="min-h-[350px] flex flex-col border-white/10">
-                      <h3 id="sleep-heading" className="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                              <Moon className="w-5 h-5" aria-hidden="true"/>
-                          </div>
-                           {language === 'ar' ? 'استقرار النوم (آخر 7 أيام)' : 'Sleep Stability (Last 7 Days)'}
-                      </h3>
-                      <div className="flex-1 mt-4" aria-hidden="true">
-                          {recentLogs.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                  {/* Using recentLogs.slice(-7) ensures we use the sorted latest days */}
-                                  <BarChart data={recentLogs.slice(-7)}> 
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
-                                      <XAxis dataKey="date" tickFormatter={(str) => str.slice(8)} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} dy={10} />
-                                      <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} domain={[0, 12]} />
-                                      <Tooltip 
-                                          cursor={{fill: '#1e293b', opacity: 0.5}}
-                                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
-                                          itemStyle={{color: '#fff'}}
-                                          formatter={(val) => [`${val} h`, t('sleep_label')]}
-                                      />
-                                      <ReferenceLine y={7} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Target (7h)', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} />
-                                      <Bar dataKey="sleepHours" radius={[6, 6, 0, 0]} barSize={24}>
-                                        {recentLogs.slice(-7).map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.sleepHours && entry.sleepHours >= 7 ? '#10b981' : '#6366f1'} />
-                                        ))}
-                                      </Bar>
-                                  </BarChart>
-                              </ResponsiveContainer>
-                          ) : (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                                  <BarChart2 size={40} className="mb-2 opacity-20"/>
-                                  <p>{language === 'ar' ? 'لا توجد سجلات للنوم.' : 'No sleep logs.'}</p>
+                  {/* 2. Main Analytics Chart */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <section className="lg:col-span-2 h-full">
+                          <Card className="h-full bg-[#0b0f19] border-white/5 relative overflow-hidden flex flex-col min-h-[450px]">
+                              <div className="absolute top-0 right-0 p-6 opacity-30 pointer-events-none">
+                                  <Activity size={100} className="text-white/5" />
                               </div>
-                          )}
-                      </div>
+                              
+                              <div className="relative z-10 mb-6">
+                                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                      <TrendingUp className="text-emerald-400" size={20} />
+                                      {language === 'ar' ? "تحليل الارتباط الحيوي" : "Bio-Correlation Analysis"}
+                                  </h3>
+                                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mt-1">
+                                      Dose vs. Sleep vs. Wellness
+                                  </p>
+                              </div>
 
-                      {/* Screen Reader Table for Sleep */}
-                      <div className="sr-only">
-                          <table>
-                              <caption>{language === 'ar' ? 'سجل النوم للأسبوع الماضي' : 'Past week sleep log'}</caption>
-                              <thead>
-                                  <tr>
-                                      <th scope="col">{language === 'ar' ? 'التاريخ' : 'Date'}</th>
-                                      <th scope="col">{t('sleep_label')}</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {recentLogs.slice(-7).map((log, i) => (
-                                      <tr key={i}>
-                                          <td>{log.date}</td>
-                                          <td>{log.sleepHours || 0} {language === 'ar' ? 'ساعات' : 'hours'}</td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
-                  </Card>
-              </section>
-          </div>
+                              <div className="flex-1 w-full min-h-[300px]">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                      <ComposedChart data={comboChartData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                                          <defs>
+                                              <linearGradient id="colorWellness" x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                              </linearGradient>
+                                          </defs>
+                                          <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} opacity={0.5} />
+                                          <XAxis dataKey="date" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                                          <YAxis yAxisId="left" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
+                                          <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} domain={[0, 100]} />
+                                          
+                                          <Tooltip 
+                                              contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                              itemStyle={{fontSize: '12px', fontWeight: 'bold'}}
+                                              labelStyle={{color: '#94a3b8', fontSize: '10px', marginBottom: '5px'}}
+                                          />
+                                          <Legend verticalAlign="top" height={36} iconType="circle" />
+
+                                          <Area yAxisId="right" type="monotone" dataKey="wellness" name={language === 'ar' ? "مؤشر العافية" : "Wellness Score"} stroke="#10b981" fill="url(#colorWellness)" strokeWidth={2} />
+                                          <Bar yAxisId="left" dataKey="dose" name={language === 'ar' ? "الجرعة" : "Dose"} barSize={12} fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                          <Line yAxisId="left" type="monotone" dataKey="sleep" name={language === 'ar' ? "النوم" : "Sleep"} stroke="#f59e0b" strokeWidth={2} dot={{r: 3}} />
+                                      </ComposedChart>
+                                  </ResponsiveContainer>
+                              </div>
+                          </Card>
+                      </section>
+
+                      {/* 3. AI Insights Panel */}
+                      <section className="h-full">
+                          <Card className="h-full bg-gradient-to-b from-[#0f172a] to-[#0b0f19] border-white/10 p-0 overflow-hidden flex flex-col">
+                              <div className="p-6 border-b border-white/5 bg-white/5">
+                                  <h3 className="text-white font-bold flex items-center gap-2">
+                                      <Zap className="text-amber-400" size={20} />
+                                      {language === 'ar' ? "تحليلات الذكاء الاصطناعي" : "AI Neural Insights"}
+                                  </h3>
+                              </div>
+                              
+                              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-4">
+                                  {analytics.insights.length > 0 ? (
+                                      analytics.insights.map((insight, idx) => (
+                                          <div key={idx} className="flex gap-4 p-4 rounded-2xl bg-[#080b14] border border-white/5 hover:border-indigo-500/30 transition-colors group">
+                                              <div className="shrink-0 mt-1">
+                                                  <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_#6366f1] group-hover:animate-pulse"></div>
+                                              </div>
+                                              <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                                                  {insight}
+                                              </p>
+                                          </div>
+                                      ))
+                                  ) : (
+                                      <div className="text-center py-10 text-slate-500 text-sm">
+                                          {language === 'ar' ? "النظام يقوم بجمع البيانات..." : "System gathering data..."}
+                                      </div>
+                                  )}
+
+                                  {/* Symptom Burden Indicator */}
+                                  <div className="mt-6 pt-6 border-t border-white/5">
+                                      <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                          <span>{language === 'ar' ? "عبء الأعراض" : "Symptom Load"}</span>
+                                          <span className={analytics.symptomBurden > 50 ? "text-rose-400" : "text-emerald-400"}>
+                                              {analytics.symptomBurden > 50 ? (language === 'ar' ? "مرتفع" : "HIGH") : (language === 'ar' ? "طبيعي" : "NORMAL")}
+                                          </span>
+                                      </div>
+                                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                                          <div 
+                                              className={`h-full transition-all duration-1000 ${analytics.symptomBurden > 50 ? 'bg-rose-500' : 'bg-emerald-500'}`} 
+                                              style={{ width: `${analytics.symptomBurden}%` }}
+                                          ></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </Card>
+                      </section>
+                  </div>
+              </div>
+          )}
       </LayoutContainer>
     );
 };
@@ -9825,16 +10238,14 @@ export const SupportView = ({ user }: SupportViewProps) => {
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // -- 1. Fetch Data --
+    // -- 1. Fetch Tickets List (Sidebar) --
     useEffect(() => {
         if (!user.uid) return;
         
         let q;
         if (isAdmin) {
-            // Admin sees ALL tickets
             q = query(collection(db, "tickets"), orderBy("lastUpdate", "desc"));
         } else {
-            // User sees OWN tickets
             q = query(collection(db, "tickets"), where("userId", "==", user.uid), orderBy("lastUpdate", "desc"));
         }
         
@@ -9844,16 +10255,28 @@ export const SupportView = ({ user }: SupportViewProps) => {
                 ...doc.data()
             } as Ticket));
             setTickets(fetchedTickets);
-            
-            // Sync active ticket if open
-            if (activeTicket) {
-                const updatedActive = fetchedTickets.find(t => t.id === activeTicket.id);
-                if (updatedActive) setActiveTicket(updatedActive);
-            }
         });
         
         return () => unsubscribe();
-    }, [user.uid, isAdmin, activeTicket?.id]);
+    }, [user.uid, isAdmin]);
+
+    // -- 2. Fetch Active Ticket Details (Real-time Chat) --
+    // ✅ FIX: Dedicated listener for the active ticket ensures immediate updates when Admin replies
+    useEffect(() => {
+        if (!activeTicket?.id) return;
+
+        const ticketRef = doc(db, "tickets", activeTicket.id);
+        const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setActiveTicket({ id: docSnap.id, ...docSnap.data() } as Ticket);
+            } else {
+                // Ticket deleted
+                setActiveTicket(null);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [activeTicket?.id]);
 
     // Auto-scroll
     useEffect(() => {
@@ -9864,7 +10287,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     }, [activeTicket?.messages]);
 
-    // -- 2. Actions --
+    // -- 3. Actions --
     
     const sendComplaint = async () => {
         if (!user.uid) return;
@@ -9917,8 +10340,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
         try {
             const ticketRef = doc(db, "tickets", activeTicket.id);
             
-            // Use arrayUnion to safely append message without reading first
-            // This ensures data consistency and immediate UI updates via listener
             await updateDoc(ticketRef, {
                 messages: arrayUnion(newMsg),
                 lastUpdate: Date.now(),
@@ -9934,7 +10355,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
     };
 
     const toggleResolve = async () => {
-        if (!isAdmin) return; // Guard for non-admins
+        if (!isAdmin) return; 
         if (!activeTicket || !activeTicket.id) return;
         const newStatus = activeTicket.status === 'resolved' ? 'open' : 'resolved';
         try {
@@ -9942,9 +10363,8 @@ export const SupportView = ({ user }: SupportViewProps) => {
         } catch(e) { console.error(e); }
     };
 
-    // --- NEW: Delete Ticket (Admin) ---
     const handleDeleteTicket = async (ticketId: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent opening the ticket
+        e.stopPropagation(); 
         if (!window.confirm(language === 'ar' ? "حذف هذه التذكرة نهائياً؟" : "Delete this ticket permanently?")) return;
         
         try {
@@ -9956,7 +10376,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
         }
     };
 
-    // --- NEW: Delete User (Admin) ---
     const handleDeleteSender = async () => {
         if (!activeTicket || !activeTicket.userId) return;
         const confirmMsg = language === 'ar' 
@@ -9965,9 +10384,7 @@ export const SupportView = ({ user }: SupportViewProps) => {
             
         if (window.confirm(confirmMsg)) {
             try {
-                // Delete the user document
                 await deleteDoc(doc(db, "users", activeTicket.userId));
-                // Optionally delete the ticket too or mark it
                 alert(language === 'ar' ? "تم حذف المستخدم." : "User deleted.");
                 setActiveTicket(null);
             } catch (e) {
@@ -10055,7 +10472,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                     </div>
                                 </button>
                                 
-                                {/* ADMIN DELETE TICKET BUTTON */}
                                 {isAdmin && ticket.id && (
                                     <button 
                                         onClick={(e) => handleDeleteTicket(ticket.id!, e)}
@@ -10099,7 +10515,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                         <div className="flex items-center gap-2 mt-1">
                                             <p className="text-xs text-slate-400">{activeTicket.userEmail}</p>
                                             <span className="text-slate-600">|</span>
-                                            {/* DELETE USER BUTTON */}
                                             <button 
                                                 onClick={handleDeleteSender}
                                                 className="text-[10px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
@@ -10116,7 +10531,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                             {activeTicket.status === 'resolved' ? (language === 'ar' ? 'تم الحل' : 'Resolved') : (language === 'ar' ? 'تحديد كمحلول' : 'Mark Resolved')}
                                         </button>
                                     ) : (
-                                        // Normal User: Read Only Status
                                         <div className={`px-3 py-1 border rounded-full text-xs font-bold flex items-center gap-2 ${activeTicket.status === 'resolved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800/50 border-white/5 text-slate-500'}`}>
                                             {activeTicket.status === 'resolved' && <CheckCircle size={14}/>}
                                             {getStatusLabel(activeTicket.status)}
@@ -10132,7 +10546,6 @@ export const SupportView = ({ user }: SupportViewProps) => {
                                 aria-live="polite"
                             >
                                 {activeTicket.messages?.map((msg, idx) => {
-                                    // Logic: "Me" is always on the right side.
                                     const isMe = (isAdmin && msg.isAdmin) || (!isAdmin && !msg.isAdmin);
                                     
                                     const senderLabel = msg.isAdmin 
@@ -10835,14 +11248,15 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         (isOwner(userId) && 
-         notUpdating('role') && 
+         // ✅ FIX: Allow user to change role ONLY to 'doctor', 'patient', or 'normal_user' during onboarding
+         // Strictly forbid upgrading self to 'admin'
+         (!('role' in incomingData()) || incomingData().role in ['doctor', 'patient', 'normal_user']) &&
          notUpdating('isBanned')
         ) ||
         (isApprovedDoctor() && resource.data.patientData.assignedDoctorId == request.auth.uid) ||
         (isApprovedDoctor() && (resource.data.patientData == null || resource.data.patientData.assignedDoctorId == null))
       );
       
-      // ✅ FIX: Explicitly allow owner to delete their doc
       allow delete: if isSignedIn() && isOwner(userId);
     }
 
@@ -10851,12 +11265,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       allow read: if isSignedIn() && (
+        isAdmin() || 
         resource.data.isDoctorRoom == false ||
         (resource.data.isDoctorRoom == true && resource.data.doctorId == request.auth.uid) ||
         (resource.data.isDoctorRoom == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patientData.assignedDoctorId == resource.data.doctorId)
       );
 
-      // ✅ FIX: Allow ANY signed-in user to create a room (was isApprovedDoctor only)
       allow create: if isSignedIn() && 
                     isValidString(incomingData().name, 3, 50);
       
@@ -10865,6 +11279,7 @@ service cloud.firestore {
       
       match /messages/{msgId} {
         allow read: if isSignedIn();
+        
         allow create: if isSignedIn() && 
                       isValidString(incomingData().text, 1, 1000) &&
                       incomingData().senderId == request.auth.uid;
@@ -10880,13 +11295,10 @@ service cloud.firestore {
     match /articles/{articleId} {
       allow read, write, delete: if isAdmin();
       
-      // Anyone can read published articles
       allow read: if isSignedIn() && resource.data.isPublished == true;
       
-      // Doctors can create
       allow create: if isApprovedDoctor();
                     
-      // Doctors can edit/delete THEIR OWN articles
       allow update, delete: if isApprovedDoctor() && resource.data.authorId == request.auth.uid;
     }
 
@@ -10894,6 +11306,7 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow read, write, delete: if isAdmin();
       
+      // User can read/update their own tickets
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow create: if isSignedIn() && 
@@ -11398,7 +11811,7 @@ export interface DoctorProfileData {
   clinicLocation?: string;  
   phoneNumber: string;      
   bio: string;              
-  photoUrl?: string | null;        
+  photoUrl?: string | null; // Kept for backward compatibility or specific doctor branding
   accountStatus: DoctorAccountStatus; 
   
   // Rejection & Resubmission Logic
@@ -11427,6 +11840,7 @@ export interface UserProfile {
   uid?: string; 
   email: string;
   name: string;
+  photoUrl?: string | null; // Added for all users
   
   // Physical Stats (New for Safety Algo)
   age?: number;
@@ -11448,7 +11862,8 @@ export interface UserProfile {
   speedModifier?: number; 
   
   isBanned?: boolean;
-  lastActive?: string; 
+  lastActive?: string;
+  createdAt?: string; 
   progress?: number;   
   streak?: number;     
   
@@ -11656,6 +12071,6 @@ export default defineConfig({
 ---
 
 ## 📊 Stats
-- Total Files: 57
-- Total Characters: 585502
-- Estimated Tokens: ~146.376 (GPT-4 Context)
+- Total Files: 58
+- Total Characters: 608232
+- Estimated Tokens: ~152.058 (GPT-4 Context)

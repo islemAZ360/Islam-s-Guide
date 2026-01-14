@@ -7,7 +7,7 @@ import {
 import { LayoutContainer } from '../components/ui/LayoutContainer';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 
-// Sub-views (Modules) - Now independent
+// Sub-views (Modules)
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminDoctors } from './admin/AdminDoctors';
 import { AdminUsers } from './admin/AdminUsers';
@@ -37,64 +37,91 @@ export const AdminView = () => {
     ];
 
     return (
-        <LayoutContainer className="max-w-full px-4 md:px-8">
+        <LayoutContainer className="max-w-full px-4 md:px-8 pb-20">
             {/* Header / Top Bar */}
-            <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-slate-900 border-b border-white/10 pb-6 pt-2">
-                <div>
-                    <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
-                        <ShieldAlert className="text-rose-500" size={32} />
-                        {language === 'ar' ? 'غرفة التحكم المركزية' : 'Admin Command Center'}
-                    </h1>
-                    <p className="text-slate-500 font-mono text-xs mt-1 tracking-widest uppercase">
-                        System Status: <span className="text-emerald-500">ONLINE</span>
-                    </p>
+            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10 bg-[#0f172a]/60 backdrop-blur-xl border border-white/5 p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
+                
+                <div className="relative z-10 flex items-center gap-4">
+                    <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20 text-rose-500 shadow-lg shadow-rose-900/20">
+                        <ShieldAlert size={32} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-white tracking-tight">
+                            {language === 'ar' ? 'غرفة التحكم المركزية' : 'Admin Command Center'}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <p className="text-slate-400 font-mono text-xs tracking-widest uppercase">
+                                System Status: <span className="text-emerald-400 font-bold">OPERATIONAL</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 relative z-10">
                     <LanguageSwitcher />
                 </div>
             </header>
 
-            {/* Navigation Tabs */}
-            <div 
-                className="flex p-1 bg-slate-900 rounded-lg border border-white/10 mb-8 w-full overflow-x-auto scrollbar-hide shadow-lg relative z-10"
-                role="tablist"
-                aria-label="Admin Sections"
-            >
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        role="tab"
-                        aria-selected={activeTab === tab.id}
-                        aria-controls={`panel-${tab.id}`}
-                        id={`tab-${tab.id}`}
-                        onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-bold transition-all whitespace-nowrap outline-none focus:ring-2 focus:ring-rose-500 min-w-[120px] ${
-                            activeTab === tab.id 
-                            ? 'bg-slate-800 text-white shadow-md border border-white/10' 
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                        }`}
-                    >
-                        <tab.icon size={16} aria-hidden="true" />
-                        {tab.label}
-                    </button>
-                ))}
+            {/* Navigation Tabs (Floating Dock Style) */}
+            <div className="sticky top-4 z-50 mb-8 mx-auto max-w-fit">
+                <div 
+                    className="flex p-2 bg-[#020617]/80 backdrop-blur-2xl rounded-full border border-white/10 shadow-2xl overflow-x-auto scrollbar-hide ring-1 ring-white/5"
+                    role="tablist"
+                    aria-label="Admin Sections"
+                >
+                    {tabs.map((tab) => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                role="tab"
+                                aria-selected={isActive}
+                                aria-controls={`panel-${tab.id}`}
+                                id={`tab-${tab.id}`}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`
+                                    relative flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-500 whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+                                    ${isActive ? 'text-white shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}
+                                `}
+                            >
+                                {isActive && (
+                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-full -z-10 animate-in zoom-in duration-300"></div>
+                                )}
+                                <tab.icon size={18} className={isActive ? 'animate-pulse' : ''} />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* Main Content Area - Components fetch their own data now */}
+            {/* Main Content Area */}
             <main 
                 id={`panel-${activeTab}`} 
                 role="tabpanel" 
                 aria-labelledby={`tab-${activeTab}`}
-                className="animate-in slide-in-from-bottom-4 relative z-10 outline-none"
+                className="animate-in slide-in-from-bottom-8 duration-700 relative z-10 min-h-[600px]"
                 tabIndex={-1}
             >
-                {activeTab === 'overview' && <AdminOverview setActiveTab={setActiveTab} />}
-                {activeTab === 'doctors' && <AdminDoctors />}
-                {activeTab === 'users' && <AdminUsers />}
-                {activeTab === 'cms' && <AdminCMS />}
-                {activeTab === 'community' && userProfile && <CommunityView currentUser={userProfile} />}
-                {activeTab === 'support' && userProfile && <SupportView user={userProfile} />}
+                {/* Background Decor */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl opacity-50 pointer-events-none">
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-[100px]"></div>
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-rose-500/5 rounded-full blur-[100px]"></div>
+                </div>
+
+                <div className="relative z-10">
+                    {activeTab === 'overview' && <AdminOverview setActiveTab={setActiveTab} />}
+                    {activeTab === 'doctors' && <AdminDoctors />}
+                    {activeTab === 'users' && <AdminUsers />}
+                    {activeTab === 'cms' && <AdminCMS />}
+                    {activeTab === 'community' && userProfile && <CommunityView currentUser={userProfile} />}
+                    {activeTab === 'support' && userProfile && <SupportView user={userProfile} />}
+                </div>
             </main>
         </LayoutContainer>
     );
